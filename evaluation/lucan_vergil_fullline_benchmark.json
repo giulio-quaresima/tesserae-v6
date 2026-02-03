@@ -1,0 +1,495 @@
+[
+  {
+    "id": 1,
+    "source": {
+      "work": "Lucan, Bellum Civile",
+      "book": 1,
+      "line": 1,
+      "text": "bella per emathios plus quam civilia campos iusque datum sceleri canimus populumque potentem in sua victrici conversum viscera dextra cognatasque acies et ruptofoedere regni certatum totis concussi vi..."
+    },
+    "target": {
+      "work": "Vergil, Aeneid",
+      "book": 1,
+      "line": 6,
+      "text": "sed pater omnipotens speluncis abdidit atris hoc metuens molemque et montis insuper altos imposuit regemque deditqui foedere certo et premere et laxas sciret dare iussus habenas"
+    },
+    "relevance_type": 4,
+    "authority": ""
+  },
+  {
+    "id": 4,
+    "source": {
+      "work": "Lucan, Bellum Civile",
+      "book": 1,
+      "line": 1,
+      "text": "bella per emathios plus quam civiliacampos iusque datum sceleri canimus populumque potentem in sua victrici conversum visceradextra cognatasque acies et rupto foedere regni certatum totis concussi vir..."
+    },
+    "target": {
+      "work": "Vergil, Aeneid",
+      "book": 1,
+      "line": 97,
+      "text": "mene iliacis occumbere campis non potuisse tuaque animam hanc effundere dextra saevus ubi aeacidae telo iacet hector ubi ingens sarpedon ubi tot simois correpta sub undis scuta virum galeasque et fort..."
+    },
+    "relevance_type": 4,
+    "authority": ""
+  },
+  {
+    "id": 10,
+    "source": {
+      "work": "Lucan, Bellum Civile",
+      "book": 1,
+      "line": 1,
+      "text": "bella per emathios plus quam civilia campos iusque datum sceleri canimus populumque potentem in sua victrici conversum viscera dextra cognatasque acies et rupto foedere regni certatum totis concussi v..."
+    },
+    "target": {
+      "work": "Vergil, Aeneid",
+      "book": 1,
+      "line": 453,
+      "text": "namque sub ingenti lustrat dum singula templo reginam opperiens dum quae fortuna sit urbi artificumque manus inter se operumque laborem miratur videt iliacas ex ordine pugnasbellaque iam fama totum vo..."
+    },
+    "relevance_type": 4,
+    "authority": ""
+  },
+  {
+    "id": 31,
+    "source": {
+      "work": "Lucan, Bellum Civile",
+      "book": 1,
+      "line": 1,
+      "text": "bella per emathios plus quam civilia campos iusque datum sceleri canimus populumque potentem in sua victrici conversum viscera dextra cognatasque acies et rupto foedere regni certatum totis concussi v..."
+    },
+    "target": {
+      "work": "Vergil, Aeneid",
+      "book": 3,
+      "line": 539,
+      "text": "bellum o terra hospita portas bello armantur equi bellum haec armenta minantur"
+    },
+    "relevance_type": 4,
+    "authority": ""
+  },
+  {
+    "id": 41,
+    "source": {
+      "work": "Lucan, Bellum Civile",
+      "book": 1,
+      "line": 1,
+      "text": "bella per emathios plus quam civilia campos iusque datum sceleri canimus populumque potentem in sua victrici conversum viscera dextra cognatasque acies et rupto foedere regni certatum totis concussi v..."
+    },
+    "target": {
+      "work": "Vergil, Aeneid",
+      "book": 5,
+      "line": 58,
+      "text": "olli discurrere pares atque agmina terni diductis solvere choris rursusque vocati convertere vias infestaque tela tulere"
+    },
+    "relevance_type": 4,
+    "authority": ""
+  },
+  {
+    "id": 67,
+    "source": {
+      "work": "Lucan, Bellum Civile",
+      "book": 1,
+      "line": 1,
+      "text": "bella per emathios plus quam civilia campos iusque datum sceleri canimus populumque potentem in sua victrici conversum viscera dextra cognatasque acies et rupto foedere regni certatum totis concussi v..."
+    },
+    "target": {
+      "work": "Vergil, Aeneid",
+      "book": 7,
+      "line": 41,
+      "text": "dicam horrida bella dicam acies actosque animis in funera reges tyrrhenamque manum totamque sub arma coactam hesperiam"
+    },
+    "relevance_type": 4,
+    "authority": ""
+  },
+  {
+    "id": 175,
+    "source": {
+      "work": "Lucan, Bellum Civile",
+      "book": 1,
+      "line": 1,
+      "text": "bella per emathios plus quam civilia campos iusque datum sceleri canimus populumque potentem in sua victrici conversum viscera dextra cognatasque acies et ruptofoedere regni certatum totisconcussi vir..."
+    },
+    "target": {
+      "work": "Vergil, Aeneid",
+      "book": 12,
+      "line": 526,
+      "text": "nunc nunc fluctuat ira intus rumpuntur nescia vinci pectora nunc totis in volnera viribus itur"
+    },
+    "relevance_type": 4,
+    "authority": ""
+  },
+  {
+    "id": 181,
+    "source": {
+      "work": "Lucan, Bellum Civile",
+      "book": 1,
+      "line": 1,
+      "text": "bella per emathios plus quam civilia campos iusque datum sceleri canimus populumque potentem in sua victrici conversum visceradextra cognatasque acies et ruptofoedere regni certatum totis concussi vir..."
+    },
+    "target": {
+      "work": "Vergil, Aeneid",
+      "book": 12,
+      "line": 579,
+      "text": "ipse inter primos dextram sub moenia tendit aeneas magnaque incusat voce latinum testaturque deos iterum se ad proelia cogi bis iam italos hostis haec altera foedera rumpi"
+    },
+    "relevance_type": 4,
+    "authority": ""
+  },
+  {
+    "id": 205,
+    "source": {
+      "work": "Lucan, Bellum Civile",
+      "book": 1,
+      "line": 8,
+      "text": "quis furor o cives quae tanta licentia ferri gentibus invisis latium praebere cruorem"
+    },
+    "target": {
+      "work": "Vergil, Aeneid",
+      "book": 11,
+      "line": 732,
+      "text": "quis metus o numquam dolituri o semper inertes tyrrheniquae tanta animis ignavia venit"
+    },
+    "relevance_type": 5,
+    "authority": ""
+  },
+  {
+    "id": 206,
+    "source": {
+      "work": "Lucan, Bellum Civile",
+      "book": 1,
+      "line": 8,
+      "text": "quis furor o cives quae tanta licentia ferri gentibus invisis latium praebere cruorem"
+    },
+    "target": {
+      "work": "Vergil, Aeneid",
+      "book": 12,
+      "line": 5,
+      "text": "quis mihi nunc tot acerba deus quis carmine caedes diversas obitumque ducum quos aequore toto inque vicem nunc turnus agit nunc troius heros expediat"
+    },
+    "relevance_type": 4,
+    "authority": ""
+  },
+  {
+    "id": 280,
+    "source": {
+      "work": "Lucan, Bellum Civile",
+      "book": 1,
+      "line": 21,
+      "text": "tunc si tantus amor belli tibi romanefandi totum sub latias leges cum miseris orbem in te verte manus"
+    },
+    "target": {
+      "work": "Vergil, Aeneid",
+      "book": 6,
+      "line": 24,
+      "text": "hic crudelis amor tauri suppostaque furto pasipha mixtumque genus prolesque biformis minotaurus inest veneris monumenta nefandae"
+    },
+    "relevance_type": 4,
+    "authority": ""
+  },
+  {
+    "id": 318,
+    "source": {
+      "work": "Lucan, Bellum Civile",
+      "book": 1,
+      "line": 24,
+      "text": "at nunc semirutis pendent quodmoenia tectis urbibus italiae lapsisque ingentia muris saxa iacent nulloque domus custode tenentur rarus et antiquis habitator in urbibus errat horrida quoddumis multosqu..."
+    },
+    "target": {
+      "work": "Vergil, Aeneid",
+      "book": 1,
+      "line": 5,
+      "text": "multa quoque et bello passus dum conderet urbeminferretque deos latio genus unde latinum albanique patres atque altae moenia romae"
+    },
+    "relevance_type": 4,
+    "authority": ""
+  },
+  {
+    "id": 320,
+    "source": {
+      "work": "Lucan, Bellum Civile",
+      "book": 1,
+      "line": 24,
+      "text": "at nunc semirutis pendent quod moenia tectis urbibus italiae lapsisque ingentia muris saxa iacent nulloque domus custode tenentur rarus et antiquis habitator in urbibus errat horrida quod dumis multos..."
+    },
+    "target": {
+      "work": "Vergil, Aeneid",
+      "book": 1,
+      "line": 29,
+      "text": "his accensa super iactatos aequore toto troas reliquias danaum atque immitis achilli arcebat longe latio multosque perannos errabant acti fatis maria omnia circum"
+    },
+    "relevance_type": 5,
+    "authority": ""
+  },
+  {
+    "id": 629,
+    "source": {
+      "work": "Lucan, Bellum Civile",
+      "book": 1,
+      "line": 60,
+      "text": "tunc genus humanum positis sibi consulat armis inque vicem gens omnis amet"
+    },
+    "target": {
+      "work": "Vergil, Aeneid",
+      "book": 1,
+      "line": 542,
+      "text": "si genus humanum et mortalia temnitis arma at sperate deos memores fandi atque nefandi"
+    },
+    "relevance_type": 4,
+    "authority": ""
+  },
+  {
+    "id": 837,
+    "source": {
+      "work": "Lucan, Bellum Civile",
+      "book": 1,
+      "line": 109,
+      "text": "populique potentis quae marequae terras quae totum continet orbem non cepit fortuna duos"
+    },
+    "target": {
+      "work": "Vergil, Aeneid",
+      "book": 1,
+      "line": 234,
+      "text": "certe hinc romanos olim volventibus annis hinc fore ductores revocato a sanguine teucri qui mare qui terras omni dicione tenerent pollicitus quae te genitor sententia vertit"
+    },
+    "relevance_type": 4,
+    "authority": ""
+  },
+  {
+    "id": 844,
+    "source": {
+      "work": "Lucan, Bellum Civile",
+      "book": 1,
+      "line": 109,
+      "text": "populique potentis quae mare quae terras quae totum continetorbem non cepit fortuna duos"
+    },
+    "target": {
+      "work": "Vergil, Aeneid",
+      "book": 4,
+      "line": 229,
+      "text": "sed fore qui gravidam imperiis belloque frementem italiam regeret genus alto a sanguine teucri proderet ac totum sub leges mitteret orbem"
+    },
+    "relevance_type": 4,
+    "authority": ""
+  },
+  {
+    "id": 1086,
+    "source": {
+      "work": "Lucan, Bellum Civile",
+      "book": 1,
+      "line": 141,
+      "text": "et quamvis primo nutet casurasub euro tot circum silvae firmo se robore tollant sola tamen colitur"
+    },
+    "target": {
+      "work": "Vergil, Aeneid",
+      "book": 8,
+      "line": 42,
+      "text": "[iamque tibi ne vana putes haec fingere somnum litoreis ingens inventa sub ilicibus sus triginta capitum fetus enixa iacebit alba solo recubans albi circum ubera nati"
+    },
+    "relevance_type": 5,
+    "authority": ""
+  },
+  {
+    "id": 1329,
+    "source": {
+      "work": "Lucan, Bellum Civile",
+      "book": 1,
+      "line": 185,
+      "text": "ut ventum est parvi rubiconis ad undas ingens visa duci patriaetrepidantis imago clara per obscuram vultu moestissima noctem turrigero canos effundens vertice crines caesarie lacera nudisque adstare l..."
+    },
+    "target": {
+      "work": "Vergil, Aeneid",
+      "book": 10,
+      "line": 821,
+      "text": "at vero ut voltum vidit morientis et ora ora modis anchisiades pallentia miris ingemuit miserans graviter dextramque tetendit et mentem patriae subiit pietatis imago"
+    },
+    "relevance_type": 5,
+    "authority": ""
+  },
+  {
+    "id": 1379,
+    "source": {
+      "work": "Lucan, Bellum Civile",
+      "book": 1,
+      "line": 195,
+      "text": "o magnae qui moenia prospicis urbis tarpeia de rupe tonans phrygiique penates gentis iuleae et rapti secreta quirini et residens celsa latialis iuppiter alba vestalesque foci summique onuminis instar ..."
+    },
+    "target": {
+      "work": "Vergil, Aeneid",
+      "book": 5,
+      "line": 632,
+      "text": "o patria et rapti nequiquam ex hoste penates nullane iam troiae dicentur moenia"
+    },
+    "relevance_type": 4,
+    "authority": ""
+  },
+  {
+    "id": 1593,
+    "source": {
+      "work": "Lucan, Bellum Civile",
+      "book": 1,
+      "line": 244,
+      "text": "ut notae fulsere aquilae romanaque signa et celsus medio conspectus in agmine caesar diriguere metu gelidus pavor occupat artus et tacito mutos volvunt in pectore questus"
+    },
+    "target": {
+      "work": "Vergil, Aeneid",
+      "book": 12,
+      "line": 94,
+      "text": "et iam iamque magis cunctantem flectere sermo coeperat infelix umero cum apparuit alto balteus et notis fulseruntcingula bullis pallantis pueri victum quem volnere turnus straverat atque umeris inimic..."
+    },
+    "relevance_type": 5,
+    "authority": ""
+  },
+  {
+    "id": 1910,
+    "source": {
+      "work": "Lucan, Bellum Civile",
+      "book": 1,
+      "line": 327,
+      "text": "utque ferae tigres numquam posuere furorem quas nemore hyrcano matrum dum lustrasequuntur altus caesorum pavit cruor armentorum"
+    },
+    "target": {
+      "work": "Vergil, Aeneid",
+      "book": 3,
+      "line": 645,
+      "text": "tertia iam lunae se cornua lumine complent cum vitam in silvis inter deserta ferarum lustra domosque traho vastosque ab rupe cyclopas prospicio sonitumque pedum vocemque tremesco"
+    },
+    "relevance_type": 4,
+    "authority": ""
+  },
+  {
+    "id": 2054,
+    "source": {
+      "work": "Lucan, Bellum Civile",
+      "book": 1,
+      "line": 376,
+      "text": "pectore si fratris gladium iuguloque parentis condere me iubeas plenaeque in viscera partuconiugis invita peragam tamen omnia dextra"
+    },
+    "target": {
+      "work": "Vergil, Aeneid",
+      "book": 11,
+      "line": 266,
+      "text": "ipse mycenaeus magnorum ductor achivom coniugis infandae prima inter limina dextra oppetiit"
+    },
+    "relevance_type": 5,
+    "authority": ""
+  },
+  {
+    "id": 2107,
+    "source": {
+      "work": "Lucan, Bellum Civile",
+      "book": 1,
+      "line": 388,
+      "text": "it tantus ad aethera clamorquantus piniferae boreas cum thracius ossae rupibus incubuit curvato robore pressae fit sonus aut rursus redeuntis in aetherasilvae"
+    },
+    "target": {
+      "work": "Vergil, Aeneid",
+      "book": 2,
+      "line": 334,
+      "text": "vix primi proelia temptant portarum vigiles et caeco marte resistunt talibus othryadae dictis et numine divom in flammas et in arma feror quo tristis erinys ullo fremitus vocat et sublatus ad aethera ..."
+    },
+    "relevance_type": 4,
+    "authority": ""
+  },
+  {
+    "id": 2168,
+    "source": {
+      "work": "Lucan, Bellum Civile",
+      "book": 1,
+      "line": 399,
+      "text": "hi vada liquerunt isarae qui gurgite ductus per tam multa suo famae maioris in amnem lapsus ad aequoreas nomen non pertulit undas"
+    },
+    "target": {
+      "work": "Vergil, Aeneid",
+      "book": 6,
+      "line": 319,
+      "text": "quidve petunt animae vel quo discrimine ripas hae linquuntillae remis vada livida verrunt olli sic breviter fata est longaeva sacerdos"
+    },
+    "relevance_type": 4,
+    "authority": ""
+  },
+  {
+    "id": 2305,
+    "source": {
+      "work": "Lucan, Bellum Civile",
+      "book": 1,
+      "line": 447,
+      "text": "vos quoque qui fortes animasbelloque peremtas laudibus in longum vates dimittitis aevum plurima securi fudistis carmina bardi"
+    },
+    "target": {
+      "work": "Vergil, Aeneid",
+      "book": 6,
+      "line": 481,
+      "text": "hic multum fleti ad superos belloque caduci dardanidae quosille omnes longo ordine cernens ingemuit glaucumque medontaque thersilochumque tris antenoridas cererique sacrum polyphoeten idaeumque etiam ..."
+    },
+    "relevance_type": 4,
+    "authority": ""
+  },
+  {
+    "id": 2310,
+    "source": {
+      "work": "Lucan, Bellum Civile",
+      "book": 1,
+      "line": 447,
+      "text": "vos quoque qui fortes animas belloque peremtas laudibus in longum vates dimittitis aevumplurima securi fudistis carminabardi"
+    },
+    "target": {
+      "work": "Vergil, Aeneid",
+      "book": 9,
+      "line": 446,
+      "text": "siquid mea carmina possunt nulla dies umquam memori voseximet aevo dum domus aeneae capitoli immobile saxum accolet imperiumque pater romanus habebit"
+    },
+    "relevance_type": 5,
+    "authority": ""
+  },
+  {
+    "id": 2371,
+    "source": {
+      "work": "Lucan, Bellum Civile",
+      "book": 1,
+      "line": 454,
+      "text": "vobis auctoribus umbrae non tacitas erebi sedes ditisque profundi pallida regna petunt"
+    },
+    "target": {
+      "work": "Vergil, Aeneid",
+      "book": 8,
+      "line": 243,
+      "text": "non secus ac siqua penitus vi terra dehiscens infernas reseretsedes et regna recludat pallida dis invisa superque immane barathrum cernatur trepident inmisso lumine manes"
+    },
+    "relevance_type": 5,
+    "authority": "R"
+  },
+  {
+    "id": 2588,
+    "source": {
+      "work": "Lucan, Bellum Civile",
+      "book": 1,
+      "line": 504,
+      "text": "nullum iam languidus aevo evaluit revocare parens coniunxve maritum fletibus aut patrii dubiae dum vota salutis conciperent tenuere lares"
+    },
+    "target": {
+      "work": "Vergil, Aeneid",
+      "book": 4,
+      "line": 597,
+      "text": "tum decuit cum sceptra dabas---en dextra fidesque quem secum patrios aiunt portare penates quem subiisse umeris confectum aetate parentem"
+    },
+    "relevance_type": 4,
+    "authority": ""
+  },
+  {
+    "id": 3150,
+    "source": {
+      "work": "Lucan, Bellum Civile",
+      "book": 1,
+      "line": 628,
+      "text": "pars aegra et marcida pendetpars micat et celeri venas movet improba pulsu"
+    },
+    "target": {
+      "work": "Vergil, Aeneid",
+      "book": 5,
+      "line": 276,
+      "text": "nequiquam longos fugiens dat corpore tortus parte ferox ardensque oculis et sibila colla arduus attollens pars volnere clauda retentat nexantem nodis seque in sua membra plicantem"
+    },
+    "relevance_type": 4,
+    "authority": ""
+  }
+]
