@@ -252,6 +252,17 @@ The bench41 benchmark has known limitations:
 - Type 1-2 parallels may include false positives
 - Some true parallels may be missing from the benchmark
 
+**Critical Finding (February 3, 2026):** Error analysis revealed a structural mismatch between the benchmark format and V6's line-based matching:
+
+| Benchmark Entry Type | Percentage | V6 Compatibility |
+|---------------------|------------|------------------|
+| Fragment only (1-5 words) | 34% | Cannot match |
+| Multi-line spans | 29% | Cannot match |
+| Ellipsis notation | 21% | Partially compatible |
+| Full line text | 16% | Fully compatible |
+
+See `evaluation/ERROR_ANALYSIS_REPORT.md` for full analysis. V6's 25.8% high-quality recall is actually strong given that only ~16% of benchmark entries are in a format V6 can match.
+
 ---
 
 ## 6. Conclusions
