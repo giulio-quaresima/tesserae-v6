@@ -105,6 +105,61 @@ Examples:
 
 ---
 
+## Phase 3: Precision Optimization
+
+### Test 3.1: Stoplist Size vs Recall Trade-off (February 3, 2026)
+
+| Configuration | Lex | T45 | Results | Recall Lost |
+|---------------|-----|-----|---------|-------------|
+| No stoplist (baseline) | 40 | 84 | 8,883 | — |
+| Stoplist=3 | 38 | 75 | 5,352 | -2 lex, -9 T45 |
+| Stoplist=5 | 36 | 69 | 3,370 | -4 lex, -15 T45 |
+| Stoplist=10 | 34 | 60 | 1,986 | -6 lex, -24 T45 |
+
+**Observation:** Every stoplist word costs recall. Trade-off is ~3 T45 parallels per stoplist word.
+
+---
+
+### Test 3.2: Score Thresholds (February 3, 2026)
+
+Score range: 0.29 - 1.00 (median: 0.60)
+
+| Threshold | T45 | Results | Recall% |
+|-----------|-----|---------|---------|
+| ≥0.0 | 84 | 8,883 | 100% |
+| ≥0.5 | 79 | 6,440 | 94% |
+| ≥0.55 | 75 | 5,304 | 89% |
+| ≥0.6 | 71 | 4,367 | 85% |
+| ≥0.7 | 58 | 2,834 | 69% |
+
+**Observation:** Score threshold of 0.5 retains 94% recall while cutting results by 27%.
+
+---
+
+### Test 3.3: Combined Stoplist + Threshold (February 3, 2026)
+
+| Configuration | Lex | T45 | Results | P@100 | T45 Recall |
+|---------------|-----|-----|---------|-------|------------|
+| No stop, no thresh | 40 | 84 | 8,883 | 2.0% | 100% |
+| Stop=3, thresh=0.5 | 38 | 74 | 4,529 | 3.0% | 88% |
+| Stop=5, thresh=0.5 | 36 | 69 | 3,096 | 6.0% | 82% |
+| Stop=5, thresh=0.6 | 34 | 64 | 2,425 | 6.0% | 76% |
+
+**Key Finding:** Best balance is **Stop=3, thresh=0.5** — retains 88% recall with 49% fewer results.
+
+---
+
+## Recommended Presets
+
+| Use Case | Stoplist | Threshold | T45 Recall | Results |
+|----------|----------|-----------|------------|---------|
+| **Max Recall** | -1 (none) | 0.0 | 100% | ~9,000 |
+| **Balanced** | 3 | 0.5 | 88% | ~4,500 |
+| **Quick Browse** | 5 | 0.6 | 76% | ~2,400 |
+| **Current Default** | 0 (curated) | 0.0 | 68% | ~1,200 |
+
+---
+
 ## Summary Table
 
 | Test | Config Change | Lexical | Type 4-5 | Notes |
@@ -113,6 +168,7 @@ Examples:
 | 1.2 | Phrase | 61.5% | 25.4% | No improvement |
 | 1.3 | No stoplist | 75.0% | 37.1% | Significant gain |
 | 2.1 | Max recall | 76.9%* | 39.4% | Best overall |
+| 3.3 | Stop=3, th=0.5 | 73.1% | 34.7% | Best balance |
 
 *After error analysis: **100% of truly lexical parallels found**
 
@@ -125,12 +181,13 @@ Examples:
 3. **min_matches=2 is optimal** — min_matches=1 creates too much noise
 4. **Benchmark limitations matter** — 12/52 "lexical" entries lack overlap annotations
 5. **V6 achieves 100% on true lexical parallels** when stoplist removed
+6. **Score threshold 0.5 is safe** — Retains 94% recall
+7. **Best balance: Stop=3, thresh=0.5** — 88% recall, 49% fewer results
 
 ---
 
-## Next Phase: Precision Optimization
+## Next Steps
 
-Now that maximum recall is established, explore ways to reduce result count while preserving recall:
-- [ ] Smarter stoplist (top N by frequency, not curated)
-- [ ] Score thresholds
-- [ ] IDF weighting adjustments
+- [ ] Implement preset options in UI (Max Recall / Balanced / Quick Browse)
+- [ ] Consider making "Balanced" the new default
+- [ ] Document findings for publication
