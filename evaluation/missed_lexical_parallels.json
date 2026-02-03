@@ -1,0 +1,267 @@
+[
+  {
+    "id": 67,
+    "source": {
+      "work": "Lucan, Bellum Civile",
+      "book": 1,
+      "line": 1,
+      "text": "bella per emathios plus quam civilia campos iusque datum sceleri canimus populumque potentem in sua victrici conversum viscera dextra cognatasque acies et rupto foedere regni certatum totis concussi v..."
+    },
+    "target": {
+      "work": "Vergil, Aeneid",
+      "book": 7,
+      "line": 41,
+      "text": "dicam horrida bella dicam acies actosque animis in funera reges tyrrhenamque manum totamque sub arma coactam hesperiam"
+    },
+    "relevance_type": 4,
+    "authority": "",
+    "_word_overlap": [
+      "bella",
+      "acies"
+    ],
+    "_overlap_count": 2
+  },
+  {
+    "id": 432,
+    "source": {
+      "work": "Lucan, Bellum Civile",
+      "book": 1,
+      "line": 28,
+      "text": "1.28 horrida . . . dumis"
+    },
+    "target": {
+      "work": "Vergil, Aeneid",
+      "book": 9,
+      "line": 381,
+      "text": "9.381-2 dumis . . . / horrida"
+    },
+    "relevance_type": 5,
+    "authority": "R",
+    "_word_overlap": [
+      "horrida",
+      "dumis"
+    ],
+    "_overlap_count": 2
+  },
+  {
+    "id": 467,
+    "source": {
+      "work": "Lucan, Bellum Civile",
+      "book": 1,
+      "line": 33,
+      "text": "33-4 fata Neroni / inuenere uiam"
+    },
+    "target": {
+      "work": "Vergil, Aeneid",
+      "book": 3,
+      "line": 395,
+      "text": "3.395 fata uiam inuenient"
+    },
+    "relevance_type": 5,
+    "authority": "TB;V;R",
+    "_word_overlap": [
+      "fata",
+      "uiam"
+    ],
+    "_overlap_count": 2
+  },
+  {
+    "id": 512,
+    "source": {
+      "work": "Lucan, Bellum Civile",
+      "book": 1,
+      "line": 33,
+      "text": "33-4 fata Neroni / inuenere uiam"
+    },
+    "target": {
+      "work": "Vergil, Aeneid",
+      "book": 10,
+      "line": 113,
+      "text": "10.113 fata uiam inuenient"
+    },
+    "relevance_type": 5,
+    "authority": "H;TB;V;R",
+    "_word_overlap": [
+      "fata",
+      "uiam"
+    ],
+    "_overlap_count": 2
+  },
+  {
+    "id": 691,
+    "source": {
+      "work": "Lucan, Bellum Civile",
+      "book": 1,
+      "line": 84,
+      "text": "84 causa malorum"
+    },
+    "target": {
+      "work": "Vergil, Aeneid",
+      "book": 11,
+      "line": 361,
+      "text": "11.361 causa malorum"
+    },
+    "relevance_type": 5,
+    "authority": "V;R",
+    "_word_overlap": [
+      "malorum",
+      "causa"
+    ],
+    "_overlap_count": 2
+  },
+  {
+    "id": 823,
+    "source": {
+      "work": "Lucan, Bellum Civile",
+      "book": 1,
+      "line": 103,
+      "text": "1.103-4 saeua / arma"
+    },
+    "target": {
+      "work": "Vergil, Aeneid",
+      "book": 1,
+      "line": 295,
+      "text": "1.295 saeua . . . arma"
+    },
+    "relevance_type": 5,
+    "authority": "R",
+    "_word_overlap": [
+      "saeua",
+      "arma"
+    ],
+    "_overlap_count": 2
+  },
+  {
+    "id": 1039,
+    "source": {
+      "work": "Lucan, Bellum Civile",
+      "book": 1,
+      "line": 136,
+      "text": "1.136-43 quercus . . . nec iam ualidis radicibus . . . frondes . . . robore"
+    },
+    "target": {
+      "work": "Vergil, Aeneid",
+      "book": 4,
+      "line": 441,
+      "text": "4.441-6 ualidam cum robore quercum . . . frondes . . . radice"
+    },
+    "relevance_type": 5,
+    "authority": "V;R",
+    "_word_overlap": [
+      "frondes",
+      "robore"
+    ],
+    "_overlap_count": 2
+  },
+  {
+    "id": 1188,
+    "source": {
+      "work": "Lucan, Bellum Civile",
+      "book": 1,
+      "line": 163,
+      "text": "mensasque priores aspernata fames"
+    },
+    "target": {
+      "work": "Vergil, Aeneid",
+      "book": 3,
+      "line": 21,
+      "text": "strophades graio stant nomine dictae insulae ionio in magno quas dira celaeno harpyiaeque colunt aliae phineia postquam clausa domus mensasque metu liquere priores"
+    },
+    "relevance_type": 4,
+    "authority": "",
+    "_word_overlap": [
+      "mensasque",
+      "priores"
+    ],
+    "_overlap_count": 2
+  },
+  {
+    "id": 1379,
+    "source": {
+      "work": "Lucan, Bellum Civile",
+      "book": 1,
+      "line": 195,
+      "text": "o magnae qui moenia prospicis urbis tarpeia de rupe tonans phrygiique penates gentis iuleae et rapti secreta quirini et residens celsa latialis iuppiter alba vestalesque foci summique onuminis instar ..."
+    },
+    "target": {
+      "work": "Vergil, Aeneid",
+      "book": 5,
+      "line": 632,
+      "text": "o patria et rapti nequiquam ex hoste penates nullane iam troiae dicentur moenia"
+    },
+    "relevance_type": 4,
+    "authority": "",
+    "_word_overlap": [
+      "penates",
+      "rapti",
+      "moenia"
+    ],
+    "_overlap_count": 3
+  },
+  {
+    "id": 2371,
+    "source": {
+      "work": "Lucan, Bellum Civile",
+      "book": 1,
+      "line": 454,
+      "text": "vobis auctoribus umbrae non tacitas erebi sedes ditisque profundi pallida regna petunt"
+    },
+    "target": {
+      "work": "Vergil, Aeneid",
+      "book": 8,
+      "line": 243,
+      "text": "non secus ac siqua penitus vi terra dehiscens infernas reseretsedes et regna recludat pallida dis invisa superque immane barathrum cernatur trepident inmisso lumine manes"
+    },
+    "relevance_type": 5,
+    "authority": "R",
+    "_word_overlap": [
+      "regna",
+      "pallida"
+    ],
+    "_overlap_count": 2
+  },
+  {
+    "id": 3003,
+    "source": {
+      "work": "Lucan, Bellum Civile",
+      "book": 1,
+      "line": 581,
+      "text": "1.581 tristia . . . cecinere oracula"
+    },
+    "target": {
+      "work": "Vergil, Aeneid",
+      "book": 2,
+      "line": 114,
+      "text": "2.114 f. suspensi Eurypylum sciatum oracula Phoebi / mittimus isque adytis haec tristia dicta reportat"
+    },
+    "relevance_type": 5,
+    "authority": "R",
+    "_word_overlap": [
+      "oracula",
+      "tristia"
+    ],
+    "_overlap_count": 2
+  },
+  {
+    "id": 3353,
+    "source": {
+      "work": "Lucan, Bellum Civile",
+      "book": 1,
+      "line": 685,
+      "text": "1.685-6 hunc ego fluminea deformis truncus harena / qui iacet agnosco"
+    },
+    "target": {
+      "work": "Vergil, Aeneid",
+      "book": 2,
+      "line": 554,
+      "text": "2.554-8 haec finis Priami factorum hic exitus illum / sorte tulit Troiam incensam et prolapsa uidentem / Pergama tot quondam populis terrisque superbum / regnatorem Asiae iacet ingens litore truncus /..."
+    },
+    "relevance_type": 5,
+    "authority": "R",
+    "_word_overlap": [
+      "truncus",
+      "iacet"
+    ],
+    "_overlap_count": 2
+  }
+]
