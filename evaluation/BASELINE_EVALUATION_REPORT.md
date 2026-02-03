@@ -272,7 +272,10 @@ See `evaluation/ERROR_ANALYSIS_REPORT.md` for full analysis. V6's 25.8% high-qua
 V6 with default settings demonstrates:
 - **Strong precision:** 60% of top-10 results are validated parallels
 - **Reasonable high-quality recall:** 26% of Type 4-5 parallels recovered
+- **Strong lexical recall:** 61.5% of parallels with actual word overlap
 - **Performance consistent with original Tesserae** (Coffee et al. 2012)
+
+**Important context:** When filtered to only lexical parallels (52 entries with 2+ word overlap), V6 achieves 61.5% recall. The remaining "missed" parallels require multi-line span matching or are thematic connections without shared words. See `evaluation/LEXICAL_EVALUATION_REPORT.md` for details.
 
 ### 6.2 Opportunities for Improvement
 
