@@ -147,6 +147,16 @@ const DownloadsPage = () => {
               </div>
               <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
                 <div>
+                  <span className="font-medium">Lucan BC1 vs Vergil Aeneid - Parsed JSON</span>
+                  <span className="text-gray-500 ml-2">(3,410 parallels, machine-readable)</span>
+                </div>
+                <a href="/static/downloads/benchmarks/lucan_vergil_benchmark.json" 
+                   className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs">
+                  JSON
+                </a>
+              </div>
+              <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                <div>
                   <span className="font-medium">Lucan BC1 vs Vergil Aeneid - 2010 Benchmark</span>
                   <span className="text-gray-500 ml-2">(formatted with match-words)</span>
                 </div>
@@ -181,10 +191,16 @@ const DownloadsPage = () => {
                     <span className="font-medium">Valerius Flaccus Argonautica 1 vs Latin Epic</span>
                     <span className="text-gray-500 ml-2">(945 intertexts)</span>
                   </div>
-                  <a href="/static/downloads/benchmarks/vf_intertext_dataset_2.0.tab" 
-                     className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs">
-                    TAB
-                  </a>
+                  <div className="flex gap-2">
+                    <a href="/static/downloads/benchmarks/vf_intertext_dataset_2.0.tab" 
+                       className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs">
+                      TAB
+                    </a>
+                    <a href="/static/downloads/benchmarks/vf_benchmark.json" 
+                       className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs">
+                      JSON
+                    </a>
+                  </div>
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
                   Dexter et al. (2023). References to Vergil's Aeneid, Ovid's Metamorphoses, Lucan's Bellum Civile, 
