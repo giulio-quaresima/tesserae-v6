@@ -74,12 +74,16 @@ The 4.5% miss on Achilleid is due to one lemma table gap (`genitore` → `genito
 
 | Configuration | Lucan–Vergil Recall | VF Recall | Achilleid Recall |
 |---------------|--------------------|-----------| ----------------|
-| Default (curated) | 61.5% | 33.0% | — |
+| Default (curated) | 61.5% | 33.0% | 24.5%* |
 | **No stoplist** | **76.9%** (+25%) | **63.4%** (+92%) | **95.5%** |
-| Zipf auto | — | — | 76.6% (but best ranking) |
+| Stoplist = 3 | 73.1% | 57.0% | 89.7% |
+| Stoplist = 5 | 69.2% | 51.8% | 87.6% |
 | Stoplist = 10 | — | — | 83.5% |
+| Zipf auto | — | — | 76.6% (best ranking) |
 
-**Key insight:** Achilleid reveals a recall–ranking trade-off not visible in smaller benchmarks. Zipf auto improves ranking (P@10 = 40%) but costs 19% recall.
+*Achilleid "Default" tested on all Type 4-5 entries; other rows show strong lexical subset (291 entries).
+
+**Key insight:** Achilleid reveals a recall–ranking trade-off not visible in smaller benchmarks. Zipf auto improves ranking (P@10 = 40%) but costs 19% recall compared to no stoplist.
 
 ### 2.4 Design Decisions Validated
 
