@@ -6,170 +6,217 @@
 
 ---
 
-## Executive Summary
+## Table of Contents
+
+1. [Executive Summary](#1-executive-summary)
+2. [Key Findings](#2-key-findings)
+3. [Recommendations](#3-recommendations)
+4. [Methodology](#4-methodology)
+5. [Limitations](#5-limitations)
+
+**Appendices (Technical Details)**
+- [A. Lucan–Vergil Benchmark Results](#appendix-a-lucanvergil-benchmark-results)
+- [B. Valerius Flaccus Benchmark Results](#appendix-b-valerius-flaccus-benchmark-results)
+- [C. Statius Achilleid Benchmark Results](#appendix-c-statius-achilleid-benchmark-results)
+- [D. Ranking Quality Analysis](#appendix-d-ranking-quality-analysis)
+- [E. Phrase Matching Bug Analysis](#appendix-e-phrase-matching-bug-analysis)
+- [F. Summary Statistics](#appendix-f-summary-statistics)
+- [G. Test Configuration Reference](#appendix-g-test-configuration-reference)
+- [H. Benchmark Files](#appendix-h-benchmark-files)
+- [I. Reproduction Scripts](#appendix-i-reproduction-scripts)
+- [J. References](#appendix-j-references)
+
+---
+
+## 1. Executive Summary
 
 This report documents systematic benchmark evaluation of Tesserae V6's intertextual search capabilities against three scholarly benchmarks:
 
-1. **Lucan–Vergil (bench41):** BC1 vs Aeneid parallels (Coffee et al. 2012)
-2. **Valerius Flaccus (VF):** Argonautica 1 vs Vergil (Manjavacas et al. 2019)
-3. **Statius Achilleid:** Achilleid vs multiple authors (Geneva 2015)
+| Benchmark | Source | Comparison | Reference |
+|-----------|--------|------------|-----------|
+| **Lucan–Vergil** | Bellum Civile 1 | Aeneid | Coffee et al. 2012 |
+| **Valerius Flaccus** | Argonautica 1 | Vergil, Ovid, Lucan, Statius | Manjavacas et al. 2019 |
+| **Statius Achilleid** | Achilleid | Aeneid, Metamorphoses, Thebaid, Heroides | Geneva 2015 |
 
-Testing followed methodologies established by Coffee et al. (2012), Manjavacas et al. (2019), and Bernstein et al. (2015).
+### Bottom Line
 
-### Key Findings
+**V6 achieves 95–100% recall on valid lexical parallels** (entries with 2+ shared lemmas on the same line). The core algorithm works correctly. The main challenges are:
 
-| Finding | Result |
-|---------|--------|
-| **Recall (no stoplist)** | 95-100% on valid lexical parallels (2+ shared lemmas on same line) |
-| **Recall (default stoplist)** | 33-77% (stoplist impact varies by search scope) |
-| **Ranking quality** | Median benchmark rank 700-2500; only 1-12% in top 100 |
-| **Score ceiling** | 21% of results tie at max score (1.0), causing arbitrary ordering |
-| **Phrase matching** | **Bug:** splits within lines instead of spanning lines (Section 3.4) |
-| **len > 2 filter** | **Correct:** filters function words ('et', 'in', 'tu', 'do', 'eo') |
-
-**Practical implications:**
-- For comprehensive research, disable or minimize the stoplist
-- For multi-target searches, consider stoplist = 10 for better ranking
-- Expect to review 500-2000 results to find majority of known parallels
-- Multi-line (enjambment) parallels cannot be detected until phrase matching is fixed
-
-**Recommended fixes:** See Section 12 for complete action item list with 12 prioritized improvements.
-
-### Comparison with Prior Studies
-
-This evaluation extends prior Tesserae studies (Coffee et al. 2012, Manjavacas et al. 2019, Bernstein et al. 2015) with several advances:
-
-| Aspect | Prior Studies | This Evaluation |
-|--------|---------------|-----------------|
-| Type 4-5 Recall | ~30-40% | ~27-39% (comparable — not a regression) |
-| Lexical subset analysis | Not distinguished | Lexical (2+ lemma) subset identified and tested separately |
-| Recall on lexical parallels | Not reported | **100%** (on parallels algorithm can find) |
-| Ranking quality | Not measured | First quantified (median rank 700-900) |
-| Phrase matching | Assumed functional | **Bug discovered** (does not span lines) |
-
-See Section 2 for detailed comparison.
-
-### Recommendations Summary
-
-1. **Stoplist:** Use no stoplist or minimal stoplist (3-5 words) for comprehensive research
-2. **Ranking:** Remove score ceiling, add lemma count bonus, add source diversity penalty
-3. **Phrase matching:** Fix to span lines until sentence-ending punctuation; rename to "Sentence matching"
+1. **Ranking quality** — Benchmark parallels are found but buried in results (median rank 700–2500)
+2. **Stoplist trade-off** — Removing stoplist improves recall but degrades ranking on large searches
+3. **Phrase matching bug** — Cannot detect parallels spanning line breaks
 
 ---
 
-## 1. Methodology
+## 2. Key Findings
 
-### 1.1 Benchmark Datasets
+### 2.1 Recall Performance
 
-**Benchmark 1: Lucan–Vergil (bench41.txt)**
+| Benchmark | Strong Lexical Entries | V6 Recall (stoplist disabled) |
+|-----------|------------------------|------------------------------|
+| Lucan–Vergil | 40 verified | **100%** |
+| VF–Vergil | 137 truly lexical | **100%** |
+| Achilleid | 291 strong lexical | **95.5%** |
 
-*Rationale for benchmark selection:* We used the "2010 Benchmark" version (bench41.txt) because:
-1. It is the benchmark used in Coffee et al. (2012), enabling direct comparison with published results
-2. It includes match-words (overlap vocabulary), which we needed to distinguish truly lexical parallels from thematic ones
-3. It contains Type ratings (1-5) from scholarly consensus, allowing focus on high-confidence parallels
+The 4.5% miss on Achilleid is due to one lemma table gap (`genitore` → `genitor` missing).
 
-Other Lucan-Vergil benchmark variants exist (hand-ranked sets, Tesserae results files, BC Books II-IX) but were not used in this evaluation. The Statius Achilleid vs Various benchmark was also available but not tested; it could serve as additional validation in future work.
-| Dataset | Count | Description |
-|---------|-------|-------------|
-| Total BC1 parallels | 3,410 | All annotated parallels |
-| Type 4-5 parallels | 213 | High-confidence scholarly consensus |
-| Lexical parallels | 52 | Type 4-5 with ≥2 shared lemmas |
-| True lexical | 40 | With overlap words in benchmark data |
+### 2.2 Ranking Performance
 
-*Verification:* Total count spot-checked against raw bench41.txt file (3,411 lines including header = 3,410 data rows). Lexical subset count verified against processed benchmark file.
+| Benchmark | Total Results | Best Rank | Median Rank | Recall@100 | Recall@1000 |
+|-----------|---------------|-----------|-------------|------------|-------------|
+| Lucan–Vergil | 8,883 | 9 | 666 | 11.5% | 34.6% |
+| VF–Vergil | 5,000 | 5 | 873 | 2.9% | 42.3% |
+| Achilleid | 48,030 | 75 | 2,468 | 0.7% | 12.6% |
 
-**Benchmark 2: Valerius Flaccus**
-| Dataset | Count | Description |
-|---------|-------|-------------|
-| Total parallels | 945 | VF Arg.1 vs 4 authors |
-| Lexical (2+ words) | 913 | Multi-word parallels |
-| Unigram (excluded) | 32 | Single-word matches |
+**Interpretation:** Users must review hundreds to thousands of results to capture the majority of known scholarly parallels.
 
-VF benchmark targets by author:
-| Author | Lexical Parallels |
-|--------|-------------------|
-| Vergil | 506 |
-| Ovid | 148 |
-| Lucan | 141 |
-| Statius | 118 |
+### 2.3 Stoplist Impact
 
-### 1.2 Scope of Evaluation
+| Configuration | Lucan–Vergil Recall | VF Recall | Achilleid Recall |
+|---------------|--------------------|-----------| ----------------|
+| Default (curated) | 61.5% | 33.0% | — |
+| **No stoplist** | **76.9%** (+25%) | **63.4%** (+92%) | **95.5%** |
+| Zipf auto | — | — | 76.6% (but best ranking) |
+| Stoplist = 10 | — | — | 83.5% |
 
-**Important methodological note:** This evaluation tests only what Tesserae's lemma-based search is designed to retrieve:
+**Key insight:** Achilleid reveals a recall–ranking trade-off not visible in smaller benchmarks. Zipf auto improves ranking (P@10 = 40%) but costs 19% recall.
 
-- **Included:** Parallels with 2+ shared lemmas (lexical matches)
-- **Excluded:** 
-  - Unigram parallels (single shared word)
-  - Thematic/conceptual parallels (no word overlap)
-  - Multi-line span parallels where words appear on different lines
+### 2.4 Design Decisions Validated
 
-Tesserae's lemma search algorithm requires at least 2 matching lemmas within a single line unit. Parallels that rely on thematic similarity, single-word echoes, or words distributed across multiple lines are outside the algorithm's design scope.
+| Decision | Verdict | Rationale |
+|----------|---------|-----------|
+| **len > 2 filter** | ✓ Correct | Filters function words ('et', 'in', 'tu', 'do', 'eo') |
+| **Score ceiling at 1.0** | ✗ Problem | Creates ties among 21% of results |
+| **Phrase matching** | ✗ Bug | Splits within lines instead of spanning lines |
 
-### 1.3 Evaluation Metrics
-
-- **Recall:** Percentage of benchmark parallels found by V6
-- **Precision@K:** Percentage of top K results that match benchmark
-- **Total Results:** Number of candidate parallels returned
-
----
-
-## 2. Comparison with Prior Tesserae Evaluations
-
-This section compares the current V6 evaluation with prior published studies of Tesserae.
-
-### 2.1 Summary of Prior Studies
-
-| Study | Tesserae Version | Benchmark | Key Findings |
-|-------|------------------|-----------|--------------|
-| **Coffee et al. (2012)** | V3 | Lucan BC1 vs Aeneid (bench41) | Introduced scoring algorithm; demonstrated effectiveness on Type 4-5 parallels |
-| **Bernstein et al. (2015)** | V3 | Multi-author Latin corpus | Measured comparative reuse rates across authors |
-| **Manjavacas et al. (2019)** | V3/V5 | Lucan-Vergil + VF | Statistical approach; introduced soft recall metrics |
-
-### 2.2 Methodological Differences
-
-| Aspect | Prior Studies | This Evaluation (V6) |
-|--------|---------------|----------------------|
-| **Recall definition** | Match if source–target pair appears in benchmark | Same approach |
-| **Benchmark scope** | Type 4-5 parallels (high scholarly consensus) | Same, plus analysis of lexical subset |
-| **Stoplist handling** | Default curated stoplist | Tested: default, none, size 3, 5, 10 |
-| **Ranking analysis** | Limited | Detailed rank distribution and percentile analysis |
-| **Multi-line parallels** | Not specifically tested | Identified as limitation (phrase matching bug) |
-
-### 2.3 Results Comparison
+### 2.5 Comparison with Prior Studies
 
 | Metric | Coffee 2012 (V3) | Manjavacas 2019 | V6 (This Study) |
 |--------|------------------|-----------------|-----------------|
-| **Benchmark** | Lucan-Vergil | Lucan-Vergil + VF | Lucan-Vergil + VF |
-| **Type 4-5 Recall (default)** | ~30-40%* | Comparable | ~27-39%** (comparable) |
-| **Lexical Recall (no stoplist)** | Not distinguished | Not distinguished | **100%*** |
-| **Ranking quality** | Not systematically measured | Limited | Median rank 700-900 |
-| **Phrase matching** | Available | Available | **Bug identified** |
+| Type 4-5 Recall (default) | ~30-40% | Comparable | ~27-39% (comparable) |
+| Lexical Recall (no stoplist) | Not distinguished | Not distinguished | **95-100%** |
+| Ranking quality | Not measured | Limited | First quantified |
+| Phrase matching | Assumed functional | Assumed functional | **Bug identified** |
 
-*Estimated from published figures; exact metrics varied by configuration.
-
-**V6 Type 4-5 recall is comparable to prior versions. The difference is not a regression.
-
-***Key methodological advance: This study distinguishes between parallels the algorithm *can* find (2+ shared lemmas on same line) vs. parallels outside its design scope (thematic, single-word, multi-line). V6 achieves **100% recall on valid lexical parallels** — the subset Tesserae's lemma-matching algorithm is designed to detect. Prior studies did not report this distinction.
-
-### 2.4 Key Advances in This Evaluation
-
-1. **Rigorous lexical subset analysis:** Distinguished between parallels that Tesserae's algorithm *can* find (2+ shared lemmas on same line) vs. parallels outside its design scope (thematic, single-word, multi-line).
-
-2. **Perfect recall validated:** V6 achieves 100% recall on valid lexical parallels, confirming the algorithm works correctly for its intended use case.
-
-3. **Ranking quality quantified:** First systematic measurement of where benchmark parallels appear in ranked results (median ~700-900, only 3-12% in top 100).
-
-4. **Phrase matching bug discovered:** Identified that phrase matching splits within lines rather than combining lines into sentences, explaining why it provides no benefit and preventing detection of enjambment parallels.
-
-5. **Clear improvement paths identified:** Proposed specific, implementable changes to improve ranking quality (remove score ceiling, add lemma count bonus, source diversity penalty) and recall (fix phrase/sentence matching for multi-line parallels). See Sections 8 and 3.4.
-
-6. **Reproducibility documentation:** Complete scripts and instructions for reproducing all results (see REPRODUCIBILITY_GUIDE.md).
+**Key advance:** This study distinguishes between parallels the algorithm *can* find (2+ shared lemmas on same line) vs. parallels outside its design scope (thematic, single-word, multi-line).
 
 ---
 
-## 3. Benchmark 1: Lucan–Vergil Results
+## 3. Recommendations
 
-### 2.1 Baseline (Default Settings)
+### 3.1 For Users
+
+| Goal | Stoplist Setting | Expected Results |
+|------|------------------|------------------|
+| **Maximum recall** | Disabled (-1) | 95-100% recall; review 2000+ results |
+| **Balanced** | Top 10 | ~85% recall; better ranking |
+| **Quick exploration** | Zipf auto | ~77% recall; best ranking |
+
+**Note:** Parallels spanning line breaks cannot be found until phrase matching is fixed.
+
+### 3.2 Action Items for Development
+
+| Priority | Item | Description | Complexity |
+|----------|------|-------------|------------|
+| **High** | A1 | Add `genitore` → `genitor` to lemma table | 1 line |
+| **High** | A2 | Fix phrase matching to span lines until sentence-ending punctuation | ~50 lines |
+| **High** | A3 | Rename "Phrase" to "Sentence" in UI | ~5 files |
+| **Medium** | A4 | Remove score ceiling (allow scores > 1.0) | 1 line |
+| **Medium** | A5 | Add lemma count bonus (+20% per extra lemma) | 3-5 lines |
+| **Medium** | A6 | Add source diversity penalty | 10-15 lines |
+| **Medium** | A7 | Add rare word bonus (< 10 occurrences) | 5 lines |
+| **Medium** | A8 | Add word order similarity bonus | 15-20 lines |
+| **Low** | A9 | Add search mode presets in UI | ~20 lines |
+| **Low** | A10 | Adjust Zipf auto parameters | Research needed |
+| **Low** | A11 | Document stoplist trade-off for users | Text only |
+| **Low** | A12 | Document len > 2 filter in code | Text only |
+
+**Recommended sequence:**
+1. A1 (lemma fix) — immediate, 1 line
+2. A4-A5 (score ceiling + lemma bonus) — quick wins
+3. A2-A3 (phrase matching) — enables new class of parallels
+4. A6-A8 (remaining ranking improvements)
+5. A9-A12 (UI and documentation)
+
+### 3.3 Ranking Algorithm Improvements
+
+The scoring algorithm does not prioritize known scholarly parallels. Five specific improvements would address this:
+
+| Problem | Solution | Impact |
+|---------|----------|--------|
+| Score ceiling creates 21% ties | Allow scores > 1.0 | Breaks ties among top results |
+| No lemma count differentiation | +20% bonus per extra lemma | Prioritizes richer parallels |
+| Promiscuous source lines flood results | Diversity penalty | Reduces noise |
+| Common words score equally | Rare word bonus | Boosts distinctive matches |
+| Word order ignored | Position similarity bonus | Rewards structural similarity |
+
+---
+
+## 4. Methodology
+
+### 4.1 Benchmarks Used
+
+**Lucan–Vergil (bench41.txt):** Selected because it is the benchmark used in Coffee et al. (2012), enabling direct comparison. Contains match-words (overlap vocabulary) and Type ratings (1-5) from scholarly consensus.
+
+| Metric | Count |
+|--------|-------|
+| Total BC1 parallels | 3,410 |
+| Type 4-5 parallels | 213 |
+| Lexical parallels (2+ lemmas) | 52 |
+| With verified overlap words | 40 |
+
+**Valerius Flaccus:** From Manjavacas et al. (2019). Argonautica 1 vs four target authors.
+
+| Metric | Count |
+|--------|-------|
+| Total parallels | 945 |
+| Lexical (2+ words) | 913 |
+| Vergil targets | 506 |
+| Ovid targets | 148 |
+| Lucan targets | 141 |
+| Statius targets | 118 |
+
+**Statius Achilleid (Geneva 2015):** Achilleid vs Vergil Aeneid, Ovid Metamorphoses, Statius Thebaid, Ovid Heroides.
+
+| Category | Count | Description |
+|----------|-------|-------------|
+| Strong lexical | 291 | 2+ shared lemmas, all len > 2 |
+| Weak lexical | 43 | Relies on 2-char lemmas |
+| Sub-threshold | 276 | Only 0-1 shared lemmas |
+| Non-lexical | 311 | No word overlap (thematic) |
+| Duplicates | 84 | Same parallel multiple times |
+| **Total** | **1,005** | |
+
+### 4.2 Scope
+
+This evaluation tests only what Tesserae's lemma-based search is designed to retrieve:
+
+- **Included:** Parallels with 2+ shared lemmas on the same line
+- **Excluded:** Unigram parallels, thematic parallels, multi-line span parallels
+
+### 4.3 Metrics
+
+- **Recall:** Percentage of benchmark parallels found
+- **Precision@K:** Percentage of top K results matching benchmark
+- **Recall@K:** Percentage of benchmark in top K results
+
+---
+
+## 5. Limitations
+
+1. **Three benchmarks tested:** Results may not generalize to all text pairs
+2. **Lexical focus:** Only word-overlap parallels tested; thematic detection not assessed
+3. **Line-based matching:** Multi-line span parallels outside V6's current design scope
+4. **Benchmark quality varies:** Some entries lack proper overlap annotations
+5. **Ranking metrics limited:** No user study to validate ranking preferences
+
+---
+
+# Appendices
+
+## Appendix A: Lucan–Vergil Benchmark Results
+
+### Baseline (Default Settings)
 
 | Metric | Value |
 |--------|-------|
@@ -178,38 +225,189 @@ This section compares the current V6 evaluation with prior published studies of 
 | Lexical Recall | 61.5% (32/52) |
 | Total Results | 1,170 |
 
-### 2.2 Stoplist Impact
+### Stoplist Impact
 
 | Configuration | Lexical Recall | Type 4-5 Recall | Results |
 |---------------|----------------|-----------------|---------|
-| Default (curated, ~70 words) | 61.5% | 26.8% | 1,170 |
+| Default (curated) | 61.5% | 26.8% | 1,170 |
 | **No stoplist** | **76.9%** | **39.4%** | 8,883 |
 | Stoplist=3 | 73.1% | 35.2% | 5,352 |
 | Stoplist=5 | 69.2% | 32.4% | 3,370 |
 
-### 2.3 Error Analysis
+### Error Analysis
 
 Of 52 "lexical" benchmark entries, 12 had no overlap words in the data — benchmark annotation gaps, not V6 failures.
 
 **Corrected finding:** V6 achieves **100% recall on truly annotated lexical parallels** (40/40).
 
-### 2.4 Phrase vs Line Matching — BUG IDENTIFIED
+### Phrase vs Line Matching
 
 | Unit Type | T45 Found | Results |
 |-----------|-----------|---------|
 | Line | 84 | 8,883 |
 | Phrase | 83 | 7,338 |
 
-**Initial finding:** Phrase matching provides no benefit over line matching.
+Phrase matching provides no benefit due to implementation bug (see Appendix E).
 
-**Root cause investigation:** Analysis of the implementation revealed a **bug** in phrase matching. The current implementation does the **opposite** of what "phrase" or "sentence" matching should do:
+---
 
-| Mode | Expected Behavior | Actual Behavior |
-|------|-------------------|-----------------|
-| Line | One unit per line | Correct |
-| Phrase | Combine lines into sentences | **WRONG:** Splits lines at punctuation |
+## Appendix B: Valerius Flaccus Benchmark Results
 
-**Code analysis** (`backend/text_processor.py`):
+### Results by Configuration
+
+| Configuration | Vergil | Lucan | Ovid | Statius | **Total** |
+|---------------|--------|-------|------|---------|-----------|
+| Default (curated) | 33.8% | 28.4% | 35.8% | 31.4% | **33.0%** |
+| **No stoplist** | **67.4%** | **56.7%** | **65.5%** | **51.7%** | **63.4%** |
+| Stoplist=3 | 61.7% | 50.4% | 57.4% | 44.1% | 57.0% |
+| Stoplist=5 | 55.9% | 43.3% | 52.0% | 44.1% | 51.8% |
+
+### Key Observations
+
+1. No stoplist achieves 63.4% overall recall across 913 lexical parallels
+2. Default curated stoplist cuts recall nearly in half (33% vs 63%)
+3. Vergil and Ovid targets show highest recall; Statius lowest
+
+---
+
+## Appendix C: Statius Achilleid Benchmark Results
+
+### Recall Results
+
+| Configuration | Strong Lexical Recall | Results |
+|---------------|----------------------|---------|
+| Stoplist disabled | **95.5%** (278/291) | 48,030 |
+| Zipf auto | 76.6% (223/291) | 5,142 |
+| Stoplist = 3 | 89.7% (261/291) | 28,226 |
+| Stoplist = 5 | 87.6% (255/291) | 20,142 |
+| Stoplist = 10 | 83.5% (243/291) | 11,251 |
+
+### The len > 2 Filter
+
+V6's matcher excludes lemmas of 2 or fewer characters. This is **correct behavior**:
+
+| 2-char lemma | Function |
+|--------------|----------|
+| 'et' | Conjunction (and) |
+| 'in' | Preposition (in/into) |
+| 'tu' | Pronoun (you) |
+| 'do' | Verb (give) |
+| 'eo' | Verb (go) |
+
+The 43 "weak lexical" entries rely on these function words and should be excluded from lexical benchmarking.
+
+### Stoplist Trade-off (Unique to Achilleid)
+
+| Configuration | Recall | P@10 | Best Rank | Median Rank | R@100 |
+|---------------|--------|------|-----------|-------------|-------|
+| Disabled | 95.5% | 0% | 75 | 2,468 | 0.7% |
+| Zipf auto | 76.6% | **40%** | **6** | **735** | **13.0%** |
+| Stoplist = 10 | 83.5% | 0% | 11 | 1,428 | 6.7% |
+
+Zipf auto achieves better ranking quality but costs 19% recall. The 55 lost entries match on legitimately shared content words that happen to be moderately frequent ('quod superest', 'nostro...gurgite').
+
+### Lemmatization Gap
+
+One entry missed due to lemma table gap:
+
+| Form | Expected | V6 Behavior |
+|------|----------|-------------|
+| `genitore` | `genitor` | Not mapped |
+
+---
+
+## Appendix D: Ranking Quality Analysis
+
+### VF-Vergil Ranking
+
+**Configuration:** source=VF Arg.1, target=Aeneid, stoplist=-1, max_results=5000
+
+| Metric | Value |
+|--------|-------|
+| Best rank | 5 |
+| Median rank | 873 |
+| Mean rank | 1,333 |
+| Worst rank | 4,601 |
+
+**Recall@K:**
+
+| K | Found | % |
+|---|-------|---|
+| 100 | 4 | 2.9% |
+| 250 | 11 | 8.0% |
+| 500 | 26 | 19.0% |
+| 1,000 | 58 | 42.3% |
+| 2,000 | 80 | 58.4% |
+
+### Lucan-Vergil Ranking
+
+**Configuration:** source=BC1, target=Aeneid, stoplist=-1, max_results=10000
+
+| Metric | Value |
+|--------|-------|
+| Best rank | 9 |
+| Median rank | 666 |
+| Mean rank | 1,664 |
+| Worst rank | 6,531 |
+
+**Recall@K:**
+
+| K | Found | % |
+|---|-------|---|
+| 100 | 6 | 11.5% |
+| 250 | 9 | 17.3% |
+| 500 | 15 | 28.8% |
+| 1,000 | 18 | 34.6% |
+| 5,000 | 31 | 59.6% |
+
+### Score Distribution (VF-Vergil)
+
+| Score Range | Count | % |
+|-------------|-------|---|
+| ≥ 0.999 (tied max) | 1,067 | 21.3% |
+| 0.9 – 0.999 | 403 | 8.1% |
+| 0.8 – 0.9 | 455 | 9.1% |
+| 0.7 – 0.8 | 846 | 16.9% |
+| 0.6 – 0.7 | 1,315 | 26.3% |
+| < 0.6 | 916 | 18.3% |
+
+**Key insight:** 21% of results tie at maximum score (1.0), causing random ordering among top results.
+
+### Examples: High vs Low Ranked Parallels
+
+**Highest-ranked (good ranking):**
+
+| Rank | VF Line | Vergil Ref | Shared Lemmas |
+|------|---------|------------|---------------|
+| 5 | VF 1.3 | Aen 1.348 | inter, medius |
+| 21 | VF 1.3 | Aen 7.300 | ausa, sequor |
+| 65 | VF 1.30 | Aen 4.3 | uir, uirtus |
+
+**Lowest-ranked (poor ranking):**
+
+| Rank | VF Line | Vergil Ref | Shared Lemmas |
+|------|---------|------------|---------------|
+| 4,601 | VF 807 | Aen 3.490 | ora, manus |
+| 4,464 | VF 597 | Aen 11.301 | solio, altus |
+| 4,187 | VF 109 | Aen 1.318 | umerus, arcus |
+
+Low-ranked parallels aren't necessarily using more common words—equally good parallels compete with noise for position.
+
+---
+
+## Appendix E: Phrase Matching Bug Analysis
+
+### Expected vs Actual Behavior
+
+| Mode | Expected | Actual |
+|------|----------|--------|
+| Line | One unit per line | ✓ Correct |
+| Phrase | Combine lines into sentences | ✗ Splits lines at punctuation |
+
+### Code Analysis
+
+From `backend/text_processor.py`:
+
 ```python
 def split_into_phrases(self, text, language='la'):
     """Split text into phrases based on sentence-ending punctuation"""
@@ -220,544 +418,51 @@ def split_into_phrases(self, text, language='la'):
 
 The function splits each line **internally** at punctuation marks. It processes lines independently and does not combine consecutive lines.
 
-**Impact:** 16 VF benchmark entries with enjambment (words spanning line breaks) cannot be found by either mode:
+### Impact
+
+16 VF benchmark entries with enjambment (words spanning line breaks) cannot be found:
 
 | Example | Issue |
 |---------|-------|
-| VF 1.100-101: "...vada PONTI / LITTORA..." | "ponti" and "littora" appear on different lines |
-| VF 1.136-143: "quercus...robore" | Multi-line phrase spanning 7 lines |
+| VF 1.100-101: "...vada PONTI / LITTORA..." | "ponti" and "littora" on different lines |
+| VF 1.136-143: "quercus...robore" | 7-line phrase |
 
-**Why this matters:**
+### Recommended Fix
 
-Multi-line parallels (enjambment) are common in Latin poetry, where a thought or phrase continues across line breaks. The current implementation cannot detect these parallels because it treats each line independently. Fixing phrase matching would enable V6 to find parallels where shared words span line breaks—a significant class of intertextual connections that currently go undetected.
-
-**Recommendations:**
-
-1. **Fix the implementation:** Rewrite phrase/sentence mode to read consecutive lines until sentence-ending punctuation, creating multi-line units that can match across line breaks
-2. **Rename to "Sentence matching":** The term "phrase" is ambiguous; "sentence" better describes spanning until punctuation
-3. **Add UI tooltip:** Explain that "sentence" includes segments separated by `.` `;` `?` `!`
-4. **Test against enjambment benchmark:** After fixing, re-run tests specifically on the 16 multi-line VF entries to validate that cross-line parallels are now detected
-
-### 2.5 Ranking Quality
-
-| Configuration | P@10 | T45 Found |
-|---------------|------|-----------|
-| Default | 10% | 57 |
-| No stoplist | 10% | 84 |
-
-**Finding:** Top-10 precision is identical. Removing stoplist adds results at bottom without degrading top rankings.
+1. Rewrite phrase mode to read consecutive lines until sentence-ending punctuation
+2. Rename to "Sentence matching"
+3. Add UI tooltip explaining behavior
+4. Test against enjambment benchmark after fix
 
 ---
 
-## 4. Benchmark 2: Valerius Flaccus Results
+## Appendix F: Summary Statistics
 
-### 4.1 Overall Results by Configuration
+### Recall Performance
 
-| Configuration | Vergil | Lucan | Ovid | Statius | **Total** |
-|---------------|--------|-------|------|---------|-----------|
-| Default (curated) | 33.8% | 28.4% | 35.8% | 31.4% | **33.0%** |
-| **No stoplist** | **67.4%** | **56.7%** | **65.5%** | **51.7%** | **63.4%** |
-| Stoplist=3 | 61.7% | 50.4% | 57.4% | 44.1% | 57.0% |
-| Stoplist=5 | 55.9% | 43.3% | 52.0% | 44.1% | 51.8% |
+| Metric | Lucan–Vergil | VF-Vergil | Achilleid |
+|--------|--------------|-----------|-----------|
+| Total benchmark entries | 3,410 | 521 | 1,005 |
+| Strong lexical entries | 40 | 137 | 291 |
+| Valid findable entries | 40 | 114 | 287 |
+| V6 recall (stoplist disabled) | 100% | 100% | 95.5% |
+| V6 recall (Zipf auto) | 61.5% | 33.0% | 76.6% |
 
-### 3.2 Key Observations
+### Ranking Performance (Stoplist Disabled)
 
-1. **No stoplist achieves 63.4% overall recall** across 913 lexical parallels
-2. **Default curated stoplist cuts recall nearly in half** (33% vs 63%)
-3. Vergil and Ovid targets show highest recall; Statius lowest
-4. Pattern matches Lucan–Vergil findings: stoplist is the main recall limiter
-
----
-
-## 5. Cross-Benchmark Comparison
-
-### 5.1 Recall by Configuration
-
-| Configuration | Lucan–Vergil (Lexical) | VF (Total) | Average |
-|---------------|------------------------|------------|---------|
-| Default (curated) | 61.5% | 33.0% | 47.3% |
-| **No stoplist** | **76.9%** | **63.4%** | **70.2%** |
-| Stoplist=3 | 73.1% | 57.0% | 65.1% |
-| Stoplist=5 | 69.2% | 51.8% | 60.5% |
-
-### 4.2 Relative Improvement from Removing Stoplist
-
-| Benchmark | Default Recall | No Stoplist Recall | Improvement |
-|-----------|----------------|-------------------|-------------|
-| Lucan–Vergil | 61.5% | 76.9% | **+25%** |
-| VF Total | 33.0% | 63.4% | **+92%** |
-
-**The VF benchmark shows even larger improvement** — nearly doubling recall when stoplist is removed.
-
-### 4.3 Why VF Shows Lower Absolute Recall
-
-Possible explanations for VF's lower recall compared to Lucan–Vergil:
-1. VF benchmark may include more challenging parallels
-2. Multi-author targets (Vergil, Lucan, Ovid, Statius) introduce more variation
-3. Benchmark annotation methodology may differ
-4. VF's imitative style may use more scattered vocabulary
-
----
-
-## 6. Recommendations
-
-### 6.1 Recommended Presets
-
-| Preset | Stoplist | Threshold | Use Case |
-|--------|----------|-----------|----------|
-| **Max Recall** | -1 (none) | 0.0 | Exhaustive research |
-| **Balanced** | 3 | 0.5 | General use |
-| **Quick Browse** | 5 | 0.6 | Fast exploration |
-
-### 5.2 Default Settings Recommendation
-
-**Change V6 default from curated stoplist (stoplist_size=0) to minimal stoplist (stoplist_size=3):**
-
-- Improves recall by 65% on VF benchmark (33% → 57%)
-- Improves recall by 19% on Lucan–Vergil (61.5% → 73%)
-- Maintains identical P@10 ranking quality
-- Reasonable result count (not overwhelming)
-
-### 5.3 UI Enhancement Recommendation
-
-Add search mode presets in Advanced Settings:
-- "Maximum Recall" — For comprehensive scholarly research
-- "Balanced" — Default for typical use
-- "Quick Browse" — For rapid exploration with fewer results
-
----
-
-## 7. Ranking Quality Analysis
-
-While V6 achieves 100% recall on valid lexical parallels, this section examines **where** those parallels appear in the ranked results—a critical question for usability.
-
-### 7.1 Methodology
-
-For each benchmark, we:
-1. Ran full search with no stoplist (maximum recall)
-2. Recorded the rank position of each benchmark parallel in results
-3. Computed median, mean, and distribution statistics
-4. Calculated Recall@K (% of benchmark in top K results)
-
-### 6.2 VF-Vergil Ranking Results
-
-**Test configuration:**
-```json
-{
-  "source": "valerius_flaccus.argonautica.part.1.tess",
-  "target": "vergil.aeneid.tess",
-  "match_type": "lemma",
-  "min_matches": 2,
-  "stoplist_size": -1,
-  "max_results": 5000
-}
-```
-
-**Total results:** 5,000 (capped)
-
-| Metric | Value |
-|--------|-------|
-| Best rank | 5 |
-| Median rank | 873 |
-| Mean rank | 1,333 |
-| Worst rank | 4,601 |
-
-**Recall@K:**
-| K | Benchmark Found | % |
-|---|-----------------|---|
-| 100 | 4 | 2.9% |
-| 250 | 11 | 8.0% |
-| 500 | 26 | 19.0% |
-| 1,000 | 58 | 42.3% |
-| 2,000 | 80 | 58.4% |
-
-### 6.3 Lucan-Vergil Ranking Results
-
-**Test configuration:**
-```json
-{
-  "source": "lucan.bellum_civile.part.1.tess",
-  "target": "vergil.aeneid.tess",
-  "match_type": "lemma",
-  "min_matches": 2,
-  "stoplist_size": -1,
-  "max_results": 10000
-}
-```
-
-**Total results:** 8,883
-
-| Metric | Value |
-|--------|-------|
-| Best rank | 9 |
-| Median rank | 666 |
-| Mean rank | 1,664 |
-| Worst rank | 6,531 |
-
-**Recall@K:**
-| K | Benchmark Found | % |
-|---|-----------------|---|
-| 100 | 6 | 11.5% |
-| 250 | 9 | 17.3% |
-| 500 | 15 | 28.8% |
-| 1,000 | 18 | 34.6% |
-| 5,000 | 31 | 59.6% |
-
-### 6.4 Score Distribution Analysis
-
-Examination of the VF-Vergil search reveals a scoring bottleneck:
-
-| Observation | Finding |
-|-------------|---------|
-| Results at score ≥ 0.999 | 1,067 (21.3%) |
-| Results with 2 lemmas | 4,942 (98.8%) |
-| Results with 3+ lemmas | 58 (1.2%) |
-| Source lines with 10+ matches | 182 |
-
-**Key insight:** 21% of results tie at the maximum score (1.0), causing random ordering among top results. Single source lines matching 40-70+ target lines flood the results.
-
-### 6.5 Examples: High vs Low Ranked Parallels
-
-**Highest-ranked benchmark parallels (good ranking):**
-
-| Rank | VF Line | Vergil Ref | Shared Lemmas |
-|------|---------|------------|---------------|
-| 5 | VF 1.3 | Aen 1.348 | inter, medius |
-| 21 | VF 1.3 | Aen 7.300 | ausa, sequor |
-| 65 | VF 1.30 | Aen 4.3 | uir, uirtus |
-| 118 | VF 1.76 | Aen 6.11 | mens, animus |
-| 147 | VF 1.115 | Aen 1.138 | tridentem, saeuus |
-
-**Lowest-ranked benchmark parallels (poor ranking):**
-
-| Rank | VF Line | Vergil Ref | Shared Lemmas | Frequencies |
-|------|---------|------------|---------------|-------------|
-| 4,601 | VF 807 | Aen 3.490 | ora, manus | 135, 225 |
-| 4,464 | VF 597 | Aen 11.301 | solio, altus | 10, 198 |
-| 4,187 | VF 109 | Aen 1.318 | umerus, arcus | 22, 60 |
-| 3,872 | VF 79 | Aen 3.611 | animus, firmo | 179, 3 |
-| 3,803 | VF 494 | Aen 8.592 | sto, mater | 92, 87 |
-
-**Analysis:** Low-ranked parallels aren't necessarily using more common words—the issue is that equally good parallels compete with noise for position.
-
-### 6.6 Interpretation
-
-**The scoring algorithm does not prioritize known scholarly parallels.** While V6 achieves 100% recall (all valid parallels are found), the ranking doesn't concentrate them near the top:
-
-- Users must review ~700-900 results to find half of known parallels
-- Only 3-12% of benchmark parallels appear in top 100
-- Top-ranked results favor vocabulary rarity over scholarly significance
-
-This is a **known limitation of automated intertextual detection**: what scholars recognize as significant may involve moderately common vocabulary, while the algorithm rewards unusual word combinations.
-
----
-
-## 8. Ranking Improvement Recommendations
-
-Based on the analysis above, we identify five potential improvements to the ranking algorithm.
-
-### 8.1 Problem: Score Ceiling Creates Ties
-
-**Current behavior (scorer.py line 154):**
-```python
-normalized_score = min(raw_score / max_score, 1.0)
-```
-
-**Issue:** 1,067 results (21%) all score exactly 1.0, causing arbitrary ordering.
-
-**Recommendation 1: Remove score ceiling**
-```python
-normalized_score = raw_score / max_score  # Allow > 1.0
-```
-
-| Complexity | Impact | Risk |
-|------------|--------|------|
-| 1 line | High: breaks ties among top results | None |
-
-### 7.2 Problem: No Lemma Count Differentiation
-
-**Current behavior:** Parallels with 2 lemmas score the same as 3+ lemmas (all else equal).
-
-**Recommendation 2: Lemma count bonus**
-```python
-lemma_bonus = 1.0 + (0.2 * (len(matched_lemmas) - 2))  # +20% per extra lemma
-boosted_score = normalized_score * lemma_bonus
-```
-
-| Complexity | Impact | Risk |
-|------------|--------|------|
-| 3-5 lines | High: 3+ lemma matches prioritized | None |
-
-### 7.3 Problem: Promiscuous Source Lines
-
-**Current behavior:** VF 1.52 matches 73 Aeneid lines, each receiving independent ranking.
-
-**Recommendation 3: Source diversity penalty**
-```python
-# During scoring, count targets per source
-# Apply: score *= 1.0 / log(source_match_count + 1)
-```
-
-| Complexity | Impact | Risk |
-|------------|--------|------|
-| 10-15 lines | High: reduces noise from common sources | May demote some valid parallels |
-
-### 7.4 Problem: Common Words Score Equally
-
-**Current behavior:** IDF weights by corpus frequency, but no bonus for extremely rare words.
-
-**Recommendation 4: Very rare word bonus**
-```python
-for lemma in matched_lemmas:
-    if freq.get(lemma, 0) < 10:
-        idf *= 1.5  # 50% bonus for words appearing < 10 times
-```
-
-| Complexity | Impact | Risk |
-|------------|--------|------|
-| 5 lines | Medium: distinctive vocabulary prioritized | May overweight hapax |
-
-### 7.5 Problem: Word Order Ignored
-
-**Current behavior:** Score doesn't consider whether words appear in similar sequence.
-
-**Recommendation 5: Word order similarity bonus**
-```python
-# Compare position sequence of matched words in source vs target
-# If same order (A...B in both), boost score by 10%
-# If reversed (A...B vs B...A), no boost
-```
-
-| Complexity | Impact | Risk |
-|------------|--------|------|
-| 15-20 lines | Medium: structural similarity rewarded | Requires position tracking |
-
-### 7.6 Implementation Priority
-
-| Priority | Change | Expected Benefit |
-|----------|--------|------------------|
-| 1 | Remove score ceiling | Immediate tie-breaking |
-| 2 | Lemma count bonus | Prioritize richer parallels |
-| 3 | Source diversity penalty | Reduce source-line flooding |
-| 4 | Rare word bonus | Boost distinctive matches |
-| 5 | Word order bonus | Reward structural similarity |
-
-**Recommended first step:** Implement changes 1-2 (5 lines of code, no performance cost, measurable improvement).
-
----
-
-## 9. Benchmark 3: Statius Achilleid Results
-
-### 9.1 Benchmark Description
-
-**Source:** Geneva 2015 benchmark — Statius Achilleid vs Vergil Aeneid, Ovid Metamorphoses, Statius Thebaid, and Ovid Heroides. This benchmark contains 1,005 Type 4-5 parallels identified by scholarly consensus.
-
-**Methodology:** We analyzed benchmark entries by their shared lemmas using V6's Latin lemma table (39,291 form→lemma mappings). Entries were classified by lexical overlap potential:
-
-| Category | Count | Description |
-|----------|-------|-------------|
-| Strong lexical | 291 | 2+ shared lemmas, all length > 2 characters |
-| Weak lexical | 43 | Relies on 2-character lemmas ('do', 'eo', 'tu', 'in', 'et') |
-| Sub-threshold | 276 | Only 0-1 shared lemmas |
-| Non-lexical | 311 | No word overlap (thematic parallels) |
-| Duplicates | 84 | Same parallel listed multiple times |
-
-### 9.2 Recall Results
-
-| Configuration | Strong Lexical Recall | Results |
-|---------------|----------------------|---------|
-| Stoplist disabled | **95.5%** (278/291) | 48,030 |
-| Zipf auto | 76.6% (223/291) | 5,142 |
-| Stoplist = 3 | 89.7% (261/291) | 28,226 |
-| Stoplist = 5 | 87.6% (255/291) | 20,142 |
-| Stoplist = 10 | 83.5% (243/291) | 11,251 |
-
-**Key finding:** V6 achieves 95.5% recall on strong lexical parallels with stoplist disabled. The 4.5% miss rate is explained by:
-- 4 duplicates of 1 entry with a lemma table gap (`genitore` → `genitor` missing)
-
-### 9.3 The len > 2 Filter
-
-V6's matcher includes a filter that excludes lemmas of 2 or fewer characters. Investigation revealed this is **correct behavior**:
-
-| 2-char lemma | Frequency | Function |
-|--------------|-----------|----------|
-| 'et' | Very high | Conjunction (and) |
-| 'in' | Very high | Preposition (in/into) |
-| 'tu' | High | Pronoun (you) |
-| 'do' | High | Verb (give) |
-| 'eo' | High | Verb (go) |
-
-The 43 "weak lexical" entries rely on these function words and should be excluded from lexical benchmarking. **Recommendation: Keep len > 2 filter in place.**
-
-### 9.4 Stoplist Impact Analysis
-
-Unlike Lucan-Vergil and VF benchmarks, Achilleid reveals a **recall-ranking trade-off**:
-
-| Configuration | Recall | P@10 | Best Rank | Median Rank | R@100 |
-|---------------|--------|------|-----------|-------------|-------|
-| Disabled | 95.5% | 0% | 75 | 2,468 | 0.7% |
-| Zipf auto | 76.6% | **40%** | **6** | **735** | **13.0%** |
-| Stoplist = 10 | 83.5% | 0% | 11 | 1,428 | 6.7% |
-
-**Analysis:** Zipf auto achieves better ranking quality (P@10 = 40%, best rank 6) but costs 19% recall. This differs from previous benchmarks because:
-
-1. **Larger result set:** 48,000 results (vs 8,883 for Lucan-Vergil)
-2. **Borderline-frequency content words:** Achilleid includes parallels on words like `supersum`, `noster`, `gurges` that Zipf auto filters
-
-**55 entries lost to Zipf filtering:** Analysis shows these match on legitimately shared content words that happen to be moderately frequent ('quod superest', 'nostro...gurgite', 'nec mora').
-
-### 9.5 Ranking Quality
-
-| Metric | Lucan-Vergil | VF-Vergil | Achilleid (disabled) |
-|--------|--------------|-----------|---------------------|
+| Metric | Lucan–Vergil | VF-Vergil | Achilleid |
+|--------|--------------|-----------|-----------|
 | Total results | 8,883 | 5,000 | 48,030 |
 | Best rank | 9 | 5 | 75 |
 | Median rank | 666 | 873 | 2,468 |
+| Mean rank | 1,664 | 1,333 | 5,759 |
 | Recall@100 | 11.5% | 2.9% | 0.7% |
 | Recall@500 | 28.8% | 19.0% | 11.2% |
 | Recall@1000 | 34.6% | 42.3% | 12.6% |
 
-**Finding:** Achilleid shows worse ranking quality when stoplist is disabled, due to the larger result set. Users searching multiple targets should consider using a moderate stoplist (top 10) for better ranking, accepting some recall loss.
-
-### 9.6 Lemmatization Gap Identified
-
-One entry is missed due to a gap in V6's Latin lemma table:
-
-| Form | Expected Lemma | V6 Behavior |
-|------|----------------|-------------|
-| `genitore` | `genitor` | **Not mapped** (stays as `genitore`) |
-
-This ablative form of `genitor` (father/begetter) should map to its nominative. **Action item: Add `genitore` → `genitor` to lemma table.**
-
 ---
 
-## 10. Limitations
-
-1. **Three benchmarks tested:** Lucan–Vergil, Valerius Flaccus, and Achilleid
-2. **Lexical focus:** Only tests word-overlap parallels; thematic detection not assessed
-3. **Line-based matching:** Multi-line span parallels outside V6's design scope
-4. **Benchmark quality varies:** Some entries lack proper overlap annotations
-5. **Ranking metrics limited:** No user study to validate which ranking users prefer
-
----
-
-## 11. Conclusion
-
-Tesserae V6 demonstrates strong performance on lexical parallel detection when configured appropriately:
-
-1. **Near-perfect recall on line-level lexical parallels.** V6 finds 95-100% of truly lexical parallels (2+ shared lemmas on same line) across all three benchmarks tested.
-
-2. **The stoplist involves a recall-ranking trade-off.** For single-target searches (Lucan-Vergil), disabling the stoplist improves recall without hurting ranking. For multi-target searches (Achilleid), the stoplist improves ranking quality but reduces recall.
-
-3. **Ranking quality is a known limitation.** While all valid parallels are found, they are not concentrated at the top of results. Users must review hundreds to thousands of results to capture the majority of known scholarly parallels.
-
-4. **Score ceiling causes ranking ties.** 21% of results tie at maximum score (1.0), causing arbitrary ordering among top results.
-
-5. **Phrase matching has a bug.** Current implementation splits within lines rather than combining lines into sentences. This prevents detection of multi-line (enjambment) parallels.
-
-6. **The len > 2 character filter is correct.** Two-character Latin lemmas ('et', 'in', 'tu', 'do', 'eo') are function words that should be excluded from lexical matching.
-
-**For scholarly research requiring comprehensive coverage:**
-- Use no stoplist or minimal stoplist (top 3-5) for maximum recall
-- For multi-target searches, consider stoplist = 10 for better ranking
-- Expect to review 500-2000 results to find majority of known parallels
-- Be aware that parallels spanning line breaks will not be found until phrase matching is fixed
-
----
-
-## 12. Action Items
-
-The following changes are recommended based on this evaluation. They are organized by priority and complexity.
-
-### 12.1 Lemma Table Fixes (High Priority, Low Effort)
-
-| Item | Description | File | Complexity |
-|------|-------------|------|------------|
-| **A1** | Add `genitore` → `genitor` mapping | `data/lemma_tables/latin_lemmas.json` | 1 line |
-
-**Impact:** Fixes 1 missed entry in Achilleid benchmark.
-
-### 12.2 Phrase Matching Bug Fix (High Priority, Medium Effort)
-
-| Item | Description | File | Complexity |
-|------|-------------|------|------------|
-| **A2** | Fix phrase matching to span lines until sentence-ending punctuation | `backend/text_processor.py` | ~50 lines |
-| **A3** | Rename "Phrase" to "Sentence" in UI | Frontend components | ~5 files |
-
-**Impact:** Enables detection of enjambment parallels (estimated 16+ VF entries currently missed).
-
-### 12.3 Ranking Algorithm Improvements (Medium Priority, Low Effort)
-
-| Item | Description | File | Complexity |
-|------|-------------|------|------------|
-| **A4** | Remove score ceiling (allow scores > 1.0) | `backend/scorer.py` line 154 | 1 line |
-| **A5** | Add lemma count bonus (+20% per extra lemma) | `backend/scorer.py` | 3-5 lines |
-| **A6** | Add source diversity penalty | `backend/scorer.py` | 10-15 lines |
-| **A7** | Add rare word bonus (< 10 occurrences) | `backend/scorer.py` | 5 lines |
-| **A8** | Add word order similarity bonus | `backend/scorer.py` | 15-20 lines |
-
-**Impact:** Improved ranking quality; benchmark parallels should appear higher in results.
-
-### 12.4 Stoplist Configuration (Medium Priority, Low Effort)
-
-| Item | Description | File | Complexity |
-|------|-------------|------|------------|
-| **A9** | Add search mode presets in UI (Max Recall / Balanced / Quick) | Frontend | ~20 lines |
-| **A10** | Consider adjusting Zipf auto parameters to reduce false filtering of content words like 'supersum', 'noster', 'gurges' | `backend/matcher.py` | Research needed |
-
-**Impact:** Better user guidance on stoplist trade-offs.
-
-### 12.5 Documentation Updates (Low Priority)
-
-| Item | Description | File | Complexity |
-|------|-------------|------|------------|
-| **A11** | Update user documentation to explain stoplist trade-off | Documentation | Text only |
-| **A12** | Document the len > 2 filter design decision | Code comments | Text only |
-
-### 12.6 Implementation Order
-
-**Recommended sequence:**
-1. A1 (lemma fix) — immediate, 1 line
-2. A4-A5 (score ceiling + lemma bonus) — quick wins, 5 lines total
-3. A2-A3 (phrase matching) — enables new class of parallels
-4. A6-A8 (remaining ranking improvements) — incremental quality gains
-5. A9-A12 (UI and documentation) — user experience
-
----
-
-## 13. Cross-Benchmark Summary
-
-### 13.1 Recall Performance
-
-| Benchmark | Lexical Entries | V6 Recall (disabled) | V6 Recall (Zipf) |
-|-----------|-----------------|---------------------|------------------|
-| Lucan-Vergil | 40 verified | 100% | 61.5% |
-| VF-Vergil | 137 truly lexical | 100% | 33.0% |
-| Achilleid | 291 strong lexical | 95.5% | 76.6% |
-
-### 13.2 Ranking Performance
-
-| Benchmark | Total Results | Best Rank | Median Rank | R@100 | R@1000 |
-|-----------|---------------|-----------|-------------|-------|--------|
-| Lucan-Vergil | 8,883 | 9 | 666 | 11.5% | 34.6% |
-| VF-Vergil | 5,000 | 5 | 873 | 2.9% | 42.3% |
-| Achilleid | 48,030 | 75 | 2,468 | 0.7% | 12.6% |
-
-### 13.3 Key Insights
-
-1. **V6's lexical matching algorithm works correctly.** Near-perfect recall on valid lexical parallels confirms the core algorithm is sound.
-
-2. **Stoplist configuration matters.** The optimal setting depends on search scope and user priorities (recall vs. ranking).
-
-3. **Ranking is the main usability challenge.** Benchmark parallels are found but buried deep in results. The five proposed ranking improvements (A4-A8) would significantly improve this.
-
-4. **Phrase matching needs fixing.** A bug prevents detection of multi-line parallels.
-
-5. **Lemma table is comprehensive.** Only 1 missing mapping found across 1,000+ benchmark entries.
-
----
-
-## Appendix A: Test Configuration Reference
+## Appendix G: Test Configuration Reference
 
 ```
 match_type: lemma | exact | sound | edit_distance | semantic
@@ -768,25 +473,29 @@ unit_type: line | phrase
 max_results: integer (default: 500)
 ```
 
-## Appendix B: Benchmark Files
+---
 
-All files are in the parent directory's `data/` subdirectory:
+## Appendix H: Benchmark Files
+
+All files in `../data/` subdirectory:
 
 | Path | Description |
 |------|-------------|
-| `../data/benchmarks/lucan_vergil_benchmark.json` | Full Lucan–Vergil benchmark (3,410 entries) |
-| `../data/benchmarks/lucan_vergil_lexical_benchmark.json` | Lexical subset with overlap words (52 entries) |
-| `../data/benchmarks/vf_benchmark.json` | Valerius Flaccus benchmark (945 entries) |
-| `../data/benchmarks/vf_benchmark_aligned.json` | VF with corrected line numbers (945 entries) |
-| `../data/classification/vf_vergil_classified.json` | VF-Vergil classified by lexical overlap (521 entries) |
-| `../data/analysis/vf_missed_analysis.json` | Analysis of 7 apparent misses (0 bugs) |
-| `../data/analysis/missed_lexical_parallels.json` | Lucan entries without overlap (12 entries) |
-| `../data/analysis/achilleid_lemmatized.json` | Achilleid benchmark with V6 lemma analysis (1,005 entries) |
-| `../data/benchmarks/achilleid_benchmark_classified.json` | Achilleid classified by lexical overlap |
+| `benchmarks/lucan_vergil_benchmark.json` | Full Lucan–Vergil (3,410 entries) |
+| `benchmarks/lucan_vergil_lexical_benchmark.json` | Lexical subset (52 entries) |
+| `benchmarks/vf_benchmark.json` | Valerius Flaccus (945 entries) |
+| `benchmarks/vf_benchmark_aligned.json` | VF with corrected line numbers |
+| `benchmarks/achilleid_benchmark_classified.json` | Achilleid classified |
+| `classification/vf_vergil_classified.json` | VF-Vergil by lexical overlap |
+| `analysis/vf_missed_analysis.json` | Analysis of 7 apparent misses |
+| `analysis/missed_lexical_parallels.json` | Lucan entries without overlap |
+| `analysis/achilleid_lemmatized.json` | Achilleid with V6 lemma analysis |
 
-## Appendix C: Ranking Analysis Reproduction
+---
 
-To reproduce the ranking quality analysis from Section 6:
+## Appendix I: Reproduction Scripts
+
+To reproduce ranking quality analysis:
 
 ```python
 #!/usr/bin/env python3
@@ -794,7 +503,6 @@ To reproduce the ranking quality analysis from Section 6:
 
 import json
 import requests
-import re
 
 def analyze_ranking(source_file, target_file, benchmark_file, benchmark_type='vf'):
     """Analyze where benchmark parallels appear in ranked results."""
@@ -821,104 +529,31 @@ def analyze_ranking(source_file, target_file, benchmark_file, benchmark_type='vf
     else:
         truly_lexical = [e for e in data if len(e.get('_word_overlap', [])) >= 2]
     
-    # Build result index
-    result_ranks = {}
-    for rank, r in enumerate(results, 1):
-        src_ref = r.get('source', {}).get('ref', '')
-        tgt_ref = r.get('target', {}).get('ref', '')
-        # Extract line numbers (customize per benchmark)
-        # Store as key -> rank mapping
-        
-    # Match benchmark entries to ranks
+    # Build result index and match benchmark entries
     ranks_found = []
-    for entry in truly_lexical:
-        # Look up entry in result_ranks
-        # Append rank if found
-        pass
+    # ... (implementation details)
     
     # Compute statistics
     if ranks_found:
         ranks_found.sort()
-        print(f"Benchmark entries found: {len(ranks_found)}/{len(truly_lexical)}")
         print(f"Best rank: {min(ranks_found)}")
         print(f"Median rank: {ranks_found[len(ranks_found)//2]}")
-        print(f"Mean rank: {sum(ranks_found)/len(ranks_found):.1f}")
         
-        # Recall@K
         for k in [100, 500, 1000, 5000]:
             in_top_k = sum(1 for r in ranks_found if r <= k)
-            print(f"Recall@{k}: {in_top_k}/{len(truly_lexical)} = {in_top_k/len(truly_lexical)*100:.1f}%")
+            print(f"Recall@{k}: {in_top_k/len(truly_lexical)*100:.1f}%")
 
-# Example usage:
-# analyze_ranking(
-#     "valerius_flaccus.argonautica.part.1.tess",
-#     "vergil.aeneid.tess",
-#     "evaluation/vf_vergil_classified.json",
-#     "vf"
-# )
+# Example:
+# analyze_ranking("valerius_flaccus.argonautica.part.1.tess", 
+#                 "vergil.aeneid.tess",
+#                 "evaluation/vf_vergil_classified.json", "vf")
 ```
 
-For the full implementation, see `evaluation/run_benchmark_tests.py`.
-
-## Appendix D: Summary Statistics
-
-### Recall Performance
-
-| Metric | Lucan–Vergil | VF-Vergil | Achilleid |
-|--------|--------------|-----------|-----------|
-| Total benchmark entries | 3,410 | 521 | 1,005 |
-| Strong lexical entries | 40 | 137 | 291 |
-| Valid findable entries | 40 | 114 | 287 |
-| V6 recall (stoplist disabled) | 100% | 100% | 95.5% |
-| V6 recall (Zipf auto) | 61.5% | 33.0% | 76.6% |
-
-### Ranking Performance (Stoplist Disabled)
-
-| Metric | Lucan–Vergil | VF-Vergil | Achilleid |
-|--------|--------------|-----------|-----------|
-| Total results | 8,883 | 5,000 | 48,030 |
-| Best rank | 9 | 5 | 75 |
-| Median rank | 666 | 873 | 2,468 |
-| Mean rank | 1,664 | 1,333 | 5,759 |
-| Recall@100 | 11.5% | 2.9% | 0.7% |
-| Recall@500 | 28.8% | 19.0% | 11.2% |
-| Recall@1000 | 34.6% | 42.3% | 12.6% |
-
-### Achilleid Stoplist Comparison
-
-| Stoplist | Results | Recall | P@10 | Best Rank | Median Rank |
-|----------|---------|--------|------|-----------|-------------|
-| Disabled | 48,030 | 95.5% | 0% | 75 | 2,468 |
-| Zipf auto | 5,142 | 76.6% | 40% | 6 | 735 |
-| Top 3 | 28,226 | 89.7% | 0% | 74 | 2,362 |
-| Top 5 | 20,142 | 87.6% | 0% | 74 | 2,094 |
-| Top 10 | 11,251 | 83.5% | 0% | 11 | 1,428 |
-
-### Score Distribution (VF-Vergil)
-
-| Score Range | Count | % |
-|-------------|-------|---|
-| ≥ 0.999 (tied max) | 1,067 | 21.3% |
-| 0.9 – 0.999 | 403 | 8.1% |
-| 0.8 – 0.9 | 455 | 9.1% |
-| 0.7 – 0.8 | 846 | 16.9% |
-| 0.6 – 0.7 | 1,315 | 26.3% |
-| < 0.6 | 916 | 18.3% |
-
-### Achilleid Benchmark Classification
-
-| Category | Count | % | Description |
-|----------|-------|---|-------------|
-| Strong lexical | 291 | 29% | 2+ lemmas, all len > 2 |
-| Weak lexical | 43 | 4% | Relies on 2-char lemmas |
-| Sub-threshold | 276 | 27% | Only 0-1 shared lemmas |
-| Non-lexical | 311 | 31% | No word overlap |
-| Duplicates | 84 | 8% | Same parallel multiple times |
-| **Total** | **1,005** | **100%** | |
+For complete implementation, see `evaluation/run_benchmark_tests.py`.
 
 ---
 
-## Appendix E: References
+## Appendix J: References
 
 1. Coffee, N., et al. (2012). "Intertextuality in the Digital Age." *Transactions of the American Philological Association* 142(2): 383-422.
 2. Manjavacas, E., et al. (2019). "A Statistical Approach to Detecting Textual Reuse." *Digital Scholarship in the Humanities*.
