@@ -17,11 +17,20 @@ Testing followed methodologies established by Coffee et al. (2012), Manjavacas e
 
 ### Key Findings
 
-**Recall:** V6 achieves 100% recall on valid lexical parallels (2+ shared lemmas on the same line) when run without a stoplist. The default curated stoplist reduces this by ~48%, so users seeking comprehensive coverage should minimize or disable it.
+| Finding | Result |
+|---------|--------|
+| **Recall (no stoplist)** | 100% on valid lexical parallels (2+ shared lemmas on same line) |
+| **Recall (default stoplist)** | ~52% (stoplist removes ~48% of valid matches) |
+| **Ranking quality** | Median benchmark rank 700-900; only 3-12% in top 100 |
+| **Score ceiling** | 21% of results tie at max score (1.0), causing arbitrary ordering |
+| **Phrase matching** | **Bug:** splits within lines instead of spanning lines (Section 3.4) |
 
-**Ranking:** While all valid parallels are found, they are not prioritized highly—known parallels appear around rank 700-900, with only 3-12% in the top 100. Users must review 500-1000 results to find half of known scholarly parallels. A score ceiling (capping at 1.0) causes 21% of results to tie, contributing to arbitrary ordering. Five specific ranking improvements are recommended (Section 8).
+**Practical implications:**
+- For comprehensive research, disable or minimize the stoplist
+- Expect to review 500-1000 results to find half of known scholarly parallels
+- Multi-line (enjambment) parallels cannot be detected until phrase matching is fixed
 
-**Bug identified:** "Phrase matching" is implemented incorrectly. It splits lines at punctuation rather than combining consecutive lines into sentence units. This prevents detection of multi-line (enjambment) parallels. Recommendation: Fix implementation and rename to "Sentence matching" (Section 3.4).
+**Recommended fixes:** See Section 8 for five ranking improvements; Section 3.4 for phrase/sentence matching fix.
 
 ### Comparison with Prior Studies
 
