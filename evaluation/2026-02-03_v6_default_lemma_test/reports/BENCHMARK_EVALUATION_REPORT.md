@@ -19,8 +19,8 @@ Testing followed methodologies established by Coffee et al. (2012), Manjavacas e
 
 | Category | Finding | Detail |
 |----------|---------|--------|
-| **Recall** | Perfect on line-level | 100% on valid truly lexical parallels (2+ shared lemmas on same line) |
-| **Stoplist** | Major barrier | Default curated stoplist reduces recall by ~48% |
+| **Recall (no stoplist)** | Perfect on line-level | 100% on valid truly lexical parallels (2+ shared lemmas on same line) |
+| **Recall (default stoplist)** | Reduced | Default curated stoplist reduces recall by ~48% from perfect |
 | **Ranking** | Weak prioritization | Known parallels appear around rank 700-900 (not near top); only 3-12% appear in top 100 |
 | **Score ceiling** | Creates ties | 21% of results tie at maximum score (1.0), causing arbitrary ordering |
 | **Phrase matching** | **BUG IDENTIFIED** | Does not span lines; splits within lines instead (see Section 3.4) |
