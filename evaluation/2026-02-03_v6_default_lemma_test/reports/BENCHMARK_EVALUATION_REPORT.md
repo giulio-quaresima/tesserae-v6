@@ -97,12 +97,29 @@ V6 finds only 15–32% of high-quality scholarly parallels. The missed 68–85% 
 
 **To be evaluated:** Tesserae V3 includes an intra-language dictionary method for semantic matching that should be brought into V6 evaluation:
 
-**What it does:** Uses Latin dictionary entries (Lewis & Short or similar) to find semantically related words that share dictionary definitions or belong to the same semantic field.
+**What it does:** Uses Latin dictionary entries (Lewis & Short) to find semantically related words via English-pivot similarity. Words whose Latin→English dictionary definitions share similar English terms are treated as synonyms.
 
 **How it differs from embeddings:**
 - Dictionary-based: Uses structured lexicographic relationships, not learned representations
 - Interpretable: Each semantic link traces to a dictionary entry
 - Intra-language only: Works within Latin (or Greek), not cross-lingual
+
+**V3 Resources Available (located in `data/synonymy/`):**
+
+| File | Entries | Description |
+|------|---------|-------------|
+| `fixed_latin_syn_lem.csv` | 28,766 | Latin synonyms (max 2 per headword) |
+| `fixed_greek_syn_lem.csv` | 36,758 | Greek synonyms (max 2 per headword) |
+| `g_l.csv` | 34,535 | Greek→Latin cross-language mappings |
+
+**Distribution of synonyms (Latin):**
+- 31% have no synonyms (just headword)
+- 39% have 1 synonym
+- 30% have 2 synonyms (maximum allowed)
+
+**V3 "Top 2" Design Decision:** The V3 code (`sims-export.py`) limits output to the top 2 results per word. This was deliberate — lower-ranked matches were found to be "related words" not true synonyms. Higher TF-IDF similarity between English definitions = more reliable synonym relationship.
+
+**Derivation method documentation:** See `data/synonymy/V3_SYNONYM_DERIVATION.md`
 
 **Potential contribution:**
 | Use Case | Precision Impact | Recall Impact |
@@ -113,7 +130,7 @@ V6 finds only 15–32% of high-quality scholarly parallels. The missed 68–85% 
 
 **Limitation:** Limited to dictionary coverage; may miss poetic/metaphorical extensions.
 
-**Status:** Needs integration from V3 codebase and benchmark testing.
+**Status:** V3 dictionaries recovered and documented. Needs integration into V6 matcher and benchmark testing.
 
 ### V6 Tools Available for Evaluation
 
@@ -255,23 +272,49 @@ V6 already has several features that could augment lemma matching:
 
 **Best for:** Scholar-directed exploration, not automated matching.
 
+### Consolidated Test Findings (February 2026)
+
+This section summarizes all precision/recall enhancement tests conducted on the benchmark data.
+
+#### Tests That CONFIRMED Existing System Is Working
+
+| Test | Finding | Implication |
+|------|---------|-------------|
+| **IDF Scoring Validation** | Rare vocabulary parallels rank 4× higher (rank 80 vs 314) and score 14% higher | **No additional rare word filter needed** — IDF already handles this |
+| **Distance Discrimination** | Strong vs weak parallels: only 7% difference in proximity | **No additional distance penalty needed** — current weighting adequate |
+
+**Data files:** `idf_scoring_validation.json`, `distance_discrimination_test.json`
+
+#### Tests That ELIMINATED Potential Enhancements
+
+| Test | Finding | Conclusion |
+|------|---------|------------|
+| **Rare Bigrams (≥0.7)** | 100% of weak parallels also have rare bigrams | Does NOT discriminate quality |
+| **Rare Bigrams (≥0.99)** | Only ~10-15% difference strong vs weak | Weak signal, not useful as filter |
+| **Rare Unigrams** | 80-89% of strong parallels have rare vocabulary vs 74-75% of weak | ~15% difference — modest signal only |
+
+**Key insight:** The precision problem is NOT that IDF or distance scoring fails. Both work correctly. The problem is that **noise results share the same characteristics as true parallels** — they also have rare vocabulary and close word proximity. We need *different* signals (semantic, syntactic), not stronger versions of existing signals.
+
+**Data files:** `rare_vocabulary_discrimination_test.json`, `rare_vocabulary_all_benchmarks.json`
+
 ### Recommended Evaluation Priorities
 
-Based on existing V6 tools and benchmark test results:
+Based on completed tests and remaining untested approaches:
 
-| Priority | Tool | Test Result / Expected Impact |
-|----------|------|-------------------------------|
-| 1 | **V3 dictionary semantic** | Untested — Expected: Recall ↑ for synonym parallels |
-| 2 | **SPhilBERTa embeddings** | Untested — Expected: Recall ↑ for thematic parallels |
-| 3 | **Combined: lemma + semantic** | Untested — Expected: Recall ↑ (best per Manjavacas 2019) |
-| 4 | **Rare pairs as filter** | **TESTED: Does NOT discriminate** — 100% of weak parallels also have rare bigrams |
-| 5 | **Rare unigrams as filter** | **TESTED: Weak discrimination** — slight quality correlation only |
+| Priority | Tool | Status | Expected Impact |
+|----------|------|--------|-----------------|
+| 1 | **V3 dictionary semantic** | Ready to test | Recall ↑ for synonym parallels |
+| 2 | **SPhilBERTa embeddings** | Untested | Recall ↑ for thematic parallels |
+| 3 | **Combined: lemma + semantic** | Untested | Best approach per Manjavacas 2019 |
+| 4 | **Syntax patterns** | Untested | Capture structural parallels |
+| 5 | **Sound matching** | Untested | Capture phonetic echoes |
 
-**Key finding:** Rare vocabulary (bigrams and unigrams) does **NOT** effectively discriminate allusion quality. Weak parallels (types 1-2) have rare vocabulary at nearly the same rate as strong ones (types 4-5). Rarity signals are not useful for precision improvement.
+**DEPRIORITIZED (tests show weak discrimination):**
+- Rare bigram filtering (any threshold)
+- Rare unigram boosting
+- Distance penalty increase
 
-**Implication:** Semantic matching (V3 dictionary or embeddings) remains the most promising approach for both recall and precision gains.
-
-**Test data saved:** `evaluation/2026-02-03_v6_default_lemma_test/data/analysis/rare_vocabulary_all_benchmarks.json`
+**Implication:** Semantic matching (V3 dictionary or embeddings) remains the most promising approach for both recall and precision gains. Vocabulary rarity and word proximity are already captured adequately by existing scoring.
 
 ---
 
