@@ -17,19 +17,9 @@ Testing followed methodologies established by Coffee et al. (2012), Manjavacas e
 
 ### Key Findings
 
-| Category | Finding | Detail |
-|----------|---------|--------|
-| **Recall (no stoplist)** | Perfect on line-level | 100% on valid truly lexical parallels (2+ shared lemmas on same line) |
-| **Recall (default stoplist)** | Reduced | Default curated stoplist reduces recall by ~48% from perfect |
-| **Ranking** | Weak prioritization | Known parallels appear around rank 700-900 (not near top); only 3-12% appear in top 100 |
-| **Score ceiling** | Creates ties | 21% of results tie at maximum score (1.0), causing arbitrary ordering |
-| **Phrase matching** | **BUG IDENTIFIED** | Does not span lines; splits within lines instead (see Section 3.4) |
+**Recall:** V6 achieves 100% recall on valid lexical parallels (2+ shared lemmas on the same line) when run without a stoplist. The default curated stoplist reduces this by ~48%, so users seeking comprehensive coverage should minimize or disable it.
 
-### Summary
-
-**Recall:** V6 finds all valid lexical parallels where shared words appear on the same line in both texts.
-
-**Ranking limitation:** While all parallels are found, they are not concentrated at the top of results. Users must review 500-1000 results to find half of known scholarly parallels. Five specific ranking improvements are recommended (Section 8).
+**Ranking:** While all valid parallels are found, they are not prioritized highly—known parallels appear around rank 700-900, with only 3-12% in the top 100. Users must review 500-1000 results to find half of known scholarly parallels. A score ceiling (capping at 1.0) causes 21% of results to tie, contributing to arbitrary ordering. Five specific ranking improvements are recommended (Section 8).
 
 **Bug identified:** "Phrase matching" is implemented incorrectly. It splits lines at punctuation rather than combining consecutive lines into sentence units. This prevents detection of multi-line (enjambment) parallels. Recommendation: Fix implementation and rename to "Sentence matching" (Section 3.4).
 
