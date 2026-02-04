@@ -23,11 +23,11 @@ This guide provides step-by-step instructions for reproducing the benchmark eval
 
 **Source:** Coffee et al. (2012), Manjavacas et al. (2019)
 
-| File | Description |
+| Path | Description |
 |------|-------------|
-| `lucan_vergil_benchmark.json` | Full BC1-Aeneid benchmark (3,410 entries) |
-| `lucan_vergil_lexical_benchmark.json` | Filtered to Type 4-5 with 2+ shared lemmas (52 entries) |
-| `missed_lexical_parallels.json` | Analysis of entries without actual word overlap (12 entries) |
+| `../data/benchmarks/lucan_vergil_benchmark.json` | Full BC1-Aeneid benchmark (3,410 entries) |
+| `../data/benchmarks/lucan_vergil_lexical_benchmark.json` | Filtered to Type 4-5 with 2+ shared lemmas (52 entries) |
+| `../data/analysis/missed_lexical_parallels.json` | Analysis of entries without actual word overlap (12 entries) |
 
 **Corpus texts required:**
 - Source: `corpus/la/lucan.bellum_civile.part.1.tess`
@@ -37,14 +37,14 @@ This guide provides step-by-step instructions for reproducing the benchmark eval
 
 **Source:** Spaeth (unpublished), derived from classical scholarship
 
-| File | Description |
+| Path | Description |
 |------|-------------|
-| `vf_benchmark.json` | Original VF Arg.1 benchmark (945 entries) |
-| `vf_benchmark_aligned.json` | With corrected line numbers for V6 corpus (945 entries) |
-| `vf_vergil_classified.json` | VF-Vergil subset classified by lemma overlap (521 entries) |
-| `vf_line_alignment.json` | Full line-by-line alignment details |
-| `vf_line_map.json` | Simple line number correction mapping |
-| `vf_missed_analysis.json` | Analysis of apparent misses (7 entries → 0 bugs) |
+| `../data/benchmarks/vf_benchmark.json` | Original VF Arg.1 benchmark (945 entries) |
+| `../data/benchmarks/vf_benchmark_aligned.json` | With corrected line numbers for V6 corpus (945 entries) |
+| `../data/classification/vf_vergil_classified.json` | VF-Vergil subset classified by lemma overlap (521 entries) |
+| `../data/classification/vf_line_alignment.json` | Full line-by-line alignment details |
+| `../data/classification/vf_line_map.json` | Simple line number correction mapping |
+| `../data/analysis/vf_missed_analysis.json` | Analysis of apparent misses (7 entries → 0 bugs) |
 
 **Corpus texts required:**
 - Source: `corpus/la/valerius_flaccus.argonautica.part.1.tess`

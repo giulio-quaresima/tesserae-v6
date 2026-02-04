@@ -468,15 +468,17 @@ max_results: integer (default: 500)
 
 ## Appendix B: Benchmark Files
 
-| File | Description |
+All files are in the parent directory's `data/` subdirectory:
+
+| Path | Description |
 |------|-------------|
-| `lucan_vergil_benchmark.json` | Full Lucan–Vergil benchmark (3,410 entries) |
-| `lucan_vergil_lexical_benchmark.json` | Lexical subset with overlap words (52 entries) |
-| `vf_benchmark.json` | Valerius Flaccus benchmark (945 entries) |
-| `vf_benchmark_aligned.json` | VF with corrected line numbers (945 entries) |
-| `vf_vergil_classified.json` | VF-Vergil classified by lexical overlap (521 entries) |
-| `vf_missed_analysis.json` | Analysis of 7 apparent misses (0 bugs) |
-| `missed_lexical_parallels.json` | Lucan entries without overlap (12 entries) |
+| `../data/benchmarks/lucan_vergil_benchmark.json` | Full Lucan–Vergil benchmark (3,410 entries) |
+| `../data/benchmarks/lucan_vergil_lexical_benchmark.json` | Lexical subset with overlap words (52 entries) |
+| `../data/benchmarks/vf_benchmark.json` | Valerius Flaccus benchmark (945 entries) |
+| `../data/benchmarks/vf_benchmark_aligned.json` | VF with corrected line numbers (945 entries) |
+| `../data/classification/vf_vergil_classified.json` | VF-Vergil classified by lexical overlap (521 entries) |
+| `../data/analysis/vf_missed_analysis.json` | Analysis of 7 apparent misses (0 bugs) |
+| `../data/analysis/missed_lexical_parallels.json` | Lucan entries without overlap (12 entries) |
 
 ## Appendix C: Ranking Analysis Reproduction
 
