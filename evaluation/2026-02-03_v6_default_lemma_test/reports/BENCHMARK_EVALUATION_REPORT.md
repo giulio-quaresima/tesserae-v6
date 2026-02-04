@@ -54,11 +54,11 @@ This report documents systematic benchmark evaluation of Tesserae V6's intertext
 
 | Benchmark | Gettable Entries | V6 Recall (stoplist disabled) |
 |-----------|------------------------|------------------------------|
-| Lucan–Vergil | 40 verified | **100%** |
-| VF–Vergil | 137 truly lexical | **100%** |
-| Achilleid | 328 true gettable | **100%** |
+| Lucan–Vergil | 40 verified | **76.9%** (100% on true gettable) |
+| VF–Vergil | 137 truly lexical | **63.4%** (100% on true gettable) |
+| Achilleid | 291 true gettable | **100%** (291/291) |
 
-All three benchmarks achieve **100% recall on true gettable parallels** (entries with 2+ shared content-word lemmas). A typo in the benchmark file ("thebiad" vs "thebaid") initially caused 132 false misses; after correction, V6 finds all gettable parallels.
+All three benchmarks achieve **100% recall on true gettable parallels** (entries with 2+ shared content-word lemmas where each lemma len > 2). A typo in the Achilleid benchmark file ("thebiad" vs "thebaid") was fixed, enabling accurate testing.
 
 ### 2.2 Ranking Performance
 
@@ -70,24 +70,24 @@ All three benchmarks achieve **100% recall on true gettable parallels** (entries
 
 **Interpretation:** Users must review hundreds to thousands of results to capture the majority of known scholarly parallels.
 
-### 2.3 Stoplist Impact
+### 2.3 Stoplist Impact on Recall
 
 | Configuration | Lucan–Vergil Recall | VF Recall | Achilleid Gettable |
 |---------------|--------------------|-----------| -------------------|
-| **Default** (curated + Zipf) | 61.5% | 33.0% | TBD |
-| **Disabled** (no stoplist) | **76.9%** | **63.4%** | **100%** (328/328) |
-| Top 3 | 73.1% | 57.0% | TBD |
-| Top 5 | 69.2% | 51.8% | TBD |
-| Top 10 | — | — | TBD |
+| **Default** (curated + Zipf) | 61.5% | 33.0% | **94.5%** (275/291) |
+| **Disabled** (no stoplist) | **76.9%** | **63.4%** | **100%** (291/291) |
+| Top 3 | 73.1% | 57.0% | **100%** (291/291) |
+| Top 5 | 69.2% | 51.8% | **100%** (291/291) |
+| Top 10 | — | — | **98.3%** (286/291) |
 
-**Note:** Achilleid gettable = 328 entries with 2+ content-word lemmas (excludes 6 entries relying on function words 'in', 'et').
+**Note:** Achilleid gettable = 291 entries with 2+ content-word lemmas (each lemma len > 2).
 
 **Stoplist modes:**
 - **Default** = curated list (~70 function words) + Zipf-detected high-frequency words
 - **Disabled** = no stoplist at all (maximum recall)
 - **Top N** = only the N most frequent words
 
-**Key insight:** After fixing a benchmark typo ("thebiad" → "thebaid"), Achilleid achieves 100% recall on gettable parallels with stoplist disabled, matching the other benchmarks.
+**Key insight:** Achilleid shows excellent recall across all stoplist configurations (94.5–100%), significantly higher than Lucan-Vergil (61.5–76.9%) and VF (33.0–63.4%). This suggests the Achilleid benchmark has fewer function-word-only parallels. Default stoplist drops only 16 entries (5.5%).
 
 ### 2.4 Design Decisions Validated
 
@@ -286,18 +286,22 @@ Phrase matching provides no benefit due to implementation bug (see Appendix E).
 **Test Files:** `analysis/achilleid_corrected_recall.json`, `analysis/ACHILLEID_FINAL_RESULTS.json`  
 **Fix Applied:** Corrected benchmark typo "statius.thebiad" → "statius.thebaid" (347 entries)
 
-| Subset | Stoplist Disabled | Total Results |
-|--------|-------------------|---------------|
-| **True Gettable** (328 entries) | **100%** (328/328) | 58,178 |
-| Gettable (334, includes 6 function-word) | 98.2% (328/334) | 58,178 |
-| Full Set (921 entries) | 89.7% (826/921) | 58,178 |
+### Stoplist Impact on Achilleid
+
+| Configuration | Recall | Total Results |
+|---------------|--------|---------------|
+| **Disabled** (no stoplist) | **100%** (291/291) | 54,244 |
+| Top 3 | **100%** (291/291) | 32,202 |
+| Top 5 | **100%** (291/291) | 23,370 |
+| Top 10 | **98.3%** (286/291) | 13,556 |
+| **Default** (curated + Zipf) | **94.5%** (275/291) | 6,780 |
 
 ### Classification
 
 | Category | Count | Description |
 |----------|-------|-------------|
-| True gettable | 328 | 2+ content-word lemmas (len > 2) |
-| Function-word gettable | 6 | 2 lemmas but one is 'in' or 'et' |
+| True gettable | 291 | 2+ content-word lemmas (each len > 2) |
+| Function-word gettable | 43 | 2+ lemmas but includes short lemmas like 'in', 'et' |
 | Sub-threshold | 276 | Only 1 shared lemma |
 | Non-lexical | 311 | 0 shared lemmas (thematic only) |
 
@@ -469,11 +473,11 @@ The function splits each line **internally** at punctuation marks. It processes 
 | Metric | Lucan–Vergil | VF-Vergil | Achilleid |
 |--------|--------------|-----------|-----------|
 | Total benchmark entries | 3,410 | 521 | 921 |
-| True gettable entries | 40 | 137 | 328 |
-| V6 recall (stoplist disabled) | 100% | 100% | **100%** |
-| Full set recall (stoplist disabled) | — | — | 89.7% |
+| True gettable entries | 40 | 137 | 291 |
+| V6 recall (stoplist disabled) | 76.9% | 63.4% | **100%** |
+| V6 recall (default stoplist) | 61.5% | 33.0% | **94.5%** |
 
-**Note:** Achilleid true gettable = 328 entries with 2+ content-word lemmas. Six entries with function-word matches excluded.
+**Note:** Achilleid true gettable = 291 entries with 2+ content-word lemmas (each lemma len > 2).
 
 ### Ranking Performance (Stoplist Disabled)
 
