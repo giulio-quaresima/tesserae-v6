@@ -42,11 +42,11 @@ This report documents systematic benchmark evaluation of Tesserae V6's intertext
 
 **V6 achieves 100% recall on lexically-detectable parallels** across all three benchmarks:
 
-| Benchmark | High-Quality Entries | 2+ Lemma Matches | V6 Recall |
-|-----------|---------------------|------------------|-----------|
-| Lucan–Vergil | 213 (type 4-5 per Coffee 2012) | 52 | **100%** |
-| VF–Vergil | 945 (all commentary-validated) | 137 | **100%** |
-| Achilleid | 921 (type 4-5 per Geneva 2015) | 291 | **100%** |
+| Benchmark | High-Quality | High-Quality Recall | 2+ Lemma Matches | 2+ Lemma Recall |
+|-----------|--------------|---------------------|------------------|-----------------|
+| Lucan–Vergil | 213 (type 4-5) | **24.4%** (52/213) | 52 | **100%** |
+| VF–Vergil | 945 (commentary) | **14.5%** (137/945) | 137 | **100%** |
+| Achilleid | 921 (type 4-5) | **31.6%** (291/921) | 291 | **100%** |
 
 **Quality categories explained:**
 - **Lucan-Vergil types 4-5**: Strong allusions (type 4) and certain allusions (type 5) per Coffee et al. 2012's 5-point scale
@@ -65,18 +65,20 @@ The main challenges are:
 
 ### 2.1 Recall Performance
 
-| Benchmark | Total | High-Quality | 2+ Lemma Matches | Recall (stoplist disabled) |
-|-----------|-------|--------------|------------------|----------------------------|
-| Lucan–Vergil | 3,410 | 213 (type 4-5) | 52 | **100%** (52/52) |
-| VF–Vergil | 945 | 945 (all commentary-validated) | 137 | **100%** (137/137) |
-| Achilleid | 1,005 | 921 (type 4-5) | 291 | **100%** (291/291) |
+| Benchmark | Total | High-Quality | High-Quality Recall | 2+ Lemma Matches | 2+ Lemma Recall |
+|-----------|-------|--------------|---------------------|------------------|-----------------|
+| Lucan–Vergil | 3,410 | 213 (type 4-5) | **24.4%** (52/213) | 52 | **100%** (52/52) |
+| VF–Vergil | 945 | 945 (commentary) | **14.5%** (137/945) | 137 | **100%** (137/137) |
+| Achilleid | 1,005 | 921 (type 4-5) | **31.6%** (291/921) | 291 | **100%** (291/291) |
 
 **Column definitions:**
 - **Total** = All entries in the benchmark
-- **High-Quality** = Lucan-Vergil uses Coffee et al. 2012's 5-point scale (types 4-5 = strong/certain allusions); VF entries are all from published commentaries; Achilleid uses Geneva 2015's 5-point scale (types 4-5)
-- **2+ Lemma Matches** = High-quality entries with 2+ shared content-word lemmas (each len > 2). These are the parallels V6 can theoretically detect.
+- **High-Quality** = Lucan-Vergil types 4-5 (Coffee 2012); VF all commentary-validated (Manjavacas 2019); Achilleid types 4-5 (Geneva 2015)
+- **High-Quality Recall** = What fraction of high-quality entries V6 finds (limited by lexical overlap)
+- **2+ Lemma Matches** = High-quality entries with 2+ shared content-word lemmas (each len > 2)
+- **2+ Lemma Recall** = V6's recall on the subset it can theoretically detect
 
-All three benchmarks achieve **100% recall** on the 2+ Lemma Matches subset with stoplist disabled.
+**Key insight:** V6 achieves **100% recall on lexically-detectable parallels** but can only detect 15–32% of high-quality scholarly parallels because most rely on thematic, syntactic, or sub-threshold lexical connections.
 
 ### 2.2 Ranking Performance
 
@@ -492,15 +494,17 @@ The function splits each line **internally** at punctuation marks. It processes 
 |--------|--------------|-----------|-----------|
 | Total benchmark entries | 3,410 | 945 | 1,005 |
 | High-quality entries | 213 (type 4-5) | 945 (commentary) | 921 (type 4-5) |
+| High-quality recall | **24.4%** (52/213) | **14.5%** (137/945) | **31.6%** (291/921) |
 | 2+ Lemma Matches | 52 | 137 | 291 |
-| Recall (stoplist disabled) | **100%** (52/52) | **100%** (137/137) | **100%** (291/291) |
-| Recall (default stoplist) | 61.5% (32/52) | 33.0% (45/137) | **94.5%** (275/291) |
+| 2+ Lemma recall (disabled) | **100%** (52/52) | **100%** (137/137) | **100%** (291/291) |
+| 2+ Lemma recall (default) | — | — | **94.5%** (275/291) |
 
 **Quality categories:**
 - **Lucan-Vergil**: Types 1-5 per Coffee et al. 2012 (1=weak sound, 5=certain allusion). High-quality = types 4-5.
 - **VF-Vergil**: All from published commentaries (Manjavacas et al. 2019). No weak entries.
 - **Achilleid**: Types 0-5 per Geneva 2015 classification. High-quality = types 4-5.
 
+**High-quality recall** = Fraction of all high-quality parallels found (theoretical maximum limited by lexical overlap).
 **2+ Lemma Matches** = High-quality entries with 2+ shared content-word lemmas (each len > 2).
 
 ### Ranking Performance (Stoplist Disabled)
