@@ -132,21 +132,29 @@ V6 already has several features that could augment lemma matching:
 
 | Benchmark | Parallels with rare bigram (rarity ≥0.7) |
 |-----------|------------------------------------------|
-| Lucan-Vergil | **100%** (52/52) |
+| Lucan-Vergil (types 4-5) | **100%** (52/52) |
 | Valerius Flaccus | **100%** (216/216) |
-| Achilleid | **100%** (48/48) |
+| Achilleid (types 4-5) | **100%** (48/48) |
 
-Example rare pairs: "bella+acies" (1.00), "uiribus+totis" (1.00), "regni+certatum" (1.00)
+**Critical follow-up test — Does rarity discriminate quality?**
 
-**Implication:** Rare pairs are an **extremely strong precision signal**. Every single true parallel across all three benchmarks contains at least one rare word pair. Using bigram rarity as a re-ranking factor could dramatically improve precision.
+| Lucan-Vergil Type | 2+ Words | Has Rare Bigram |
+|-------------------|----------|-----------------|
+| Type 5 (certain) | 30 | **100%** |
+| Type 4 (strong) | 28 | **100%** |
+| Type 3 (moderate) | 83 | **100%** |
+| Type 2 (weak) | 191 | **99.5%** |
+| Type 1 (very weak) | 23 | **100%** |
+
+**Finding:** Rare bigrams do **NOT** discriminate between quality levels. Weak parallels (types 1-2) have just as many rare bigrams as strong parallels (types 4-5). This is expected mathematically — almost any word pair shared between two texts will be corpus-rare.
 
 **Potential contribution:**
 | Use Case | Precision Impact | Recall Impact |
 |----------|------------------|---------------|
-| Re-rank lemma results | **Very High** — 100% of parallels have rare pairs | None |
-| Filter noise | **Very High** — common word pairs get deprioritized | Slight negative |
+| Re-rank lemma results | **Low** — does not distinguish quality | None |
+| Filter noise | **Low** — weak matches also have rare pairs | None |
 
-**Limitation:** Only helps when the same rare pair appears in both texts.
+**Limitation:** Rare pairs indicate shared vocabulary, not allusion strength. They cannot filter weak matches from strong ones.
 
 #### 2. Rare Unigrams (Hapax Search)
 
@@ -160,21 +168,29 @@ Example rare pairs: "bella+acies" (1.00), "uiribus+totis" (1.00), "regni+certatu
 
 | Benchmark | Has rare lemma (freq ≤20) | All common (no rare) |
 |-----------|---------------------------|----------------------|
-| Lucan-Vergil | **82.7%** (43/52) | 17.3% (9/52) |
+| Lucan-Vergil (types 4-5) | **82.7%** (43/52) | 17.3% (9/52) |
 | Valerius Flaccus | **82.4%** (178/216) | 17.6% (38/216) |
-| Achilleid | **89.6%** (43/48) | 10.4% (5/48) |
+| Achilleid (types 4-5) | **89.6%** (43/48) | 10.4% (5/48) |
 
-**Examples of rare lemmas:** "bella" (freq=0), "orbem" (freq=0), "leges" (freq=0), "tanta" (freq=0)
+**Critical follow-up test — Does rarity discriminate quality?**
 
-**Implication:** Contrary to initial assumptions, **most benchmark parallels DO contain rare vocabulary** (82-90%). Only 10-18% rely entirely on common words. Rare unigrams are a strong precision signal across all benchmarks.
+| Lucan-Vergil Type | Has Rare Lemma | All Common |
+|-------------------|----------------|------------|
+| Type 5 (certain) | 80% | 7% |
+| Type 4 (strong) | **89%** | **4%** |
+| Type 3 (moderate) | 86% | 12% |
+| Type 2 (weak) | 75% | **21%** |
+| Type 1 (very weak) | 74% | 17% |
+
+**Finding:** Rare unigrams show **weak discrimination**. Strong parallels (types 4-5) have slightly higher rare vocabulary rates (80-89%) and lower all-common rates (4-7%) than weak parallels (types 1-2: 74-75% rare, 17-21% common). This is a modest signal, not a strong filter.
 
 **Potential contribution:**
 | Use Case | Precision Impact | Recall Impact |
 |----------|------------------|---------------|
-| Re-rank results by rare vocabulary | **High** — 83% of parallels have rare lemmas | None |
-| Surface 1-lemma matches with rare word | Medium | **Low** — most sub-threshold misses still use common words |
+| Re-rank results by rare vocabulary | **Weak** — slight quality correlation | None |
+| Surface 1-lemma matches with rare word | Low | Low |
 
-**Limitation:** The 17% of parallels with only common vocabulary would not benefit from this signal.
+**Limitation:** Weak parallels also frequently contain rare vocabulary; discrimination is modest at best.
 
 #### 3. Word Search (Wildcard/Boolean)
 
@@ -200,13 +216,15 @@ Based on existing V6 tools and benchmark test results:
 
 | Priority | Tool | Test Result / Expected Impact |
 |----------|------|-------------------------------|
-| 1 | **Rare pairs as re-ranker** | **TESTED: 100% of ALL benchmark parallels have rare bigrams** — Precision ↑↑↑ |
-| 2 | **Rare unigrams as re-ranker** | **TESTED: 82-90% have rare lemmas across all benchmarks** — Precision ↑↑ |
-| 3 | **V3 dictionary semantic** | Untested — Expected: Recall ↑ for synonym parallels |
-| 4 | **SPhilBERTa embeddings** | Untested — Expected: Recall ↑ for thematic parallels |
-| 5 | **Combined: lemma + rare + semantic** | Untested — Expected: Precision ↑↑, Recall ↑ |
+| 1 | **V3 dictionary semantic** | Untested — Expected: Recall ↑ for synonym parallels |
+| 2 | **SPhilBERTa embeddings** | Untested — Expected: Recall ↑ for thematic parallels |
+| 3 | **Combined: lemma + semantic** | Untested — Expected: Recall ↑ (best per Manjavacas 2019) |
+| 4 | **Rare pairs as filter** | **TESTED: Does NOT discriminate** — 100% of weak parallels also have rare bigrams |
+| 5 | **Rare unigrams as filter** | **TESTED: Weak discrimination** — slight quality correlation only |
 
-**Key finding:** Rare pairs are a **perfect discriminator** — 100% of true parallels have them across all three benchmarks (Lucan-Vergil, VF, Achilleid). Implementation priority should be re-ranking lemma results by bigram rarity.
+**Key finding:** Rare vocabulary (bigrams and unigrams) does **NOT** effectively discriminate allusion quality. Weak parallels (types 1-2) have rare vocabulary at nearly the same rate as strong ones (types 4-5). Rarity signals are not useful for precision improvement.
+
+**Implication:** Semantic matching (V3 dictionary or embeddings) remains the most promising approach for both recall and precision gains.
 
 **Test data saved:** `evaluation/2026-02-03_v6_default_lemma_test/data/analysis/rare_vocabulary_all_benchmarks.json`
 
