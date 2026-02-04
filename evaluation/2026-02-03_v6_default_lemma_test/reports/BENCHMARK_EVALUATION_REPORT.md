@@ -199,6 +199,24 @@ V6 already has several features that could augment lemma matching:
 
 **Limitation:** Weak parallels also frequently contain rare vocabulary; discrimination is modest at best.
 
+#### IDF Scoring Validation: Is the Current System Working?
+
+**Critical finding:** The V3 IDF scoring **already correctly ranks** rare vocabulary parallels higher.
+
+**Test:** Compared ranking of Type 4-5 benchmark parallels based on vocabulary rarity:
+
+| Vocabulary Type | Count | Median Rank | Avg Score |
+|-----------------|-------|-------------|-----------|
+| **Has rare lemma** | 11 | **80** | **0.945** |
+| **All common** | 22 | 314 | 0.825 |
+
+**Conclusions:**
+1. Rare vocabulary parallels rank **~4x higher** (rank 80 vs 314)
+2. Rare vocabulary parallels score **14% higher** (0.945 vs 0.825)
+3. **No additional rare vocabulary filter needed** — IDF scoring already handles this
+
+**Implication:** The existing scoring system correctly prioritizes unusual vocabulary. The precision problem is not that IDF fails to boost rare words — it's that there are too many noise results with rare vocabulary (false positives).
+
 #### 3. Word Search (Wildcard/Boolean)
 
 **What it does:** Corpus-wide string search with wildcards (*, ?), boolean operators (AND, OR, NOT), phrase matching, and proximity search.
