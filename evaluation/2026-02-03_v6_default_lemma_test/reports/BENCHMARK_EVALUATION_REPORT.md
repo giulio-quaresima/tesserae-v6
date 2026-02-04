@@ -146,15 +146,22 @@ V6 already has several features that could augment lemma matching:
 | Type 2 (weak) | 191 | **99.5%** |
 | Type 1 (very weak) | 23 | **100%** |
 
-**Finding:** Rare bigrams do **NOT** discriminate between quality levels. Weak parallels (types 1-2) have just as many rare bigrams as strong parallels (types 4-5). This is expected mathematically — almost any word pair shared between two texts will be corpus-rare.
+**Finding:** At the default threshold (≥0.7), rare bigrams do NOT discriminate quality — nearly all word pairs qualify. With tighter thresholds, modest discrimination emerges:
+
+| Threshold | Description | Type 4-5 | Type 1-2 | Difference |
+|-----------|-------------|----------|----------|------------|
+| ≥0.70 | ≤30% of docs | 100% | 99-100% | ~0% |
+| ≥0.99 | ≤8 docs | 96-97% | 82-88% | **~10%** |
+| ≥0.995 | ≤4 docs | 93-97% | 78-85% | **~12%** |
+| =1.0 | Not in corpus | 83-93% | 78-82% | ~8% |
 
 **Potential contribution:**
 | Use Case | Precision Impact | Recall Impact |
 |----------|------------------|---------------|
-| Re-rank lemma results | **Low** — does not distinguish quality | None |
-| Filter noise | **Low** — weak matches also have rare pairs | None |
+| Standalone filter | **Weak** — ~10-15% discrimination at tight thresholds | None |
+| Boost in combination | **Modest** — could contribute to multi-signal scoring | None |
 
-**Limitation:** Rare pairs indicate shared vocabulary, not allusion strength. They cannot filter weak matches from strong ones.
+**Recommendation:** Tighten threshold to ≥0.99 (appears in ≤8 documents). Use as one factor in combined scoring, not as standalone filter.
 
 #### 2. Rare Unigrams (Hapax Search)
 
