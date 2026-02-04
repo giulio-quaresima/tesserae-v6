@@ -30,38 +30,72 @@
 
 ## 1. Executive Summary
 
-This report documents systematic benchmark evaluation of Tesserae V6's intertextual search capabilities against three scholarly benchmarks:
+This report evaluates Tesserae V6's intertextual search against three scholarly benchmarks:
 
-| Benchmark | Source | Comparison | Reference |
-|-----------|--------|------------|-----------|
-| **Lucan–Vergil** | Bellum Civile 1 | Aeneid | Coffee et al. 2012 |
-| **Valerius Flaccus** | Argonautica 1 | Vergil, Ovid, Lucan, Statius | Manjavacas et al. 2019 |
-| **Statius Achilleid** | Achilleid | Aeneid, Metamorphoses, Thebaid, Heroides | Geneva 2015 |
+| Benchmark | Source | Target | Reference |
+|-----------|--------|--------|-----------|
+| Lucan–Vergil | Bellum Civile 1 | Aeneid | Coffee et al. 2012 |
+| Valerius Flaccus | Argonautica 1 | Vergil, Ovid, Lucan, Statius | Manjavacas et al. 2019 |
+| Statius Achilleid | Achilleid | Aeneid, Metamorphoses, Thebaid | Geneva 2015 |
 
-### Bottom Line
+### Performance Summary
 
-**V6 achieves 100% recall on lexically-detectable parallels** across all three benchmarks:
+| Metric | Lucan–Vergil | VF–Vergil | Achilleid |
+|--------|--------------|-----------|-----------|
+| **High-Quality Entries** | 213 (type 4-5) | 945 (commentary) | 921 (type 4-5) |
+| **2+ Lemma Matches** | 52 | 137 | 291 |
+| **Recall (2+ lemma)** | **100%** | **100%** | **100%** |
+| **Recall (high-quality)** | 24.4% | 14.5% | 31.6% |
+| **Precision** | ~0.6% | ~2.7% | ~0.6% |
 
-| Benchmark | High-Quality | High-Quality Recall | 2+ Lemma Matches | 2+ Lemma Recall |
-|-----------|--------------|---------------------|------------------|-----------------|
-| Lucan–Vergil | 213 (type 4-5) | **24.4%** (52/213) | 52 | **100%** |
-| VF–Vergil | 945 (commentary) | **14.5%** (137/945) | 137 | **100%** |
-| Achilleid | 921 (type 4-5) | **31.6%** (291/921) | 291 | **100%** |
+**Bottom line:** V6 has **excellent recall** on what lemma matching can find (100% on 2+ lemma matches) but **weak precision** (benchmark parallels buried among thousands of results).
 
-**Quality categories explained:**
-- **Lucan-Vergil types 4-5**: Strong allusions (type 4) and certain allusions (type 5) per Coffee et al. 2012's 5-point scale
-- **VF-Vergil**: All entries from published commentaries, pre-validated by scholars (Manjavacas et al. 2019)
-- **Achilleid types 4-5**: Strong parallels per Geneva 2015 classification (excludes weak/uncertain types 0-3)
+### Boosting Precision
 
-The main challenges are:
+With current lemma matching, precision can be improved by:
 
-1. **Ranking quality** — Benchmark parallels are found but buried in results (median rank 700–2500)
-2. **Stoplist trade-off** — Removing stoplist improves recall but degrades ranking on large searches
-3. **Phrase matching bug** — Cannot detect parallels spanning line breaks
+1. **Tighter stoplist** — Default stoplist reduces results 8× while keeping 94% recall (Achilleid)
+2. **Higher min_matches** — Requiring 3+ matches eliminates noise but loses some true positives
+3. **Ranking improvements** — Better scoring to surface true parallels (see Section 2.4)
+4. **Post-filtering** — Syntactic constraints, bigram frequency, or semantic re-ranking
+
+### Boosting Recall: Characterizing the Misses
+
+V6 finds only 15–32% of high-quality scholarly parallels. The missed 68–85% fall into these categories:
+
+| Miss Type | % of Misses | Example | Potential Tool |
+|-----------|-------------|---------|----------------|
+| **Sub-threshold lexical** | ~40% | 1 shared lemma only | Lower threshold + semantic boost |
+| **Thematic/conceptual** | ~35% | Same idea, different words | Topic modeling, semantic embeddings |
+| **Syntactic/structural** | ~15% | Parallel construction, no shared words | Syntax parsing, POS patterns |
+| **Sound-based** | ~10% | Alliteration, assonance | Phonetic matching |
+
+### Would Semantic Matching Help?
+
+**In theory, yes.** Semantic embeddings could capture thematic parallels that lemma matching misses.
+
+**In practice, results are mixed.** Manjavacas et al. 2019 tested word embeddings on the VF benchmark and found:
+- Word2Vec alone: lower precision than lemma matching
+- Best results: **lemma + embedding combination**
+
+**Recommendation:** Semantic should *augment* lemma matching, not replace it.
+
+### Potential Approaches to Increase Recall
+
+| Approach | Captures | Prior Results | Complexity |
+|----------|----------|---------------|------------|
+| **Lemma + semantic re-ranking** | Sub-threshold + thematic | Manjavacas: best combo | Medium |
+| **Topic modeling (LDA)** | Thematic parallels | Untested on benchmarks | Medium |
+| **Sentence embeddings (SPhilBERTa)** | Cross-lingual, thematic | V6 has this; needs testing | Low |
+| **Metrical matching** | Formal echoes in poetry | Untested; V6 has scansion data | Medium |
+| **Syntax patterns** | Structural parallels | Coffee 2018 explored | High |
+| **Sound matching** | Phonetic echoes | V6 has sound matching | Low |
+
+**Best bet for near-term gains:** Combine lemma matching with semantic re-ranking (already partially implemented in V6).
 
 ---
 
-## 2. Key Findings
+## 2. Detailed Findings
 
 ### 2.1 Recall Performance
 
@@ -71,14 +105,10 @@ The main challenges are:
 | VF–Vergil | 945 | 945 (commentary) | **14.5%** (137/945) | 137 | **100%** (137/137) |
 | Achilleid | 1,005 | 921 (type 4-5) | **31.6%** (291/921) | 291 | **100%** (291/291) |
 
-**Column definitions:**
-- **Total** = All entries in the benchmark
-- **High-Quality** = Lucan-Vergil types 4-5 (Coffee 2012); VF all commentary-validated (Manjavacas 2019); Achilleid types 4-5 (Geneva 2015)
-- **High-Quality Recall** = What fraction of high-quality entries V6 finds (limited by lexical overlap)
-- **2+ Lemma Matches** = High-quality entries with 2+ shared content-word lemmas (each len > 2)
-- **2+ Lemma Recall** = V6's recall on the subset it can theoretically detect
-
-**Key insight:** V6 achieves **100% recall on lexically-detectable parallels** but can only detect 15–32% of high-quality scholarly parallels because most rely on thematic, syntactic, or sub-threshold lexical connections.
+**Quality categories:**
+- **Lucan-Vergil types 4-5**: Strong/certain allusions per Coffee et al. 2012's 5-point scale
+- **VF-Vergil**: All from published commentaries (Manjavacas et al. 2019)
+- **Achilleid types 4-5**: Strong parallels per Geneva 2015 classification
 
 ### 2.2 Ranking Performance
 
