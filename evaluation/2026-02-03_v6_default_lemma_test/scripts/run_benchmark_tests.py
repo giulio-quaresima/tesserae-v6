@@ -8,7 +8,8 @@ This script reproduces all benchmark evaluation results documented in:
 - REPRODUCIBILITY_GUIDE.md
 
 Usage:
-    python evaluation/run_benchmark_tests.py
+    cd evaluation/2026-02-03_v6_default_lemma_test
+    python scripts/run_benchmark_tests.py
 
 Expected output:
     Lucan-Vergil: 100% recall (40/40 truly lexical)
@@ -59,7 +60,9 @@ def test_lucan_vergil():
     print("TEST 1: Lucan-Vergil Lexical Recall")
     print("="*60)
     
-    benchmark_path = "evaluation/lucan_vergil_lexical_benchmark.json"
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    base_dir = os.path.dirname(script_dir)
+    benchmark_path = os.path.join(base_dir, "data/benchmarks/lucan_vergil_lexical_benchmark.json")
     if not os.path.exists(benchmark_path):
         print(f"ERROR: Benchmark file not found: {benchmark_path}")
         return None
@@ -131,7 +134,9 @@ def test_vf_vergil():
     print("TEST 2: VF-Vergil Truly Lexical Recall")
     print("="*60)
     
-    classified_path = "evaluation/vf_vergil_classified.json"
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    base_dir = os.path.dirname(script_dir)
+    classified_path = os.path.join(base_dir, "data/classification/vf_vergil_classified.json")
     if not os.path.exists(classified_path):
         print(f"ERROR: Classified file not found: {classified_path}")
         return None
