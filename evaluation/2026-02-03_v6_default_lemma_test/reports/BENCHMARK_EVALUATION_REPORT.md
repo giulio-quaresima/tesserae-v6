@@ -15,17 +15,29 @@ This report documents systematic benchmark evaluation of Tesserae V6's intertext
 
 Testing followed methodologies established by Coffee et al. (2012), Manjavacas et al. (2019), and Bernstein et al. (2015).
 
-**Key Findings:**
+### Key Findings
 
-| Finding | Detail |
-|---------|--------|
-| **Recall** | 100% on valid truly lexical parallels (2+ shared lemmas on same line) |
-| **Stoplist impact** | Default curated stoplist reduces initial recall by ~48% |
-| **Ranking quality** | Median benchmark rank ~700-900; only 3-12% in top 100 results |
-| **Score distribution** | 21% of results tie at maximum score (1.0) |
-| **Phrase matching** | No improvement over line matching |
+| Category | Finding | Detail |
+|----------|---------|--------|
+| **Recall** | Perfect on line-level | 100% on valid truly lexical parallels (2+ shared lemmas on same line) |
+| **Stoplist** | Major barrier | Default curated stoplist reduces recall by ~48% |
+| **Ranking** | Weak prioritization | Median benchmark rank ~700-900; only 3-12% in top 100 results |
+| **Score ceiling** | Creates ties | 21% of results tie at maximum score (1.0), causing arbitrary ordering |
+| **Phrase matching** | **BUG IDENTIFIED** | Does not span lines; splits within lines instead (see Section 2.4) |
 
-**Summary:** V6 finds all valid lexical parallels but does not prioritize them highly in rankings. Users must review 500-1000 results to find half of known scholarly parallels. Five specific ranking improvements are recommended.
+### Summary
+
+**Recall:** V6 finds all valid lexical parallels where shared words appear on the same line in both texts.
+
+**Ranking limitation:** While all parallels are found, they are not concentrated at the top of results. Users must review 500-1000 results to find half of known scholarly parallels. Five specific ranking improvements are recommended (Section 7).
+
+**Bug identified:** "Phrase matching" is implemented incorrectly. It splits lines at punctuation rather than combining consecutive lines into sentence units. This prevents detection of multi-line (enjambment) parallels. Recommendation: Fix implementation and rename to "Sentence matching" (Section 2.4).
+
+### Recommendations Summary
+
+1. **Stoplist:** Use no stoplist or minimal stoplist (3-5 words) for comprehensive research
+2. **Ranking:** Remove score ceiling, add lemma count bonus, add source diversity penalty
+3. **Phrase matching:** Fix to span lines until sentence-ending punctuation; rename to "Sentence matching"
 
 ---
 
@@ -102,14 +114,46 @@ Of 52 "lexical" benchmark entries, 12 had no overlap words in the data — bench
 
 **Corrected finding:** V6 achieves **100% recall on truly annotated lexical parallels** (40/40).
 
-### 2.4 Phrase vs Line Matching
+### 2.4 Phrase vs Line Matching — BUG IDENTIFIED
 
 | Unit Type | T45 Found | Results |
 |-----------|-----------|---------|
 | Line | 84 | 8,883 |
 | Phrase | 83 | 7,338 |
 
-**Finding:** Phrase matching provides no benefit. Phrase boundaries don't align with benchmark spans.
+**Initial finding:** Phrase matching provides no benefit over line matching.
+
+**Root cause investigation:** Analysis of the implementation revealed a **bug** in phrase matching. The current implementation does the **opposite** of what "phrase" or "sentence" matching should do:
+
+| Mode | Expected Behavior | Actual Behavior |
+|------|-------------------|-----------------|
+| Line | One unit per line | Correct |
+| Phrase | Combine lines into sentences | **WRONG:** Splits lines at punctuation |
+
+**Code analysis** (`backend/text_processor.py`):
+```python
+def split_into_phrases(self, text, language='la'):
+    """Split text into phrases based on sentence-ending punctuation"""
+    phrase_delimiters = r'[.;?!]'
+    phrases = re.split(phrase_delimiters, text)
+    return phrases
+```
+
+The function splits each line **internally** at punctuation marks. It processes lines independently and does not combine consecutive lines.
+
+**Impact:** 16 VF benchmark entries with enjambment (words spanning line breaks) cannot be found by either mode:
+
+| Example | Issue |
+|---------|-------|
+| VF 1.100-101: "...vada PONTI / LITTORA..." | "ponti" and "littora" appear on different lines |
+| VF 1.136-143: "quercus...robore" | Multi-line phrase spanning 7 lines |
+
+**Recommendations:**
+
+1. **Fix the implementation:** Rewrite phrase/sentence mode to read consecutive lines until sentence-ending punctuation, creating multi-line units
+2. **Rename to "Sentence matching":** The term "phrase" is ambiguous; "sentence" better describes spanning until punctuation
+3. **Add UI tooltip:** Explain that "sentence" includes segments separated by `.` `;` `?` `!`
+4. **Test against enjambment benchmark:** After fixing, re-run tests specifically on the 16 multi-line VF entries
 
 ### 2.5 Ranking Quality
 
@@ -433,7 +477,7 @@ for lemma in matched_lemmas:
 
 Tesserae V6 demonstrates strong performance on lexical parallel detection when configured appropriately:
 
-1. **Perfect recall on valid lexical parallels.** V6 finds 100% of truly lexical parallels (2+ shared lemmas on same line) in both benchmarks tested.
+1. **Perfect recall on line-level lexical parallels.** V6 finds 100% of truly lexical parallels (2+ shared lemmas on same line) in both benchmarks tested.
 
 2. **The curated stoplist is the primary barrier to recall.** Removing or minimizing it dramatically improves benchmark coverage.
 
@@ -441,17 +485,18 @@ Tesserae V6 demonstrates strong performance on lexical parallel detection when c
 
 4. **Score ceiling causes ranking ties.** 21% of results tie at maximum score (1.0), causing arbitrary ordering among top results.
 
-5. **Line matching is optimal.** Phrase matching provides no measurable benefit.
+5. **Phrase matching has a bug.** Current implementation splits within lines rather than combining lines into sentences. This prevents detection of multi-line (enjambment) parallels.
 
 **For scholarly research requiring comprehensive coverage:**
 - Use no stoplist or minimal stoplist (3-5 words)
 - Expect to review 500-1000 results to find majority of known parallels
-- Consider implementing ranking improvements (Section 7) for better prioritization
+- Be aware that parallels spanning line breaks will not be found until phrase matching is fixed
 
-**For future development:**
-- Remove score ceiling to break ties
-- Add lemma count bonus to prioritize richer parallels
-- Consider source diversity penalty to reduce noise from promiscuous lines
+**For future development (priority order):**
+1. **Fix phrase matching:** Reimplement to combine consecutive lines until sentence-ending punctuation; rename to "Sentence matching"
+2. **Remove score ceiling:** Allow scores > 1.0 to break ties among top results
+3. **Add lemma count bonus:** Prioritize parallels with 3+ shared lemmas
+4. **Add source diversity penalty:** Reduce noise from promiscuous source lines
 
 ---
 
