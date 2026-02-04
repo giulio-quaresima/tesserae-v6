@@ -217,6 +217,26 @@ V6 already has several features that could augment lemma matching:
 
 **Implication:** The existing scoring system correctly prioritizes unusual vocabulary. The precision problem is not that IDF fails to boost rare words — it's that there are too many noise results with rare vocabulary (false positives).
 
+#### Distance Penalty Validation: Would Closer Bigrams Help?
+
+**Question:** Do strong parallels have closer word pairs than weak parallels or noise?
+
+**Test:** Compared word distance (positions between matched lemmas) across quality levels:
+
+| Category | Count | Avg Distance | Close (≤2 words) |
+|----------|-------|--------------|------------------|
+| Type 4-5 (strong) | 70 | 2.0 | **61%** |
+| Type 1-2 (weak) | 491 | 2.3 | 54% |
+| Benchmark (all) | 487 | 2.4 | 47% |
+| Noise (non-benchmark) | 861 | 2.6 | 43% |
+
+**Findings:**
+1. Strong vs weak parallels: Only **7%** difference in close pairs (61% vs 54%)
+2. Benchmark vs noise: Only **4%** difference (47% vs 43%)
+3. Strong vs noise: **18%** difference (61% vs 43%) — but already captured by current scoring
+
+**Conclusion:** Increasing distance penalty would have **minimal precision impact**. The current IDF + distance combination already ranks close pairs higher. Strong parallels benefit from both rare vocabulary AND close proximity — the existing scoring captures both signals.
+
 #### 3. Word Search (Wildcard/Boolean)
 
 **What it does:** Corpus-wide string search with wildcards (*, ?), boolean operators (AND, OR, NOT), phrase matching, and proximity search.
