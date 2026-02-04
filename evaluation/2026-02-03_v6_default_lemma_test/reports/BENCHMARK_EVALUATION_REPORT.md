@@ -21,7 +21,7 @@ Testing followed methodologies established by Coffee et al. (2012), Manjavacas e
 |----------|---------|--------|
 | **Recall** | Perfect on line-level | 100% on valid truly lexical parallels (2+ shared lemmas on same line) |
 | **Stoplist** | Major barrier | Default curated stoplist reduces recall by ~48% |
-| **Ranking** | Weak prioritization | Median benchmark rank ~700-900; only 3-12% in top 100 results |
+| **Ranking** | Weak prioritization | Known parallels appear around rank 700-900 (not near top); only 3-12% appear in top 100 |
 | **Score ceiling** | Creates ties | 21% of results tie at maximum score (1.0), causing arbitrary ordering |
 | **Phrase matching** | **BUG IDENTIFIED** | Does not span lines; splits within lines instead (see Section 2.4) |
 
@@ -148,12 +148,16 @@ The function splits each line **internally** at punctuation marks. It processes 
 | VF 1.100-101: "...vada PONTI / LITTORA..." | "ponti" and "littora" appear on different lines |
 | VF 1.136-143: "quercus...robore" | Multi-line phrase spanning 7 lines |
 
+**Why this matters:**
+
+Multi-line parallels (enjambment) are common in Latin poetry, where a thought or phrase continues across line breaks. The current implementation cannot detect these parallels because it treats each line independently. Fixing phrase matching would enable V6 to find parallels where shared words span line breaks—a significant class of intertextual connections that currently go undetected.
+
 **Recommendations:**
 
-1. **Fix the implementation:** Rewrite phrase/sentence mode to read consecutive lines until sentence-ending punctuation, creating multi-line units
+1. **Fix the implementation:** Rewrite phrase/sentence mode to read consecutive lines until sentence-ending punctuation, creating multi-line units that can match across line breaks
 2. **Rename to "Sentence matching":** The term "phrase" is ambiguous; "sentence" better describes spanning until punctuation
 3. **Add UI tooltip:** Explain that "sentence" includes segments separated by `.` `;` `?` `!`
-4. **Test against enjambment benchmark:** After fixing, re-run tests specifically on the 16 multi-line VF entries
+4. **Test against enjambment benchmark:** After fixing, re-run tests specifically on the 16 multi-line VF entries to validate that cross-line parallels are now detected
 
 ### 2.5 Ranking Quality
 
