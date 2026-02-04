@@ -352,9 +352,9 @@ V6 searches within individual lines. Multi-line phrases (enjambment) are outside
 
 | Setting | Behavior |
 |---------|----------|
-| `stoplist_size: -1` | No stoplist (maximum recall) |
-| `stoplist_size: 0` | Curated stoplist (~70 words) |
-| `stoplist_size: N` | Top N most frequent words excluded |
+| `stoplist_size: -1` | **Disabled** — No stoplist (maximum recall) |
+| `stoplist_size: 0` | **Default** — Curated list (~70 words) + Zipf-detected high-frequency words |
+| `stoplist_size: N` | **Top N** — Only the N most frequent words excluded |
 
 ---
 
@@ -529,10 +529,10 @@ The Achilleid benchmark reveals a stoplist trade-off not visible in smaller benc
 | Configuration | Recall | P@10 | Best Rank | Median Rank |
 |---------------|--------|------|-----------|-------------|
 | Disabled | 95.5% | 0% | 75 | 2,468 |
-| Zipf auto | 76.6% | **40%** | **6** | **735** |
-| Stoplist = 10 | 83.5% | 0% | 11 | 1,428 |
+| **Default** (curated + Zipf) | 76.6% | **40%** | **6** | **735** |
+| Top 10 | 83.5% | 0% | 11 | 1,428 |
 
-**Key insight:** Zipf auto achieves best ranking quality (P@10 = 40%) but costs 19% recall. This trade-off emerges because Achilleid generates 48,000 results (vs 8,883 for Lucan-Vergil), making ranking more important.
+**Key insight:** Default (curated + Zipf) achieves best ranking quality (P@10 = 40%) but costs 19% recall. This trade-off emerges because Achilleid generates 48,000 results (vs 8,883 for Lucan-Vergil), making ranking more important.
 
 ---
 
