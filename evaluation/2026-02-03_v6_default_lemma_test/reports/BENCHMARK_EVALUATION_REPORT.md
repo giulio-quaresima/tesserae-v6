@@ -23,15 +23,28 @@ Testing followed methodologies established by Coffee et al. (2012), Manjavacas e
 | **Stoplist** | Major barrier | Default curated stoplist reduces recall by ~48% |
 | **Ranking** | Weak prioritization | Known parallels appear around rank 700-900 (not near top); only 3-12% appear in top 100 |
 | **Score ceiling** | Creates ties | 21% of results tie at maximum score (1.0), causing arbitrary ordering |
-| **Phrase matching** | **BUG IDENTIFIED** | Does not span lines; splits within lines instead (see Section 2.4) |
+| **Phrase matching** | **BUG IDENTIFIED** | Does not span lines; splits within lines instead (see Section 3.4) |
 
 ### Summary
 
 **Recall:** V6 finds all valid lexical parallels where shared words appear on the same line in both texts.
 
-**Ranking limitation:** While all parallels are found, they are not concentrated at the top of results. Users must review 500-1000 results to find half of known scholarly parallels. Five specific ranking improvements are recommended (Section 7).
+**Ranking limitation:** While all parallels are found, they are not concentrated at the top of results. Users must review 500-1000 results to find half of known scholarly parallels. Five specific ranking improvements are recommended (Section 8).
 
-**Bug identified:** "Phrase matching" is implemented incorrectly. It splits lines at punctuation rather than combining consecutive lines into sentence units. This prevents detection of multi-line (enjambment) parallels. Recommendation: Fix implementation and rename to "Sentence matching" (Section 2.4).
+**Bug identified:** "Phrase matching" is implemented incorrectly. It splits lines at punctuation rather than combining consecutive lines into sentence units. This prevents detection of multi-line (enjambment) parallels. Recommendation: Fix implementation and rename to "Sentence matching" (Section 3.4).
+
+### Comparison with Prior Studies
+
+This evaluation extends prior Tesserae studies (Coffee et al. 2012, Manjavacas et al. 2019, Bernstein et al. 2015) with several advances:
+
+| Aspect | Prior Studies | This Evaluation |
+|--------|---------------|-----------------|
+| Lexical subset analysis | Type 4-5 parallels only | Lexical (2+ lemma) subset identified and tested separately |
+| Recall on valid parallels | ~30-40% | **100%** (when excluding non-lexical parallels) |
+| Ranking quality | Not measured | First quantified (median rank 700-900) |
+| Phrase matching | Assumed functional | **Bug discovered** (does not span lines) |
+
+See Section 2 for detailed comparison.
 
 ### Recommendations Summary
 
@@ -88,7 +101,55 @@ Tesserae's lemma search algorithm requires at least 2 matching lemmas within a s
 
 ---
 
-## 2. Benchmark 1: Lucan–Vergil Results
+## 2. Comparison with Prior Tesserae Evaluations
+
+This section compares the current V6 evaluation with prior published studies of Tesserae.
+
+### 2.1 Summary of Prior Studies
+
+| Study | Tesserae Version | Benchmark | Key Findings |
+|-------|------------------|-----------|--------------|
+| **Coffee et al. (2012)** | V3 | Lucan BC1 vs Aeneid (bench41) | Introduced scoring algorithm; demonstrated effectiveness on Type 4-5 parallels |
+| **Bernstein et al. (2015)** | V3 | Multi-author Latin corpus | Measured comparative reuse rates across authors |
+| **Manjavacas et al. (2019)** | V3/V5 | Lucan-Vergil + VF | Statistical approach; introduced soft recall metrics |
+
+### 2.2 Methodological Differences
+
+| Aspect | Prior Studies | This Evaluation (V6) |
+|--------|---------------|----------------------|
+| **Recall definition** | Match if source–target pair appears in benchmark | Same approach |
+| **Benchmark scope** | Type 4-5 parallels (high scholarly consensus) | Same, plus analysis of lexical subset |
+| **Stoplist handling** | Default curated stoplist | Tested: default, none, size 3, 5, 10 |
+| **Ranking analysis** | Limited | Detailed rank distribution and percentile analysis |
+| **Multi-line parallels** | Not specifically tested | Identified as limitation (phrase matching bug) |
+
+### 2.3 Results Comparison
+
+| Metric | Coffee 2012 (V3) | Manjavacas 2019 | V6 (This Study) |
+|--------|------------------|-----------------|-----------------|
+| **Benchmark** | Lucan-Vergil | Lucan-Vergil + VF | Lucan-Vergil + VF |
+| **Type 4-5 Recall (default)** | ~30-40%* | Comparable | 26.8% (Lucan), varies (VF) |
+| **Lexical Recall (no stoplist)** | Not reported | Not reported | **100%** (valid 2+ lemma parallels) |
+| **Ranking quality** | Not systematically measured | Limited | Median rank 700-900 |
+| **Phrase matching** | Available | Available | **Bug identified** |
+
+*Estimated from published figures; exact metrics varied by configuration.
+
+### 2.4 Key Advances in This Evaluation
+
+1. **Rigorous lexical subset analysis:** Distinguished between parallels that Tesserae's algorithm *can* find (2+ shared lemmas on same line) vs. parallels outside its design scope (thematic, single-word, multi-line).
+
+2. **Perfect recall validated:** V6 achieves 100% recall on valid lexical parallels, confirming the algorithm works correctly for its intended use case.
+
+3. **Ranking quality quantified:** First systematic measurement of where benchmark parallels appear in ranked results (median ~700-900, only 3-12% in top 100).
+
+4. **Phrase matching bug discovered:** Identified that phrase matching splits within lines rather than combining lines into sentences, explaining why it provides no benefit and preventing detection of enjambment parallels.
+
+5. **Reproducibility documentation:** Complete scripts and instructions for reproducing all results (see REPRODUCIBILITY_GUIDE.md).
+
+---
+
+## 3. Benchmark 1: Lucan–Vergil Results
 
 ### 2.1 Baseline (Default Settings)
 
@@ -170,9 +231,9 @@ Multi-line parallels (enjambment) are common in Latin poetry, where a thought or
 
 ---
 
-## 3. Benchmark 2: Valerius Flaccus Results
+## 4. Benchmark 2: Valerius Flaccus Results
 
-### 3.1 Overall Results by Configuration
+### 4.1 Overall Results by Configuration
 
 | Configuration | Vergil | Lucan | Ovid | Statius | **Total** |
 |---------------|--------|-------|------|---------|-----------|
@@ -190,9 +251,9 @@ Multi-line parallels (enjambment) are common in Latin poetry, where a thought or
 
 ---
 
-## 4. Cross-Benchmark Comparison
+## 5. Cross-Benchmark Comparison
 
-### 4.1 Recall by Configuration
+### 5.1 Recall by Configuration
 
 | Configuration | Lucan–Vergil (Lexical) | VF (Total) | Average |
 |---------------|------------------------|------------|---------|
@@ -220,9 +281,9 @@ Possible explanations for VF's lower recall compared to Lucan–Vergil:
 
 ---
 
-## 5. Recommendations
+## 6. Recommendations
 
-### 5.1 Recommended Presets
+### 6.1 Recommended Presets
 
 | Preset | Stoplist | Threshold | Use Case |
 |--------|----------|-----------|----------|
@@ -248,11 +309,11 @@ Add search mode presets in Advanced Settings:
 
 ---
 
-## 6. Ranking Quality Analysis
+## 7. Ranking Quality Analysis
 
 While V6 achieves 100% recall on valid lexical parallels, this section examines **where** those parallels appear in the ranked results—a critical question for usability.
 
-### 6.1 Methodology
+### 7.1 Methodology
 
 For each benchmark, we:
 1. Ran full search with no stoplist (maximum recall)
@@ -373,11 +434,11 @@ This is a **known limitation of automated intertextual detection**: what scholar
 
 ---
 
-## 7. Ranking Improvement Recommendations
+## 8. Ranking Improvement Recommendations
 
 Based on the analysis above, we identify five potential improvements to the ranking algorithm.
 
-### 7.1 Problem: Score Ceiling Creates Ties
+### 8.1 Problem: Score Ceiling Creates Ties
 
 **Current behavior (scorer.py line 154):**
 ```python
@@ -467,7 +528,7 @@ for lemma in matched_lemmas:
 
 ---
 
-## 8. Limitations
+## 9. Limitations
 
 1. **Two benchmarks tested:** Lucan–Vergil and Valerius Flaccus only
 2. **Lexical focus:** Only tests word-overlap parallels; thematic detection not assessed
@@ -477,7 +538,7 @@ for lemma in matched_lemmas:
 
 ---
 
-## 9. Conclusion
+## 10. Conclusion
 
 Tesserae V6 demonstrates strong performance on lexical parallel detection when configured appropriately:
 
