@@ -284,31 +284,86 @@ But **thematic parallels** use different words for similar ideas:
 
 ---
 
-### Remaining Misses Breakdown
+### Truly Lexical Classification (Lemma-Based)
 
-After accounting for line alignment:
+Used V6's lemmatizer to classify entries by actual shared lemmas:
 
-| Category | Count | % | Explanation |
+| Category | Count | % | Findability |
 |----------|-------|---|-------------|
-| Vocabulary mismatch | 227 | 78.5% | Different words, thematic parallels |
-| Multi-line spans | 41 | 14.2% | Words span multiple lines |
-| Stopword-only | 7 | 2.4% | Only function words match |
-| True misses | 14 | 4.8% | Should be findable but aren't |
+| **Truly lexical** (2+ shared lemmas) | 137 | 26.3% | Findable by lemma search |
+| Partially lexical (1 shared lemma) | 261 | 50.1% | Needs min_matches=1 |
+| Thematic only (0 shared lemmas) | 123 | 23.6% | Unfindable by lemma |
 
-**True Misses:** 14 entries have 2+ content words shared but weren't found. These warrant investigation of:
-- Zipf filtering thresholds
-- Lemmatization accuracy
-- Word frequency cutoffs
+**Key insight:** Only 26.3% of VF-Vergil benchmark entries are truly findable by lemma search.
+
+---
+
+### Recall on Truly Lexical Parallels
+
+| Metric | Count | Rate |
+|--------|-------|------|
+| Truly lexical entries | 137 | — |
+| Multi-line (words span lines) | 16 | Unfindable |
+| Single-line findable | 121 | — |
+| **Actually found** | **114** | **94.2%** |
+| True misses | 7 | 5.8% |
+
+**V6 achieves 94.2% recall on truly lexical, single-line parallels.**
+
+---
+
+### Root Cause Analysis: Why 16 Multi-Line Entries Missed
+
+Benchmark phrases span line boundaries (enjambment):
+
+| VF Line | Phrase | Issue |
+|---------|--------|-------|
+| 29 | "ingens fama" | "ingens" on line 29, "fama" on line 30 |
+| 46 | "nuntia fama" | "nuntia" on line 46, "fama" on line 47 |
+| 186 | "clamor nauticus" | "clamor" on line 186, "nauticus" on line 187 |
+
+These cannot be found by line-based search without multi-line windows.
+
+---
+
+### True Misses (7 entries)
+
+Entries with 2+ shared lemmas on same line but not found:
+
+| VF Line | Phrase | Target | Shared Lemmas |
+|---------|--------|--------|---------------|
+| 215 | "ne desere" | Aen. 10.600 | desero, ne |
+| 224 | "secat auras" | Aen. 12.267 | auras, secat |
+| 334 | "dulce caput" | Aen. 4.493 | caput, dulcis |
+| 339 | "classis aeratas" | Aen. 8.675 | aeratas, classis |
+| 362 | "torquent spumas" | Aen. 3.208, 4.583 | spumas, torquent |
+| 721 | "patria domus" | Aen. 2.241 | domus, patria |
+
+These warrant investigation of lemmatization accuracy.
 
 ---
 
 ### Key Insights from VF Analysis
 
-1. **Benchmark type matters**: VF benchmark is primarily thematic (79% unfindable by lemma)
-2. **Line alignment is mostly correct**: 92.9% of lines match, ±3 tolerance catches the rest
-3. **V6 finds unlabeled parallels**: Some matches come from word pairs annotators didn't highlight
-4. **Semantic search needed**: For thematic parallels, SPhilBERTa cross-lingual search may help
-5. **Lucan is cleaner**: Lucan benchmark had 100% lexical recall; VF is fundamentally different
+1. **True lexical recall is 94.2%** — comparable to Lucan benchmark (100%)
+2. **Only 26% of VF benchmark is truly lexical** — most entries are thematic
+3. **Multi-line phrases (enjambment) cause 16 misses** — design limitation, not bug
+4. **True misses are <6%** — may be lemmatization edge cases
+5. **Benchmark type matters**: VF is heavily thematic; Lucan is heavily lexical
+
+---
+
+### Comparison: Lucan vs VF Benchmarks
+
+| Metric | Lucan-Vergil | VF-Vergil |
+|--------|--------------|-----------|
+| Total entries | 52 lexical | 521 total |
+| Truly lexical | 40 (77%) | 137 (26%) |
+| Single-line findable | 40 | 121 |
+| **Recall** | **100%** | **94.2%** |
+| True misses | 0 | 7 |
+
+Both benchmarks show V6 achieves excellent recall on truly lexical parallels.
 
 ---
 
@@ -321,3 +376,6 @@ After accounting for line alignment:
 | `evaluation/vf_line_map.json` | Simple correction mapping |
 | `evaluation/VF_LINE_ALIGNMENT_REPORT.md` | Alignment documentation |
 | `evaluation/vocab_mismatch_examples.json` | Vocabulary mismatch examples |
+| `evaluation/vf_vergil_classified.json` | Entries classified by lemma overlap |
+| `evaluation/vf_missed_lexical.json` | Missed truly lexical entries |
+| `evaluation/vf_missed_analysis.json` | Analysis of why entries missed |

@@ -1,0 +1,508 @@
+[
+  {
+    "vf_line": 29,
+    "vf_line_end": 30,
+    "vergil_book": "11",
+    "vergil_line": 124,
+    "vergil_line_end": 124,
+    "query_phrase": "ingens fama",
+    "result_phrase": "fama ingens",
+    "query_lemmas": [
+      "fama",
+      "ingens"
+    ],
+    "result_lemmas": [
+      "fama",
+      "ingens"
+    ],
+    "shared_lemmas": [
+      "fama",
+      "ingens"
+    ],
+    "overlap_count": 2
+  },
+  {
+    "vf_line": 46,
+    "vf_line_end": 47,
+    "vergil_book": "9",
+    "vergil_line": 474,
+    "vergil_line_end": 474,
+    "query_phrase": "nuntia fama",
+    "result_phrase": "nuntia fama",
+    "query_lemmas": [
+      "nuntia",
+      "fama"
+    ],
+    "result_lemmas": [
+      "nuntia",
+      "fama"
+    ],
+    "shared_lemmas": [
+      "nuntia",
+      "fama"
+    ],
+    "overlap_count": 2
+  },
+  {
+    "vf_line": 71,
+    "vf_line_end": 71,
+    "vergil_book": "4",
+    "vergil_line": 682,
+    "vergil_line_end": 682,
+    "query_phrase": "populum patres",
+    "result_phrase": "populumque patresque",
+    "query_lemmas": [
+      "populus",
+      "pater"
+    ],
+    "result_lemmas": [
+      "populus",
+      "pater"
+    ],
+    "shared_lemmas": [
+      "populus",
+      "pater"
+    ],
+    "overlap_count": 2
+  },
+  {
+    "vf_line": 71,
+    "vf_line_end": 71,
+    "vergil_book": "9",
+    "vergil_line": 192,
+    "vergil_line_end": 192,
+    "query_phrase": "populum patres",
+    "result_phrase": "populusque patresque",
+    "query_lemmas": [
+      "populus",
+      "pater"
+    ],
+    "result_lemmas": [
+      "populus",
+      "pater"
+    ],
+    "shared_lemmas": [
+      "populus",
+      "pater"
+    ],
+    "overlap_count": 2
+  },
+  {
+    "vf_line": 186,
+    "vf_line_end": 187,
+    "vergil_book": "3",
+    "vergil_line": 128,
+    "vergil_line_end": 128,
+    "query_phrase": "clamor nauticus",
+    "result_phrase": "nauticus clamor",
+    "query_lemmas": [
+      "nauticus",
+      "clamor"
+    ],
+    "result_lemmas": [
+      "nauticus",
+      "clamor"
+    ],
+    "shared_lemmas": [
+      "nauticus",
+      "clamor"
+    ],
+    "overlap_count": 2
+  },
+  {
+    "vf_line": 186,
+    "vf_line_end": 187,
+    "vergil_book": "5",
+    "vergil_line": 140,
+    "vergil_line_end": 141,
+    "query_phrase": "clamor nauticus",
+    "result_phrase": "clamor nauticus",
+    "query_lemmas": [
+      "nauticus",
+      "clamor"
+    ],
+    "result_lemmas": [
+      "nauticus",
+      "clamor"
+    ],
+    "shared_lemmas": [
+      "nauticus",
+      "clamor"
+    ],
+    "overlap_count": 2
+  },
+  {
+    "vf_line": 212,
+    "vf_line_end": 213,
+    "vergil_book": "10",
+    "vergil_line": 2,
+    "vergil_line_end": 2,
+    "query_phrase": "uocat concilium",
+    "result_phrase": "conciliumque uocat",
+    "query_lemmas": [
+      "uoco",
+      "concilium"
+    ],
+    "result_lemmas": [
+      "uoco",
+      "concilium"
+    ],
+    "shared_lemmas": [
+      "uoco",
+      "concilium"
+    ],
+    "overlap_count": 2
+  },
+  {
+    "vf_line": 215,
+    "vf_line_end": 215,
+    "vergil_book": "10",
+    "vergil_line": 600,
+    "vergil_line_end": 600,
+    "query_phrase": "ne desere",
+    "result_phrase": "ne desere",
+    "query_lemmas": [
+      "desero",
+      "ne"
+    ],
+    "result_lemmas": [
+      "desero",
+      "ne"
+    ],
+    "shared_lemmas": [
+      "desero",
+      "ne"
+    ],
+    "overlap_count": 2
+  },
+  {
+    "vf_line": 224,
+    "vf_line_end": 224,
+    "vergil_book": "12",
+    "vergil_line": 267,
+    "vergil_line_end": 267,
+    "query_phrase": "secat auras",
+    "result_phrase": "auras secat",
+    "query_lemmas": [
+      "secat",
+      "auras"
+    ],
+    "result_lemmas": [
+      "auras",
+      "secat"
+    ],
+    "shared_lemmas": [
+      "auras",
+      "secat"
+    ],
+    "overlap_count": 2
+  },
+  {
+    "vf_line": 334,
+    "vf_line_end": 334,
+    "vergil_book": "4",
+    "vergil_line": 493,
+    "vergil_line_end": 493,
+    "query_phrase": "dulce caput",
+    "result_phrase": "dulce caput",
+    "query_lemmas": [
+      "caput",
+      "dulcis"
+    ],
+    "result_lemmas": [
+      "caput",
+      "dulcis"
+    ],
+    "shared_lemmas": [
+      "caput",
+      "dulcis"
+    ],
+    "overlap_count": 2
+  },
+  {
+    "vf_line": 339,
+    "vf_line_end": 339,
+    "vergil_book": "8",
+    "vergil_line": 675,
+    "vergil_line_end": 675,
+    "query_phrase": "classis aeratas",
+    "result_phrase": "classis aeratas",
+    "query_lemmas": [
+      "aeratas",
+      "classis"
+    ],
+    "result_lemmas": [
+      "aeratas",
+      "classis"
+    ],
+    "shared_lemmas": [
+      "aeratas",
+      "classis"
+    ],
+    "overlap_count": 2
+  },
+  {
+    "vf_line": 362,
+    "vf_line_end": 362,
+    "vergil_book": "3",
+    "vergil_line": 208,
+    "vergil_line_end": 208,
+    "query_phrase": "torquent spumas",
+    "result_phrase": "torquent spumas",
+    "query_lemmas": [
+      "spumas",
+      "torquent"
+    ],
+    "result_lemmas": [
+      "spumas",
+      "torquent"
+    ],
+    "shared_lemmas": [
+      "spumas",
+      "torquent"
+    ],
+    "overlap_count": 2
+  },
+  {
+    "vf_line": 362,
+    "vf_line_end": 362,
+    "vergil_book": "4",
+    "vergil_line": 583,
+    "vergil_line_end": 583,
+    "query_phrase": "torquent spumas",
+    "result_phrase": "torquent spumas",
+    "query_lemmas": [
+      "spumas",
+      "torquent"
+    ],
+    "result_lemmas": [
+      "spumas",
+      "torquent"
+    ],
+    "shared_lemmas": [
+      "spumas",
+      "torquent"
+    ],
+    "overlap_count": 2
+  },
+  {
+    "vf_line": 512,
+    "vf_line_end": 513,
+    "vergil_book": "9",
+    "vergil_line": 604,
+    "vergil_line_end": 604,
+    "query_phrase": "saeuo gelu",
+    "result_phrase": "saeuoque gelu",
+    "query_lemmas": [
+      "gelus",
+      "saeuus"
+    ],
+    "result_lemmas": [
+      "gelus",
+      "saeuus"
+    ],
+    "shared_lemmas": [
+      "gelus",
+      "saeuus"
+    ],
+    "overlap_count": 2
+  },
+  {
+    "vf_line": 572,
+    "vf_line_end": 573,
+    "vergil_book": "1",
+    "vergil_line": 590,
+    "vergil_line_end": 590,
+    "query_phrase": "lumen purpureum",
+    "result_phrase": "lumenque purpureum",
+    "query_lemmas": [
+      "purpureus",
+      "lumen"
+    ],
+    "result_lemmas": [
+      "purpureus",
+      "lumen"
+    ],
+    "shared_lemmas": [
+      "lumen",
+      "purpureus"
+    ],
+    "overlap_count": 2
+  },
+  {
+    "vf_line": 585,
+    "vf_line_end": 585,
+    "vergil_book": "5",
+    "vergil_line": 790,
+    "vergil_line_end": 790,
+    "query_phrase": "caelum miscere",
+    "result_phrase": "caelo miscuit",
+    "query_lemmas": [
+      "misceo",
+      "caelum"
+    ],
+    "result_lemmas": [
+      "misceo",
+      "caelum"
+    ],
+    "shared_lemmas": [
+      "misceo",
+      "caelum"
+    ],
+    "overlap_count": 2
+  },
+  {
+    "vf_line": 591,
+    "vf_line_end": 592,
+    "vergil_book": "7",
+    "vergil_line": 141,
+    "vergil_line_end": 141,
+    "query_phrase": "intonuit omnipotens",
+    "result_phrase": "omnipotens intonuit",
+    "query_lemmas": [
+      "omnipotens",
+      "intonuit"
+    ],
+    "result_lemmas": [
+      "intonuit",
+      "omnipotens"
+    ],
+    "shared_lemmas": [
+      "omnipotens",
+      "intonuit"
+    ],
+    "overlap_count": 2
+  },
+  {
+    "vf_line": 609,
+    "vf_line_end": 610,
+    "vergil_book": "7",
+    "vergil_line": 621,
+    "vergil_line_end": 621,
+    "query_phrase": "portam impulit",
+    "result_phrase": "impulit portas",
+    "query_lemmas": [
+      "porta",
+      "impello"
+    ],
+    "result_lemmas": [
+      "porta",
+      "impello"
+    ],
+    "shared_lemmas": [
+      "porta",
+      "impello"
+    ],
+    "overlap_count": 2
+  },
+  {
+    "vf_line": 610,
+    "vf_line_end": 611,
+    "vergil_book": "2",
+    "vergil_line": 417,
+    "vergil_line_end": 418,
+    "query_phrase": "laeti equi",
+    "result_phrase": "laetus equis",
+    "query_lemmas": [
+      "equus",
+      "laetus"
+    ],
+    "result_lemmas": [
+      "equus",
+      "laetus"
+    ],
+    "shared_lemmas": [
+      "equus",
+      "laetus"
+    ],
+    "overlap_count": 2
+  },
+  {
+    "vf_line": 682,
+    "vf_line_end": 683,
+    "vergil_book": "5",
+    "vergil_line": 706,
+    "vergil_line_end": 706,
+    "query_phrase": "ira deum",
+    "result_phrase": "ira deum",
+    "query_lemmas": [
+      "deus",
+      "ira"
+    ],
+    "result_lemmas": [
+      "deus",
+      "ira"
+    ],
+    "shared_lemmas": [
+      "deus",
+      "ira"
+    ],
+    "overlap_count": 2
+  },
+  {
+    "vf_line": 721,
+    "vf_line_end": 721,
+    "vergil_book": "2",
+    "vergil_line": 241,
+    "vergil_line_end": 241,
+    "query_phrase": "patria domus",
+    "result_phrase": "patria domus",
+    "query_lemmas": [
+      "domus",
+      "patria"
+    ],
+    "result_lemmas": [
+      "domus",
+      "patria"
+    ],
+    "shared_lemmas": [
+      "domus",
+      "patria"
+    ],
+    "overlap_count": 2
+  },
+  {
+    "vf_line": 797,
+    "vf_line_end": 798,
+    "vergil_book": "7",
+    "vergil_line": 335,
+    "vergil_line_end": 335,
+    "query_phrase": "tectis faces",
+    "result_phrase": "tectis faces",
+    "query_lemmas": [
+      "tectum",
+      "fax"
+    ],
+    "result_lemmas": [
+      "tectum",
+      "fax"
+    ],
+    "shared_lemmas": [
+      "tectum",
+      "fax"
+    ],
+    "overlap_count": 2
+  },
+  {
+    "vf_line": 820,
+    "vf_line_end": 821,
+    "vergil_book": "11",
+    "vergil_line": 818,
+    "vergil_line_end": 818,
+    "query_phrase": "leto lumina",
+    "result_phrase": "leto lumina",
+    "query_lemmas": [
+      "letum",
+      "lumen"
+    ],
+    "result_lemmas": [
+      "letum",
+      "lumen"
+    ],
+    "shared_lemmas": [
+      "letum",
+      "lumen"
+    ],
+    "overlap_count": 2
+  }
+]
