@@ -73,6 +73,8 @@ Other Lucan-Vergil benchmark variants exist (hand-ranked sets, Tesserae results 
 | Lexical parallels | 52 | Type 4-5 with ≥2 shared lemmas |
 | True lexical | 40 | With overlap words in benchmark data |
 
+*Verification:* Total count spot-checked against raw bench41.txt file (3,411 lines including header = 3,410 data rows). Lexical subset count verified against processed benchmark file.
+
 **Benchmark 2: Valerius Flaccus**
 | Dataset | Count | Description |
 |---------|-------|-------------|
