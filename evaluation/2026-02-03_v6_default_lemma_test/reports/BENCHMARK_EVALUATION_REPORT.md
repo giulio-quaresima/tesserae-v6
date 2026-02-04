@@ -93,6 +93,75 @@ V6 finds only 15–32% of high-quality scholarly parallels. The missed 68–85% 
 
 **Best bet for near-term gains:** Combine lemma matching with semantic re-ranking (already partially implemented in V6).
 
+### V6 Tools Available for Evaluation
+
+V6 already has several features that could augment lemma matching:
+
+#### 1. Rare Pairs (Bigram Search)
+
+**What it does:** Finds word pairs that rarely appear together across the corpus, even if individual words are common. A pair like "arma virum" might be common individually but distinctive as a collocation.
+
+**How it works:**
+- Extracts word pairs within a configurable window (default: adjacent to 3-word gap)
+- Calculates rarity score (0-1) based on how few texts contain the pair
+- Highlights pairs with rarity ≥ 0.9 (appear in very few documents)
+
+**Potential contribution:**
+| Use Case | Precision Impact | Recall Impact |
+|----------|------------------|---------------|
+| Re-rank lemma results | **High** — rare collocations signal stronger parallels | None |
+| Boost sub-threshold parallels | Medium | **Medium** — 1-lemma matches with rare pair could surface |
+| Filter noise | **High** — common word pairs get deprioritized | Slight negative |
+
+**Limitation:** Only helps when the same rare pair appears in both texts. Does not help with thematic or syntactic parallels.
+
+#### 2. Rare Unigrams (Hapax Search)
+
+**What it does:** Identifies rare words (low corpus frequency) shared between two texts. Hapax legomena (words appearing once in the corpus) are particularly significant.
+
+**How it works:**
+- Filters by `max_frequency` threshold (e.g., words appearing in ≤ 5 texts)
+- Returns shared rare vocabulary between source and target
+
+**Potential contribution:**
+| Use Case | Precision Impact | Recall Impact |
+|----------|------------------|---------------|
+| Re-rank results by rare vocabulary | **High** — rare words signal intentional allusion | None |
+| Surface 1-lemma matches with rare word | Low | **Low** — most 1-lemma misses use common vocabulary |
+| Author fingerprinting | Medium | N/A |
+
+**Limitation:** Most benchmark parallels involve common vocabulary; rare word sharing is infrequent.
+
+#### 3. Word Search (Wildcard/Boolean)
+
+**What it does:** Corpus-wide string search with wildcards (*, ?), boolean operators (AND, OR, NOT), phrase matching, and proximity search.
+
+**How it works:**
+- Parses query into structured regex patterns
+- Searches across entire corpus or filtered subset
+- Returns matching lines with highlighting
+
+**Potential contribution:**
+| Use Case | Precision Impact | Recall Impact |
+|----------|------------------|---------------|
+| Targeted investigation | N/A — exploratory tool | **High** — find specific phrases |
+| Verify suspected parallels | Validation tool | N/A |
+| Find morphological variants | N/A | **Medium** — stem patterns like `am*` |
+
+**Best for:** Scholar-directed exploration, not automated matching.
+
+### Recommended Evaluation Priorities
+
+Based on existing V6 tools and benchmark characteristics:
+
+| Priority | Tool | Test | Expected Impact |
+|----------|------|------|-----------------|
+| 1 | **Rare pairs as re-ranker** | Apply bigram boost to lemma results | Precision ↑↑ |
+| 2 | **Rare unigrams as re-ranker** | Weight matches by vocabulary rarity | Precision ↑ |
+| 3 | **SPhilBERTa semantic** | Test on sub-threshold parallels | Recall ↑ |
+| 4 | **Sound matching** | Test on type 1-2 entries (sound-based) | Recall ↑ (niche) |
+| 5 | **Combined: lemma + rare + semantic** | Multi-signal fusion | Precision ↑↑, Recall ↑ |
+
 ---
 
 ## 2. Detailed Findings
