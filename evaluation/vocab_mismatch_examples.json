@@ -1,0 +1,1128 @@
+{
+  "summary": {
+    "total": 521,
+    "no_content_overlap": 180,
+    "one_content_word": 232,
+    "good_overlap": 109
+  },
+  "no_overlap_examples": [
+    {
+      "vf_line": 1,
+      "vf_phrase": "prima canimus",
+      "vergil_phrase": "cano primus",
+      "vergil_ref": "Aen. 1.1",
+      "intertext": "cano primus",
+      "shared_words": [],
+      "shared_content": []
+    },
+    {
+      "vf_line": 1,
+      "vf_phrase": "prima sequi",
+      "vergil_phrase": "primus init",
+      "vergil_ref": "Aen. 7.647",
+      "intertext": "primus init bellum",
+      "shared_words": [],
+      "shared_content": []
+    },
+    {
+      "vf_line": 2,
+      "vf_phrase": "phasidis oras",
+      "vergil_phrase": "oris italiam",
+      "vergil_ref": "Aen. 1.1",
+      "intertext": "troiae qui primus ab oris italiam",
+      "shared_words": [],
+      "shared_content": []
+    },
+    {
+      "vf_line": 2,
+      "vf_phrase": "fatidicam ratem",
+      "vergil_phrase": "fatidici adit",
+      "vergil_ref": "Aen. 7.82",
+      "intertext": "fatidici",
+      "shared_words": [],
+      "shared_content": []
+    },
+    {
+      "vf_line": 2,
+      "vf_phrase": "fatidicam ratem",
+      "vergil_phrase": "uatis fatidicae",
+      "vergil_ref": "Aen. 8.340",
+      "intertext": "fatidicae",
+      "shared_words": [],
+      "shared_content": []
+    },
+    {
+      "vf_line": 2,
+      "vf_phrase": "fatidicam ratem",
+      "vergil_phrase": "fatidicae mantus",
+      "vergil_ref": "Aen. 10.199",
+      "intertext": "fatidicae",
+      "shared_words": [],
+      "shared_content": []
+    },
+    {
+      "vf_line": 3,
+      "vf_phrase": "cursus rumpere",
+      "vergil_phrase": "rumpunt aditus",
+      "vergil_ref": "Aen. 2.494",
+      "intertext": "rumpunt aditus",
+      "shared_words": [],
+      "shared_content": []
+    },
+    {
+      "vf_line": 3,
+      "vf_phrase": "ausa sequi",
+      "vergil_phrase": "sponte sequor",
+      "vergil_ref": "Aen. 4.361",
+      "intertext": "italiam non sponte sequor",
+      "shared_words": [],
+      "shared_content": []
+    },
+    {
+      "vf_line": 3,
+      "vf_phrase": "cursus rumpere",
+      "vergil_phrase": "ferro rumpenda",
+      "vergil_ref": "Aen. 10.372",
+      "intertext": "rumpenda",
+      "shared_words": [],
+      "shared_content": []
+    },
+    {
+      "vf_line": 4,
+      "vf_phrase": "consedit olympo",
+      "vergil_phrase": "portuque sedetis",
+      "vergil_ref": "Aen. 7.201",
+      "intertext": "portuque sedetis",
+      "shared_words": [],
+      "shared_content": []
+    },
+    {
+      "vf_line": 7,
+      "vf_phrase": "tu o",
+      "vergil_phrase": "uos o",
+      "vergil_ref": "Aen. 2.638",
+      "intertext": "vos o quibus",
+      "shared_words": [
+        "o"
+      ],
+      "shared_content": []
+    },
+    {
+      "vf_line": 8,
+      "vf_phrase": "carbasa uexit",
+      "vergil_phrase": "quos uehit",
+      "vergil_ref": "Aen. 6.326",
+      "intertext": "hi quos vehit unda",
+      "shared_words": [],
+      "shared_content": []
+    },
+    {
+      "vf_line": 12,
+      "vf_phrase": "uersam idumen",
+      "vergil_phrase": "tyrias uerteret",
+      "vergil_ref": "Aen. 1.20",
+      "intertext": "tyrias quae verteret arces",
+      "shared_words": [],
+      "shared_content": []
+    },
+    {
+      "vf_line": 14,
+      "vf_phrase": "spargentem faces",
+      "vergil_phrase": "spargens hastilia",
+      "vergil_ref": "Aen. 11.650",
+      "intertext": "spargens hastilia",
+      "shared_words": [],
+      "shared_content": []
+    },
+    {
+      "vf_line": 22,
+      "vf_phrase": "frenabat populis",
+      "vergil_phrase": "gentis frenare",
+      "vergil_ref": "Aen. 1.523",
+      "intertext": "iustitia gentis frenare superbas",
+      "shared_words": [],
+      "shared_content": []
+    },
+    {
+      "vf_line": 28,
+      "vf_phrase": "terrifici monitus",
+      "vergil_phrase": "terribili monitu",
+      "vergil_ref": "Aen. 4.464",
+      "intertext": "vatum praedicta priorum terribili monitu horrificant",
+      "shared_words": [],
+      "shared_content": []
+    },
+    {
+      "vf_line": 34,
+      "vf_phrase": "cleonaeo hiatu",
+      "vergil_phrase": "oris hiatus",
+      "vergil_ref": "Aen. 11.680",
+      "intertext": "caput ingens oris hiatus",
+      "shared_words": [],
+      "shared_content": []
+    },
+    {
+      "vf_line": 35,
+      "vf_phrase": "lernae angue",
+      "vergil_phrase": "lernaeus anguis",
+      "vergil_ref": "Aen. 8.300",
+      "intertext": "lernaeus anguis",
+      "shared_words": [],
+      "shared_content": []
+    },
+    {
+      "vf_line": 38,
+      "vf_phrase": "tranquilla tuens",
+      "vergil_phrase": "torua tuentem",
+      "vergil_ref": "Aen. 6.467",
+      "intertext": "torva tuentem",
+      "shared_words": [],
+      "shared_content": []
+    },
+    {
+      "vf_line": 41,
+      "vf_phrase": "adnue animum",
+      "vergil_phrase": "adnuis arcem",
+      "vergil_ref": "Aen. 1.250",
+      "intertext": "caeli quibus adnuis arcem",
+      "shared_words": [],
+      "shared_content": []
+    },
+    {
+      "vf_line": 47,
+      "vf_phrase": "ipsum ego",
+      "vergil_phrase": "ipse ego",
+      "vergil_ref": "Aen. 5.846",
+      "intertext": "ipse ego",
+      "shared_words": [
+        "ego"
+      ],
+      "shared_content": []
+    },
+    {
+      "vf_line": 47,
+      "vf_phrase": "ipsum ego",
+      "vergil_phrase": "ipse ego",
+      "vergil_ref": "Aen. 5.846",
+      "intertext": "ipse ego",
+      "shared_words": [
+        "ego"
+      ],
+      "shared_content": []
+    },
+    {
+      "vf_line": 47,
+      "vf_phrase": "ipsum ego",
+      "vergil_phrase": "ipse ego",
+      "vergil_ref": "Aen. 8.57",
+      "intertext": "ipse ego",
+      "shared_words": [
+        "ego"
+      ],
+      "shared_content": []
+    },
+    {
+      "vf_line": 49,
+      "vf_phrase": "lacera umbra",
+      "vergil_phrase": "lacerum ora",
+      "vergil_ref": "Aen. 6.495",
+      "intertext": "deiphobum vidit lacerum crudeliter ora",
+      "shared_words": [],
+      "shared_content": []
+    },
+    {
+      "vf_line": 50,
+      "vf_phrase": "numen maris",
+      "vergil_phrase": "numina ponto",
+      "vergil_ref": "Aen. 12.182",
+      "intertext": "numina ponto",
+      "shared_words": [],
+      "shared_content": []
+    },
+    {
+      "vf_line": 55,
+      "vf_phrase": "curaeque uiriles",
+      "vergil_phrase": "curamque uirilem",
+      "vergil_ref": "Aen. 9.311",
+      "intertext": "ante annos animumque gerens curamque virilem",
+      "shared_words": [],
+      "shared_content": []
+    },
+    {
+      "vf_line": 57,
+      "vf_phrase": "se dignare",
+      "vergil_phrase": "me dignor",
+      "vergil_ref": "Aen. 1.335",
+      "intertext": "haud equidem tali me dignor honore",
+      "shared_words": [],
+      "shared_content": []
+    },
+    {
+      "vf_line": 62,
+      "vf_phrase": "linguas uibrantem",
+      "vergil_phrase": "linguis uibrantibus",
+      "vergil_ref": "Aen. 2.211",
+      "intertext": "lambebant linguis vibrantibus ora",
+      "shared_words": [],
+      "shared_content": []
+    },
+    {
+      "vf_line": 66,
+      "vf_phrase": "iussos quaerere",
+      "vergil_phrase": "aequore iusso",
+      "vergil_ref": "Aen. 10.444",
+      "intertext": "aequore iusso",
+      "shared_words": [],
+      "shared_content": []
+    },
+    {
+      "vf_line": 67,
+      "vf_phrase": "aerii plantaria",
+      "vergil_phrase": "alatis plantis",
+      "vergil_ref": "Aen. 4.259",
+      "intertext": "alatis plantis",
+      "shared_words": [],
+      "shared_content": []
+    },
+    {
+      "vf_line": 67,
+      "vf_phrase": "aerii perseos",
+      "vergil_phrase": "aeriam irim",
+      "vergil_ref": "Aen. 9.803",
+      "intertext": "aeriam irim",
+      "shared_words": [],
+      "shared_content": []
+    },
+    {
+      "vf_line": 71,
+      "vf_phrase": "populum patres",
+      "vergil_phrase": "populumque patresque",
+      "vergil_ref": "Aen. 4.682",
+      "intertext": "populumque patresque",
+      "shared_words": [],
+      "shared_content": []
+    },
+    {
+      "vf_line": 71,
+      "vf_phrase": "populum patres",
+      "vergil_phrase": "populusque patresque",
+      "vergil_ref": "Aen. 9.192",
+      "intertext": "populusque patresque",
+      "shared_words": [],
+      "shared_content": []
+    },
+    {
+      "vf_line": 74,
+      "vf_phrase": "pallade armisona",
+      "vergil_phrase": "palladis armisonae",
+      "vergil_ref": "Aen. 3.544",
+      "intertext": "palladis armisonae",
+      "shared_words": [],
+      "shared_content": []
+    },
+    {
+      "vf_line": 77,
+      "vf_phrase": "uiridem senectae",
+      "vergil_phrase": "uiridique iuuenta",
+      "vergil_ref": "Aen. 5.295",
+      "intertext": "viridique iuventa",
+      "shared_words": [],
+      "shared_content": []
+    },
+    {
+      "vf_line": 77,
+      "vf_phrase": "uiridem senectae",
+      "vergil_phrase": "uiridisque senectus",
+      "vergil_ref": "Aen. 6.304",
+      "intertext": "viridisque senectus",
+      "shared_words": [],
+      "shared_content": []
+    },
+    {
+      "vf_line": 80,
+      "vf_phrase": "pias palmas",
+      "vergil_phrase": "pio poenas",
+      "vergil_ref": "Aen. 6.530",
+      "intertext": "pio si poenas ore reposco",
+      "shared_words": [],
+      "shared_content": []
+    },
+    {
+      "vf_line": 82,
+      "vf_phrase": "caeruleum imbrem",
+      "vergil_phrase": "caeruleus imber",
+      "vergil_ref": "Aen. 3.194",
+      "intertext": "caeruleus supra caput astitit imber",
+      "shared_words": [],
+      "shared_content": []
+    },
+    {
+      "vf_line": 82,
+      "vf_phrase": "caeruleum imbrem",
+      "vergil_phrase": "caeruleus imber",
+      "vergil_ref": "Aen. 5.10",
+      "intertext": "caeruleus imber",
+      "shared_words": [],
+      "shared_content": []
+    },
+    {
+      "vf_line": 83,
+      "vf_phrase": "tumidum nimbo",
+      "vergil_phrase": "nocte tumentem",
+      "vergil_ref": "Aen. 8.85",
+      "intertext": "nocte tumentem",
+      "shared_words": [],
+      "shared_content": []
+    },
+    {
+      "vf_line": 88,
+      "vf_phrase": "eripe me",
+      "vergil_phrase": "eripite o",
+      "vergil_ref": "Aen. 3.560",
+      "intertext": "eripite o socii",
+      "shared_words": [],
+      "shared_content": []
+    },
+    {
+      "vf_line": 89,
+      "vf_phrase": "auratis cornibus",
+      "vergil_phrase": "uelatum auro",
+      "vergil_ref": "Aen. 5.366",
+      "intertext": "victori velatum auro vittisque iuvencum",
+      "shared_words": [],
+      "shared_content": []
+    },
+    {
+      "vf_line": 89,
+      "vf_phrase": "auratis cornibus",
+      "vergil_phrase": "aurata fronte",
+      "vergil_ref": "Aen. 9.627",
+      "intertext": "et statuam ante aras aurata fronte iuvencum candentem pariter que caput cum matre ferentem",
+      "shared_words": [],
+      "shared_content": []
+    },
+    {
+      "vf_line": 90,
+      "vf_phrase": "colla niueique",
+      "vergil_phrase": "uelleribus niueis",
+      "vergil_ref": "Aen. 4.459",
+      "intertext": "velleribus niveis",
+      "shared_words": [],
+      "shared_content": []
+    },
+    {
+      "vf_line": 92,
+      "vf_phrase": "petiere uias",
+      "vergil_phrase": "uiam petiuit",
+      "vergil_ref": "Aen. 12.913",
+      "intertext": "viam virtute petivit",
+      "shared_words": [],
+      "shared_content": []
+    },
+    {
+      "vf_line": 93,
+      "vf_phrase": "tritorna argum",
+      "vergil_phrase": "tritonia uirgo",
+      "vergil_ref": "Aen. 11.483",
+      "intertext": "tritonia virgo",
+      "shared_words": [],
+      "shared_content": []
+    },
+    {
+      "vf_line": 94,
+      "vf_phrase": "moliri puppem",
+      "vergil_phrase": "et phrygiae",
+      "vergil_ref": "Aen. 3.5",
+      "intertext": "classemque sub ipsa antandro et phrygiae molimur",
+      "shared_words": [],
+      "shared_content": []
+    },
+    {
+      "vf_line": 96,
+      "vf_phrase": "iuno argolicas",
+      "vergil_phrase": "caris argis",
+      "vergil_ref": "Aen. 1.24",
+      "intertext": "caris argis",
+      "shared_words": [],
+      "shared_content": []
+    },
+    {
+      "vf_line": 104,
+      "vf_phrase": "hos stimulant",
+      "vergil_phrase": "iterum stimulat",
+      "vergil_ref": "Aen. 4.576",
+      "intertext": "iterum instimulat",
+      "shared_words": [],
+      "shared_content": []
+    },
+    {
+      "vf_line": 106,
+      "vf_phrase": "elatis cornibus",
+      "vergil_phrase": "fluuius regnator",
+      "vergil_ref": "Aen. 8.77",
+      "intertext": "corniger hesperidum fluvius regnator aquarum",
+      "shared_words": [],
+      "shared_content": []
+    }
+  ],
+  "partial_overlap_examples": [
+    {
+      "vf_line": 3,
+      "vf_phrase": "medios inter",
+      "vergil_phrase": "inter medius",
+      "vergil_ref": "Aen. 1.348",
+      "intertext": "quos inter medius venit furor",
+      "shared_words": [
+        "inter"
+      ],
+      "shared_content": [
+        "inter"
+      ]
+    },
+    {
+      "vf_line": 4,
+      "vf_phrase": "cursus tandem",
+      "vergil_phrase": "tandem equus",
+      "vergil_ref": "Aen. 11.493",
+      "intertext": "tandem liber equus",
+      "shared_words": [
+        "tandem"
+      ],
+      "shared_content": [
+        "tandem"
+      ]
+    },
+    {
+      "vf_line": 5,
+      "vf_phrase": "phoebe cortina",
+      "vergil_phrase": "phoebi cortina",
+      "vergil_ref": "Aen. 6.347",
+      "intertext": "phoebi cortina",
+      "shared_words": [
+        "cortina"
+      ],
+      "shared_content": [
+        "cortina"
+      ]
+    },
+    {
+      "vf_line": 5,
+      "vf_phrase": "phoebe mone",
+      "vergil_phrase": "diua mone",
+      "vergil_ref": "Aen. 7.41",
+      "intertext": "tu vatem tu diva mone",
+      "shared_words": [
+        "mone"
+      ],
+      "shared_content": [
+        "mone"
+      ]
+    },
+    {
+      "vf_line": 9,
+      "vf_phrase": "indignatus iulos",
+      "vergil_phrase": "indignatus araxes",
+      "vergil_ref": "Aen. 8.728",
+      "intertext": "pontem indignatus araxes",
+      "shared_words": [
+        "indignatus"
+      ],
+      "shared_content": [
+        "indignatus"
+      ]
+    },
+    {
+      "vf_line": 13,
+      "vf_phrase": "sancte pater",
+      "vergil_phrase": "sancte parens",
+      "vergil_ref": "Aen. 5.80",
+      "intertext": "salve sancte parens",
+      "shared_words": [
+        "sancte"
+      ],
+      "shared_content": [
+        "sancte"
+      ]
+    },
+    {
+      "vf_line": 19,
+      "vf_phrase": "te duce",
+      "vergil_phrase": "duce te",
+      "vergil_ref": "Aen. 6.59",
+      "intertext": "duce te",
+      "shared_words": [
+        "duce",
+        "te"
+      ],
+      "shared_content": [
+        "duce"
+      ]
+    },
+    {
+      "vf_line": 22,
+      "vf_phrase": "ab annis",
+      "vergil_phrase": "ab annis",
+      "vergil_ref": "Aen. 2.87",
+      "intertext": "primis huc misit ab annis",
+      "shared_words": [
+        "ab",
+        "annis"
+      ],
+      "shared_content": [
+        "annis"
+      ]
+    },
+    {
+      "vf_line": 22,
+      "vf_phrase": "ab annis",
+      "vergil_phrase": "ab annis",
+      "vergil_ref": "Aen. 8.517",
+      "intertext": "primis et te miretur ab annis",
+      "shared_words": [
+        "ab",
+        "annis"
+      ],
+      "shared_content": [
+        "annis"
+      ]
+    },
+    {
+      "vf_line": 23,
+      "vf_phrase": "frenabat grauis",
+      "vergil_phrase": "grauis castigat",
+      "vergil_ref": "Aen. 5.387",
+      "intertext": "gravis dictis castigat",
+      "shared_words": [
+        "grauis"
+      ],
+      "shared_content": [
+        "grauis"
+      ]
+    },
+    {
+      "vf_line": 26,
+      "vf_phrase": "quies animo",
+      "vergil_phrase": "horror animo",
+      "vergil_ref": "Aen. 2.755",
+      "intertext": "horror ubique animo",
+      "shared_words": [
+        "animo"
+      ],
+      "shared_content": [
+        "animo"
+      ]
+    },
+    {
+      "vf_line": 27,
+      "vf_phrase": "nam fore",
+      "vergil_phrase": "nam fore",
+      "vergil_ref": "Aen. 1.444",
+      "intertext": "sic nam fore bello egregiam",
+      "shared_words": [
+        "nam",
+        "fore"
+      ],
+      "shared_content": [
+        "fore"
+      ]
+    },
+    {
+      "vf_line": 28,
+      "vf_phrase": "per aras",
+      "vergil_phrase": "per aras",
+      "vergil_ref": "Aen. 2.501",
+      "intertext": "priamumque per aras",
+      "shared_words": [
+        "per",
+        "aras"
+      ],
+      "shared_content": [
+        "aras"
+      ]
+    },
+    {
+      "vf_line": 28,
+      "vf_phrase": "per aras",
+      "vergil_phrase": "per aras",
+      "vergil_ref": "Aen. 4.56",
+      "intertext": "pacemque per aras exquirunt",
+      "shared_words": [
+        "per",
+        "aras"
+      ],
+      "shared_content": [
+        "aras"
+      ]
+    },
+    {
+      "vf_line": 28,
+      "vf_phrase": "uatesque terrifici",
+      "vergil_phrase": "terrifici uates",
+      "vergil_ref": "Aen. 5.524",
+      "intertext": "terrifici cecinerunt omina vates",
+      "shared_words": [
+        "terrifici"
+      ],
+      "shared_content": [
+        "terrifici"
+      ]
+    },
+    {
+      "vf_line": 29,
+      "vf_phrase": "super ipsius",
+      "vergil_phrase": "super ipsi",
+      "vergil_ref": "Aen. 2.71",
+      "intertext": "et super ipsi dardanidae poscunt",
+      "shared_words": [
+        "super"
+      ],
+      "shared_content": [
+        "super"
+      ]
+    },
+    {
+      "vf_line": 30,
+      "vf_phrase": "uiri uirtusque",
+      "vergil_phrase": "uiri uirtus",
+      "vergil_ref": "Aen. 4.3",
+      "intertext": "multa viri virtus animo multusque recursat",
+      "shared_words": [
+        "uiri"
+      ],
+      "shared_content": [
+        "uiri"
+      ]
+    },
+    {
+      "vf_line": 30,
+      "vf_phrase": "uiri uirtusque",
+      "vergil_phrase": "uirtusque uirum",
+      "vergil_ref": "Aen. 8.500",
+      "intertext": "virtusque virum",
+      "shared_words": [
+        "uirtusque"
+      ],
+      "shared_content": [
+        "uirtusque"
+      ]
+    },
+    {
+      "vf_line": 38,
+      "vf_phrase": "tranquilla tuens",
+      "vergil_phrase": "acerba tuens",
+      "vergil_ref": "Aen. 9.794",
+      "intertext": "acerba tuens",
+      "shared_words": [
+        "tuens"
+      ],
+      "shared_content": [
+        "tuens"
+      ]
+    },
+    {
+      "vf_line": 41,
+      "vf_phrase": "adnue nostrum",
+      "vergil_phrase": "nostrum adnuerit",
+      "vergil_ref": "Aen. 12.187",
+      "intertext": "sin nostrum adnuerit nobis victoria martem",
+      "shared_words": [
+        "nostrum"
+      ],
+      "shared_content": [
+        "nostrum"
+      ]
+    },
+    {
+      "vf_line": 43,
+      "vf_phrase": "hospita uina",
+      "vergil_phrase": "hospita aequora",
+      "vergil_ref": "Aen. 3.377",
+      "intertext": "hospita lustres aequora",
+      "shared_words": [
+        "hospita"
+      ],
+      "shared_content": [
+        "hospita"
+      ]
+    },
+    {
+      "vf_line": 47,
+      "vf_phrase": "tam gementem",
+      "vergil_phrase": "extrema gementem",
+      "vergil_ref": "Aen. 11.865",
+      "intertext": "extrema gementem",
+      "shared_words": [
+        "gementem"
+      ],
+      "shared_content": [
+        "gementem"
+      ]
+    },
+    {
+      "vf_line": 51,
+      "vf_phrase": "si quondam",
+      "vergil_phrase": "si quondam",
+      "vergil_ref": "Aen. 5.397",
+      "intertext": "si mihi quae quondam fueratsi nunc foret illa inventas",
+      "shared_words": [
+        "si",
+        "quondam"
+      ],
+      "shared_content": [
+        "quondam"
+      ]
+    },
+    {
+      "vf_line": 51,
+      "vf_phrase": "mihi uideres",
+      "vergil_phrase": "mihi referat",
+      "vergil_ref": "Aen. 8.560",
+      "intertext": "o mihi praeteritos referat si iuppiter annos",
+      "shared_words": [
+        "mihi"
+      ],
+      "shared_content": [
+        "mihi"
+      ]
+    },
+    {
+      "vf_line": 53,
+      "vf_phrase": "ardor hebet",
+      "vergil_phrase": "ardor habet",
+      "vergil_ref": "Aen. 4.581",
+      "intertext": "ardor habet",
+      "shared_words": [
+        "ardor"
+      ],
+      "shared_content": [
+        "ardor"
+      ]
+    },
+    {
+      "vf_line": 53,
+      "vf_phrase": "ardor hebet",
+      "vergil_phrase": "sanguis hebet",
+      "vergil_ref": "Aen. 5.396",
+      "intertext": "gelidus tardante senecta sanguis hebet",
+      "shared_words": [
+        "hebet"
+      ],
+      "shared_content": [
+        "hebet"
+      ]
+    },
+    {
+      "vf_line": 57,
+      "vf_phrase": "redde tholo",
+      "vergil_phrase": "suspendiue tholo",
+      "vergil_ref": "Aen. 9.408",
+      "intertext": "si quae ipse meis venatibus auxi suspendive tholo",
+      "shared_words": [
+        "tholo"
+      ],
+      "shared_content": [
+        "tholo"
+      ]
+    },
+    {
+      "vf_line": 64,
+      "vf_phrase": "patuere doli",
+      "vergil_phrase": "latuere doli",
+      "vergil_ref": "Aen. 1.130",
+      "intertext": "nec latuere doli",
+      "shared_words": [
+        "doli"
+      ],
+      "shared_content": [
+        "doli"
+      ]
+    },
+    {
+      "vf_line": 68,
+      "vf_phrase": "currus frenasse",
+      "vergil_phrase": "infrenant currus",
+      "vergil_ref": "Aen. 12.287",
+      "intertext": "infrenant alii currus",
+      "shared_words": [
+        "currus"
+      ],
+      "shared_content": [
+        "currus"
+      ]
+    },
+    {
+      "vf_line": 71,
+      "vf_phrase": "quid agat",
+      "vergil_phrase": "quid faciat",
+      "vergil_ref": "Aen. 9.399",
+      "intertext": "quid faciat",
+      "shared_words": [
+        "quid"
+      ],
+      "shared_content": [
+        "quid"
+      ]
+    },
+    {
+      "vf_line": 76,
+      "vf_phrase": "animos mentem",
+      "vergil_phrase": "mentem animumque",
+      "vergil_ref": "Aen. 6.11",
+      "intertext": "mentem animumque",
+      "shared_words": [
+        "mentem"
+      ],
+      "shared_content": [
+        "mentem"
+      ]
+    },
+    {
+      "vf_line": 79,
+      "vf_phrase": "animi firmat",
+      "vergil_phrase": "animum firmat",
+      "vergil_ref": "Aen. 3.611",
+      "intertext": "animum praesenti pignore firmat",
+      "shared_words": [
+        "firmat"
+      ],
+      "shared_content": [
+        "firmat"
+      ]
+    },
+    {
+      "vf_line": 80,
+      "vf_phrase": "tendensque palmas",
+      "vergil_phrase": "palmas tetendit",
+      "vergil_ref": "Aen. 2.688",
+      "intertext": "et caelo palmas cum voce tetendit",
+      "shared_words": [
+        "palmas"
+      ],
+      "shared_content": [
+        "palmas"
+      ]
+    },
+    {
+      "vf_line": 80,
+      "vf_phrase": "ad sidera",
+      "vergil_phrase": "ad sidera",
+      "vergil_ref": "Aen. 10.667",
+      "intertext": "manus ad sidera tendit",
+      "shared_words": [
+        "ad",
+        "sidera"
+      ],
+      "shared_content": [
+        "sidera"
+      ]
+    },
+    {
+      "vf_line": 81,
+      "vf_phrase": "omnipotens regina",
+      "vergil_phrase": "iuppiter omnipotens",
+      "vergil_ref": "Aen. 2.689",
+      "intertext": "iuppiter omnipotens",
+      "shared_words": [
+        "omnipotens"
+      ],
+      "shared_content": [
+        "omnipotens"
+      ]
+    },
+    {
+      "vf_line": 81,
+      "vf_phrase": "omnipotens regina",
+      "vergil_phrase": "iuppiter omnipotens",
+      "vergil_ref": "Aen. 4.206",
+      "intertext": "iuppiter omnipotens",
+      "shared_words": [
+        "omnipotens"
+      ],
+      "shared_content": [
+        "omnipotens"
+      ]
+    },
+    {
+      "vf_line": 81,
+      "vf_phrase": "omnipotens regina",
+      "vergil_phrase": "iuno omnipotens",
+      "vergil_ref": "Aen. 4.693",
+      "intertext": "omnipotens",
+      "shared_words": [
+        "omnipotens"
+      ],
+      "shared_content": [
+        "omnipotens"
+      ]
+    },
+    {
+      "vf_line": 81,
+      "vf_phrase": "omnipotens regina",
+      "vergil_phrase": "iuppiter omnipotens",
+      "vergil_ref": "Aen. 5.687",
+      "intertext": "iuppiter omnipotens",
+      "shared_words": [
+        "omnipotens"
+      ],
+      "shared_content": [
+        "omnipotens"
+      ]
+    },
+    {
+      "vf_line": 81,
+      "vf_phrase": "omnipotens regina",
+      "vergil_phrase": "omnipotens saturnia",
+      "vergil_ref": "Aen. 7.428",
+      "intertext": "omnipotens saturnia",
+      "shared_words": [
+        "omnipotens"
+      ],
+      "shared_content": [
+        "omnipotens"
+      ]
+    },
+    {
+      "vf_line": 81,
+      "vf_phrase": "omnipotens regina",
+      "vergil_phrase": "iuppiter omnipotens",
+      "vergil_ref": "Aen. 9.625",
+      "intertext": "iuppiter omnipotens",
+      "shared_words": [
+        "omnipotens"
+      ],
+      "shared_content": [
+        "omnipotens"
+      ]
+    },
+    {
+      "vf_line": 81,
+      "vf_phrase": "omnipotens regina",
+      "vergil_phrase": "omnipotens genitor",
+      "vergil_ref": "Aen. 10.668",
+      "intertext": "omnipotens genitor",
+      "shared_words": [
+        "omnipotens"
+      ],
+      "shared_content": [
+        "omnipotens"
+      ]
+    },
+    {
+      "vf_line": 83,
+      "vf_phrase": "imbrem tumidum",
+      "vergil_phrase": "iliaco tumidum",
+      "vergil_ref": "Aen. 11.393",
+      "intertext": "iliaco tumidum",
+      "shared_words": [
+        "tumidum"
+      ],
+      "shared_content": [
+        "tumidum"
+      ]
+    },
+    {
+      "vf_line": 88,
+      "vf_phrase": "eripe me",
+      "vergil_phrase": "teque eripe",
+      "vergil_ref": "Aen. 2.289",
+      "intertext": "teque his ait eripe flammis",
+      "shared_words": [
+        "eripe"
+      ],
+      "shared_content": [
+        "eripe"
+      ]
+    },
+    {
+      "vf_line": 93,
+      "vf_phrase": "tritonia deuolat",
+      "vergil_phrase": "dedit tritonia",
+      "vergil_ref": "Aen. 2.171",
+      "intertext": "dedit tritonia",
+      "shared_words": [
+        "tritonia"
+      ],
+      "shared_content": [
+        "tritonia"
+      ]
+    },
+    {
+      "vf_line": 93,
+      "vf_phrase": "tritonia argum",
+      "vergil_phrase": "tritonia pallas",
+      "vergil_ref": "Aen. 2.615",
+      "intertext": "tritonia respice pallas",
+      "shared_words": [
+        "tritonia"
+      ],
+      "shared_content": [
+        "tritonia"
+      ]
+    },
+    {
+      "vf_line": 93,
+      "vf_phrase": "tritonia argum",
+      "vergil_phrase": "tritonia pallas",
+      "vergil_ref": "Aen. 5.704",
+      "intertext": "tritonia pallas",
+      "shared_words": [
+        "tritonia"
+      ],
+      "shared_content": [
+        "tritonia"
+      ]
+    },
+    {
+      "vf_line": 100,
+      "vf_phrase": "bellis fama",
+      "vergil_phrase": "fama armis",
+      "vergil_ref": "Aen. 7.745",
+      "intertext": "insignem fama et felicibus armis",
+      "shared_words": [
+        "fama"
+      ],
+      "shared_content": [
+        "fama"
+      ]
+    },
+    {
+      "vf_line": 100,
+      "vf_phrase": "bellis spectata",
+      "vergil_phrase": "rebus spectata",
+      "vergil_ref": "Aen. 8.151",
+      "intertext": "rebus spectata inventus",
+      "shared_words": [
+        "spectata"
+      ],
+      "shared_content": [
+        "spectata"
+      ]
+    },
+    {
+      "vf_line": 101,
+      "vf_phrase": "flore iuuentae",
+      "vergil_phrase": "flore iuuentus",
+      "vergil_ref": "Aen. 7.162",
+      "intertext": "primaevo flore iuventus",
+      "shared_words": [
+        "flore"
+      ],
+      "shared_content": [
+        "flore"
+      ]
+    },
+    {
+      "vf_line": 101,
+      "vf_phrase": "flore iuuentae",
+      "vergil_phrase": "flore iuuentas",
+      "vergil_ref": "Aen. 8.160",
+      "intertext": "flore iuventas",
+      "shared_words": [
+        "flore"
+      ],
+      "shared_content": [
+        "flore"
+      ]
+    }
+  ]
+}
