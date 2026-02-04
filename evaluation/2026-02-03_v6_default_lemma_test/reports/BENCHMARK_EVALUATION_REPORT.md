@@ -59,6 +59,13 @@ See Section 2 for detailed comparison.
 ### 1.1 Benchmark Datasets
 
 **Benchmark 1: Lucan–Vergil (bench41.txt)**
+
+*Rationale for benchmark selection:* We used the "2010 Benchmark" version (bench41.txt) because:
+1. It is the benchmark used in Coffee et al. (2012), enabling direct comparison with published results
+2. It includes match-words (overlap vocabulary), which we needed to distinguish truly lexical parallels from thematic ones
+3. It contains Type ratings (1-5) from scholarly consensus, allowing focus on high-confidence parallels
+
+Other Lucan-Vergil benchmark variants exist (hand-ranked sets, Tesserae results files, BC Books II-IX) but were not used in this evaluation. The Statius Achilleid vs Various benchmark was also available but not tested; it could serve as additional validation in future work.
 | Dataset | Count | Description |
 |---------|-------|-------------|
 | Total BC1 parallels | 3,410 | All annotated parallels |
