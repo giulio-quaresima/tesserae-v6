@@ -150,7 +150,9 @@ This section compares the current V6 evaluation with prior published studies of 
 
 4. **Phrase matching bug discovered:** Identified that phrase matching splits within lines rather than combining lines into sentences, explaining why it provides no benefit and preventing detection of enjambment parallels.
 
-5. **Reproducibility documentation:** Complete scripts and instructions for reproducing all results (see REPRODUCIBILITY_GUIDE.md).
+5. **Clear improvement paths identified:** Proposed specific, implementable changes to improve ranking quality (remove score ceiling, add lemma count bonus, source diversity penalty) and recall (fix phrase/sentence matching for multi-line parallels). See Sections 8 and 3.4.
+
+6. **Reproducibility documentation:** Complete scripts and instructions for reproducing all results (see REPRODUCIBILITY_GUIDE.md).
 
 ---
 
