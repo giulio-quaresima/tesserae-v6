@@ -74,16 +74,18 @@ The 4.5% miss on Achilleid is due to one lemma table gap (`genitore` → `genito
 
 | Configuration | Lucan–Vergil Recall | VF Recall | Achilleid Recall |
 |---------------|--------------------|-----------| ----------------|
-| Default (curated) | 61.5% | 33.0% | 24.5%* |
-| **No stoplist** | **76.9%** (+25%) | **63.4%** (+92%) | **95.5%** |
-| Stoplist = 3 | 73.1% | 57.0% | 89.7% |
-| Stoplist = 5 | 69.2% | 51.8% | 87.6% |
-| Stoplist = 10 | — | — | 83.5% |
-| Zipf auto | — | — | 76.6% (best ranking) |
+| **Default** (curated + Zipf) | 61.5% | 33.0% | 76.6% (best ranking) |
+| **Disabled** (no stoplist) | **76.9%** (+25%) | **63.4%** (+92%) | **95.5%** |
+| Top 3 | 73.1% | 57.0% | 89.7% |
+| Top 5 | 69.2% | 51.8% | 87.6% |
+| Top 10 | — | — | 83.5% |
 
-*Achilleid "Default" tested on all Type 4-5 entries; other rows show strong lexical subset (291 entries).
+**Stoplist modes:**
+- **Default** = curated list (~70 function words) + Zipf-detected high-frequency words
+- **Disabled** = no stoplist at all (maximum recall)
+- **Top N** = only the N most frequent words
 
-**Key insight:** Achilleid reveals a recall–ranking trade-off not visible in smaller benchmarks. Zipf auto improves ranking (P@10 = 40%) but costs 19% recall compared to no stoplist.
+**Key insight:** Achilleid reveals a recall–ranking trade-off. Default (curated + Zipf) achieves best ranking (P@10 = 40%, best rank 6) but costs 19% recall compared to disabled.
 
 ### 2.4 Design Decisions Validated
 
@@ -305,10 +307,10 @@ The 43 "weak lexical" entries rely on these function words and should be exclude
 | Configuration | Recall | P@10 | Best Rank | Median Rank | R@100 |
 |---------------|--------|------|-----------|-------------|-------|
 | Disabled | 95.5% | 0% | 75 | 2,468 | 0.7% |
-| Zipf auto | 76.6% | **40%** | **6** | **735** | **13.0%** |
-| Stoplist = 10 | 83.5% | 0% | 11 | 1,428 | 6.7% |
+| **Default** (curated + Zipf) | 76.6% | **40%** | **6** | **735** | **13.0%** |
+| Top 10 | 83.5% | 0% | 11 | 1,428 | 6.7% |
 
-Zipf auto achieves better ranking quality but costs 19% recall. The 55 lost entries match on legitimately shared content words that happen to be moderately frequent ('quod superest', 'nostro...gurgite').
+Default achieves better ranking quality but costs 19% recall. The 55 lost entries match on legitimately shared content words that happen to be moderately frequent ('quod superest', 'nostro...gurgite').
 
 ### Lemmatization Gap
 
@@ -450,7 +452,7 @@ The function splits each line **internally** at punctuation marks. It processes 
 | Strong lexical entries | 40 | 137 | 291 |
 | Valid findable entries | 40 | 114 | 287 |
 | V6 recall (stoplist disabled) | 100% | 100% | 95.5% |
-| V6 recall (Zipf auto) | 61.5% | 33.0% | 76.6% |
+| V6 recall (Default) | 61.5% | 33.0% | 76.6% |
 
 ### Ranking Performance (Stoplist Disabled)
 
