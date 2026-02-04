@@ -10,7 +10,10 @@
 
 This guide provides step-by-step instructions for reproducing the benchmark evaluation of Tesserae V6's intertextual search capabilities. All tests can be reproduced using the data files and scripts documented herein.
 
-**Key Finding:** V6 achieves **100% recall on valid, truly lexical parallels** in both benchmarks tested.
+**Key Findings:**
+- V6 achieves **100% recall on valid, truly lexical parallels** in both benchmarks tested
+- Ranking quality is limited: median benchmark rank ~700-900, only 3-12% in top 100 results
+- 21% of results tie at maximum score, causing arbitrary ordering among top results
 
 ---
 
@@ -340,10 +343,59 @@ VF-Vergil: {'recall': 1.0, 'found': 114, 'total': 114}
 
 ---
 
-## 8. References
+## 8. Ranking Quality Analysis
 
-1. Coffee, N., et al. (2012). "Tesserae: A quantitative tool for intertextual analysis."
-2. Manjavacas, E., et al. (2019). "Benchmark evaluation of intertextual detection."
+In addition to recall, we analyze **where** benchmark parallels appear in ranked results.
+
+### 8.1 Test Methodology
+
+For each benchmark:
+1. Run search with no stoplist (maximum recall)
+2. Record rank position of each truly lexical parallel
+3. Compute Recall@K (percentage of benchmark in top K results)
+
+### 8.2 VF-Vergil Ranking Results
+
+```bash
+# API call
+curl -X POST http://localhost:5000/api/search \
+  -H "Content-Type: application/json" \
+  -d '{
+    "source": "valerius_flaccus.argonautica.part.1.tess",
+    "target": "vergil.aeneid.tess",
+    "match_type": "lemma",
+    "min_matches": 2,
+    "stoplist_size": -1,
+    "max_results": 5000
+  }'
+```
+
+**Expected results:**
+
+| Metric | Value |
+|--------|-------|
+| Best rank | 5 |
+| Median rank | 873 |
+| Recall@100 | 2.9% |
+| Recall@1000 | 42.3% |
+
+### 8.3 Score Distribution Finding
+
+**Key finding:** 21% of results tie at maximum score (1.0), causing arbitrary ordering.
+
+```python
+# Check score distribution
+scores = [r.get('overall_score', 0) for r in results]
+at_max = sum(1 for s in scores if s >= 0.999)
+print(f"Results at max score: {at_max} ({at_max/len(scores)*100:.1f}%)")
+```
+
+---
+
+## 9. References
+
+1. Coffee, N., et al. (2012). "Intertextuality in the Digital Age." *TAPA* 142(2): 383-422.
+2. Manjavacas, E., et al. (2019). "A Statistical Approach to Detecting Textual Reuse."
 3. Bernstein, N., et al. (2015). "Computational approaches to Latin poetry."
 
 ---
