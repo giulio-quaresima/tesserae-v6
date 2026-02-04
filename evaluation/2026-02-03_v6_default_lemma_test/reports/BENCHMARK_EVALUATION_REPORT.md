@@ -2,7 +2,7 @@
 
 **Date:** February 4, 2026  
 **Version:** Tesserae V6  
-**Authors:** Tesserae Project Team
+**Author:** Neil Coffee
 
 ---
 
