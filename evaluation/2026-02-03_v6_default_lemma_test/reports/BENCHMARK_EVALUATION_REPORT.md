@@ -40,7 +40,7 @@ This report documents systematic benchmark evaluation of Tesserae V6's intertext
 
 ### Bottom Line
 
-**V6 achieves 95–100% recall on valid lexical parallels** (entries with 2+ shared lemmas on the same line). The core algorithm works correctly. The main challenges are:
+**V6 achieves 61–100% recall on valid lexical parallels** (entries with 2+ shared lemmas on the same line). Performance varies by benchmark. The main challenges are:
 
 1. **Ranking quality** — Benchmark parallels are found but buried in results (median rank 700–2500)
 2. **Stoplist trade-off** — Removing stoplist improves recall but degrades ranking on large searches
@@ -56,9 +56,9 @@ This report documents systematic benchmark evaluation of Tesserae V6's intertext
 |-----------|------------------------|------------------------------|
 | Lucan–Vergil | 40 verified | **100%** |
 | VF–Vergil | 137 truly lexical | **100%** |
-| Achilleid | 291 strong lexical | **95.5%** |
+| Achilleid | 291 strong lexical | **60.8%** |
 
-The 4.5% miss on Achilleid is due to one lemma table gap (`genitore` → `genitor` missing).
+The lower Achilleid recall suggests either benchmark entry matching issues or that many "2+ lemma" entries aren't co-located on the same line in V6's text corpus.
 
 ### 2.2 Ranking Performance
 
@@ -74,18 +74,18 @@ The 4.5% miss on Achilleid is due to one lemma table gap (`genitore` → `genito
 
 | Configuration | Lucan–Vergil Recall | VF Recall | Achilleid Recall |
 |---------------|--------------------|-----------| ----------------|
-| **Default** (curated + Zipf) | 61.5% | 33.0% | 76.6% (best ranking) |
-| **Disabled** (no stoplist) | **76.9%** (+25%) | **63.4%** (+92%) | **95.5%** |
-| Top 3 | 73.1% | 57.0% | 89.7% |
-| Top 5 | 69.2% | 51.8% | 87.6% |
-| Top 10 | — | — | 83.5% |
+| **Default** (curated + Zipf) | 61.5% | 33.0% | **56.7%** |
+| **Disabled** (no stoplist) | **76.9%** (+25%) | **63.4%** (+92%) | **60.8%** |
+| Top 3 | 73.1% | 57.0% | 60.8% |
+| Top 5 | 69.2% | 51.8% | 60.8% |
+| Top 10 | — | — | 59.8% |
 
 **Stoplist modes:**
 - **Default** = curated list (~70 function words) + Zipf-detected high-frequency words
 - **Disabled** = no stoplist at all (maximum recall)
 - **Top N** = only the N most frequent words
 
-**Key insight:** Achilleid reveals a recall–ranking trade-off. Default (curated + Zipf) achieves best ranking (P@10 = 40%, best rank 6) but costs 19% recall compared to disabled.
+**Key insight:** The Achilleid benchmark shows relatively flat recall across stoplist configurations (57-61%), suggesting the limiting factor is not the stoplist but possibly lemma matching or line alignment issues.
 
 ### 2.4 Design Decisions Validated
 
@@ -100,7 +100,7 @@ The 4.5% miss on Achilleid is due to one lemma table gap (`genitore` → `genito
 | Metric | Coffee 2012 (V3) | Manjavacas 2019 | V6 (This Study) |
 |--------|------------------|-----------------|-----------------|
 | Type 4-5 Recall (default) | ~30-40% | Comparable | ~27-39% (comparable) |
-| Lexical Recall (no stoplist) | Not distinguished | Not distinguished | **95-100%** |
+| Lexical Recall (no stoplist) | Not distinguished | Not distinguished | **61-100%** |
 | Ranking quality | Not measured | Limited | First quantified |
 | Phrase matching | Assumed functional | Assumed functional | **Bug identified** |
 
@@ -114,7 +114,7 @@ The 4.5% miss on Achilleid is due to one lemma table gap (`genitore` → `genito
 
 | Goal | Stoplist Setting | Expected Results |
 |------|------------------|------------------|
-| **Maximum recall** | Disabled (-1) | 95-100% recall; review 2000+ results |
+| **Maximum recall** | Disabled (-1) | 61-100% recall; review 2000+ results |
 | **Balanced** | Top 10 | ~85% recall; better ranking |
 | **Quick exploration** | Zipf auto | ~77% recall; best ranking |
 
@@ -280,13 +280,16 @@ Phrase matching provides no benefit due to implementation bug (see Appendix E).
 
 ### Recall Results
 
+**Test Date:** February 4, 2026  
+**Test File:** `analysis/achilleid_stoplist_comparison.json`
+
 | Configuration | Strong Lexical Recall | Results |
 |---------------|----------------------|---------|
-| Stoplist disabled | **95.5%** (278/291) | 48,030 |
-| Zipf auto | 76.6% (223/291) | 5,142 |
-| Stoplist = 3 | 89.7% (261/291) | 28,226 |
-| Stoplist = 5 | 87.6% (255/291) | 20,142 |
-| Stoplist = 10 | 83.5% (243/291) | 11,251 |
+| Stoplist disabled | **60.8%** (177/291) | 58,178 |
+| Default (curated + Zipf) | 56.7% (165/291) | 7,096 |
+| Stoplist = 3 | 60.8% (177/291) | 34,256 |
+| Stoplist = 5 | 60.8% (177/291) | 24,590 |
+| Stoplist = 10 | 59.8% (174/291) | 14,180 |
 
 ### The len > 2 Filter
 
@@ -302,23 +305,20 @@ V6's matcher excludes lemmas of 2 or fewer characters. This is **correct behavio
 
 The 43 "weak lexical" entries rely on these function words and should be excluded from lexical benchmarking.
 
-### Stoplist Trade-off (Unique to Achilleid)
+### Stoplist Analysis
 
-| Configuration | Recall | P@10 | Best Rank | Median Rank | R@100 |
-|---------------|--------|------|-----------|-------------|-------|
-| Disabled | 95.5% | 0% | 75 | 2,468 | 0.7% |
-| **Default** (curated + Zipf) | 76.6% | **40%** | **6** | **735** | **13.0%** |
-| Top 10 | 83.5% | 0% | 11 | 1,428 | 6.7% |
+The Achilleid benchmark shows relatively **flat recall** across stoplist configurations (57-61%). This is notably different from Lucan-Vergil and VF where disabling the stoplist significantly boosts recall.
 
-Default achieves better ranking quality but costs 19% recall. The 55 lost entries match on legitimately shared content words that happen to be moderately frequent ('quod superest', 'nostro...gurgite').
+**Possible explanations:**
+1. Many benchmark entries may have line alignment issues (shared lemmas not on same line in corpus)
+2. Target work name mismatches (e.g., "thebiad" vs "thebaid" typos in benchmark)
+3. The 2+ lemma criterion may overcount entries where lemmas span lines
 
-### Lemmatization Gap
+### Investigation Needed
 
-One entry missed due to lemma table gap:
-
-| Form | Expected | V6 Behavior |
-|------|----------|-------------|
-| `genitore` | `genitor` | Not mapped |
+~40% of "strong lexical" entries (114/291) were not found even with stoplist disabled. Further analysis should investigate:
+- Whether shared lemmas actually appear on the same line in V6's text files
+- Whether target work names in benchmark match V6 corpus filenames exactly
 
 ---
 
@@ -450,21 +450,25 @@ The function splits each line **internally** at punctuation marks. It processes 
 |--------|--------------|-----------|-----------|
 | Total benchmark entries | 3,410 | 521 | 1,005 |
 | Strong lexical entries | 40 | 137 | 291 |
-| Valid findable entries | 40 | 114 | 287 |
-| V6 recall (stoplist disabled) | 100% | 100% | 95.5% |
-| V6 recall (Default) | 61.5% | 33.0% | 76.6% |
+| Valid findable entries | 40 | 114 | TBD* |
+| V6 recall (stoplist disabled) | 100% | 100% | 60.8% |
+| V6 recall (Default) | 61.5% | 33.0% | 56.7% |
+
+*Achilleid valid findable count requires investigation of missed entries
 
 ### Ranking Performance (Stoplist Disabled)
 
 | Metric | Lucan–Vergil | VF-Vergil | Achilleid |
 |--------|--------------|-----------|-----------|
-| Total results | 8,883 | 5,000 | 48,030 |
-| Best rank | 9 | 5 | 75 |
-| Median rank | 666 | 873 | 2,468 |
-| Mean rank | 1,664 | 1,333 | 5,759 |
-| Recall@100 | 11.5% | 2.9% | 0.7% |
-| Recall@500 | 28.8% | 19.0% | 11.2% |
-| Recall@1000 | 34.6% | 42.3% | 12.6% |
+| Total results | 8,883 | 5,000 | 58,178 |
+| Best rank | 9 | 5 | TBD |
+| Median rank | 666 | 873 | TBD |
+| Mean rank | 1,664 | 1,333 | TBD |
+| Recall@100 | 11.5% | 2.9% | TBD |
+| Recall@500 | 28.8% | 19.0% | TBD |
+| Recall@1000 | 34.6% | 42.3% | TBD |
+
+Note: Achilleid ranking metrics marked TBD pending investigation of baseline recall discrepancy
 
 ---
 
