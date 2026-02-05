@@ -76,13 +76,18 @@ Tests confirmed existing V6 scoring works correctly:
 
 ### Action Items
 
-| Priority | Item | Description |
-|----------|------|-------------|
-| **High** | Fix phrase matching | Currently splits within lines instead of spanning |
-| **High** | Test V3 synonyms | Integrate and benchmark |
-| **Medium** | Remove score ceiling | Currently caps at 1.0, creating ties |
-| **Medium** | Test semantic embeddings | SPhilBERTa on benchmarks |
-| **Low** | Add search presets | UI for common configurations |
+| Priority | Item | Helps | Description |
+|----------|------|-------|-------------|
+| **High** | Fix phrase matching | Recall | Enables multi-line parallels (currently splits within lines) |
+| **High** | Test V3 synonyms | Recall | Sub-threshold parallels with synonym overlap |
+| **Medium** | Remove score ceiling | Precision | Break ties (21% of results cap at 1.0) |
+| **Medium** | Test semantic embeddings | Recall | SPhilBERTa for thematic parallels |
+| **Medium** | Add lemma count bonus | Precision | Prioritize parallels with 3+ shared words |
+| **Low** | Add search presets | UX | Common configurations for non-experts |
+
+**Deprioritized (tested, weak signal):** Rare word bonus, rare bigram filter, distance penalty increase.
+
+See **Section 3.2** for full development roadmap.
 
 ---
 
@@ -314,27 +319,26 @@ Finds word pairs that rarely appear together. Tested on benchmarks (February 202
 
 ### 3.2 Action Items for Development
 
-| Priority | Item | Description | Complexity |
-|----------|------|-------------|------------|
-| **High** | A1 | Add `genitore` → `genitor` to lemma table | 1 line |
-| **High** | A2 | Fix phrase matching to span lines until sentence-ending punctuation | ~50 lines |
-| **High** | A3 | Rename "Phrase" to "Sentence" in UI | ~5 files |
-| **Medium** | A4 | Remove score ceiling (allow scores > 1.0) | 1 line |
-| **Medium** | A5 | Add lemma count bonus (+20% per extra lemma) | 3-5 lines |
-| **Medium** | A6 | Add source diversity penalty | 10-15 lines |
-| **Medium** | A7 | Add rare word bonus (< 10 occurrences) | 5 lines |
-| **Medium** | A8 | Add word order similarity bonus | 15-20 lines |
-| **Low** | A9 | Add search mode presets in UI | ~20 lines |
-| **Low** | A10 | Adjust Zipf auto parameters | Research needed |
-| **Low** | A11 | Document stoplist trade-off for users | Text only |
-| **Low** | A12 | Document len > 2 filter in code | Text only |
+These align with the summary action items in Section 1:
 
-**Recommended sequence:**
-1. A1 (lemma fix) — immediate, 1 line
-2. A4-A5 (score ceiling + lemma bonus) — quick wins
-3. A2-A3 (phrase matching) — enables new class of parallels
-4. A6-A8 (remaining ranking improvements)
-5. A9-A12 (UI and documentation)
+| Priority | Item | Helps | Description |
+|----------|------|-------|-------------|
+| **High** | Fix phrase matching | **Recall** | Span lines until sentence-ending punctuation (enables multi-line parallels) |
+| **High** | Test V3 synonyms | **Recall** | Integrate dictionary-based synonyms for sub-threshold parallels |
+| **Medium** | Remove score ceiling | **Precision** | Allow scores > 1.0 (currently 21% of results tie at 1.0) |
+| **Medium** | Test semantic embeddings | **Recall** | SPhilBERTa for thematic/conceptual parallels |
+| **Medium** | Add lemma count bonus | **Precision** | +20% per extra lemma to prioritize richer parallels |
+| **Low** | Add search presets | **UX** | Common configurations in UI for non-expert users |
+| **Low** | Document stoplist trade-off | **UX** | Help text explaining recall/result-count trade-off |
+
+**Not recommended (tested, weak signal):**
+- ~~Rare word bonus~~ — IDF scoring already ranks rare vocabulary 4× higher
+- ~~Rare bigram filter~~ — 100% of weak parallels also have rare bigrams
+- ~~Increase distance penalty~~ — Only 7% discrimination strong vs weak
+
+**Minor fixes (moved to Appendix):**
+- Lemma table gap: `genitore` → `genitor` (1 line fix)
+- Rename "Phrase" to "Sentence" in UI
 
 ### 3.3 Ranking Algorithm Improvements
 
