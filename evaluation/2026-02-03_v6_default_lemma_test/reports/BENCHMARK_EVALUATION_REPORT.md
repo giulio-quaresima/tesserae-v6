@@ -52,24 +52,6 @@ Structural echoes may be detected through several approaches, listed by feasibil
 | **Word order similarity** | Compare position of matched lemmas within their lines | Ready to implement |
 | **Section position** | Proximity to book/chapter boundaries (beginnings, endings) | Requires marking section boundaries in corpus |
 
-**Planned: Automated UD Parsing Integration**
-
-V6 includes a SyntaxMatcher module using Universal Dependencies format, but only a handful of texts have UD annotations. Modern parsers can expand coverage:
-
-| Language | Parser | Accuracy | Status |
-|----------|--------|----------|--------|
-| **Latin** | LatinPipe | 90–95% LAS | Plan to integrate |
-| **Greek** | Trankit/Stanza | ~79% LAS | Plan to integrate |
-| **English** | Stanza/spaCy | 92–95% LAS | Plan to integrate |
-
-**Implementation plan:**
-1. Run LatinPipe on Latin corpus texts (~1-2 sec/text)
-2. Run Trankit on Greek corpus texts
-3. Store CoNLL-U annotations alongside existing lemma data
-4. Extend SyntaxMatcher to use automated parses
-
-This would enable syntax-based matching across the full 2,100+ text corpus, not just the few manually parsed texts currently available.
-
 ### Scoring Validation
 
 Tests confirmed existing V6 scoring works correctly:
@@ -361,6 +343,25 @@ The scoring algorithm does not prioritize known scholarly parallels. Five specif
 | Promiscuous source lines flood results | Diversity penalty | Reduces noise |
 | Common words score equally | Rare word bonus | Boosts distinctive matches |
 | Word order ignored | Position similarity bonus | Rewards structural similarity |
+
+### 3.4 Syntax Parsing Integration (Planned)
+
+V6 includes a SyntaxMatcher module using Universal Dependencies format, but only a handful of texts have manual UD annotations. Modern parsers can expand coverage to the full corpus:
+
+| Language | Parser | Accuracy | Source |
+|----------|--------|----------|--------|
+| **Latin** | LatinPipe | 90–95% LAS | EvaLatin 2024 winner |
+| **Greek** | Trankit/Stanza | ~79% LAS | Lower due to morphological complexity |
+| **English** | Stanza/spaCy | 92–95% LAS | Mature, well-tested tools |
+
+**Implementation plan:**
+1. Run LatinPipe on Latin corpus texts (~1-2 sec/text)
+2. Run Trankit on Greek corpus texts
+3. Run Stanza/spaCy on English corpus texts
+4. Store CoNLL-U annotations alongside existing lemma data
+5. Extend SyntaxMatcher to use automated parses
+
+This would enable syntax-based matching across the full 2,100+ text corpus, addressing the ~15% of missed parallels classified as "structural."
 
 ---
 
