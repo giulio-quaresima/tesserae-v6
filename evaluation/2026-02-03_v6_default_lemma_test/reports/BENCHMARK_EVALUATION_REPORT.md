@@ -39,7 +39,7 @@ This report evaluates Tesserae V6's intertextual search against three scholarly 
 |-----------|---|-----------------|
 | **Sub-threshold lexical** | ~40% | Lower threshold + semantic boost |
 | **Thematic/conceptual** | ~35% | Semantic embeddings, topic modeling |
-| **Structural** | ~15% | Word order similarity, section position (see below) |
+| **Structural** | ~15% | Syntax parsing, word order similarity, section position (see below) |
 | **Sound-based** | ~10% | Phonetic matching |
 
 **Structural parallels — expanded options:**
