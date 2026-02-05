@@ -41,6 +41,17 @@ This report evaluates Tesserae V6's intertextual search against three scholarly 
 
 **Bottom line:** V6 finds **100% of parallels with 2+ shared content-word lemmas**. The 68–85% of scholarly parallels not found are thematic, sub-threshold (1 lemma), or rely on function words.
 
+### Comparison with Prior Studies
+
+| Metric | Coffee 2012 (V3) | Manjavacas 2019 | V6 (This Study) |
+|--------|------------------|-----------------|-----------------|
+| Type 4-5 Recall (default) | ~30-40% | Comparable | ~27-39% (comparable) |
+| Lexical Recall (no stoplist) | Not distinguished | Not distinguished | **61-100%** |
+| Ranking quality | Not measured | Limited | First quantified |
+| Phrase matching | Assumed functional | Assumed functional | **Bug identified** |
+
+**Key advance:** This study distinguishes between parallels the algorithm *can* find (2+ shared lemmas on same line) vs. parallels outside its design scope (thematic, single-word, multi-line).
+
 ### Characterizing the Misses
 
 | Miss Type | % | Potential Tool |
@@ -291,17 +302,6 @@ Finds word pairs that rarely appear together. Tested on benchmarks (February 202
 | **len > 2 filter** | ✓ Correct | Filters function words ('et', 'in', 'tu', 'do', 'eo') |
 | **Score ceiling at 1.0** | ✗ Problem | Creates ties among 21% of results |
 | **Phrase matching** | ✗ Bug | Splits within lines instead of spanning lines |
-
-### 2.5 Comparison with Prior Studies
-
-| Metric | Coffee 2012 (V3) | Manjavacas 2019 | V6 (This Study) |
-|--------|------------------|-----------------|-----------------|
-| Type 4-5 Recall (default) | ~30-40% | Comparable | ~27-39% (comparable) |
-| Lexical Recall (no stoplist) | Not distinguished | Not distinguished | **61-100%** |
-| Ranking quality | Not measured | Limited | First quantified |
-| Phrase matching | Assumed functional | Assumed functional | **Bug identified** |
-
-**Key advance:** This study distinguishes between parallels the algorithm *can* find (2+ shared lemmas on same line) vs. parallels outside its design scope (thematic, single-word, multi-line).
 
 ---
 
