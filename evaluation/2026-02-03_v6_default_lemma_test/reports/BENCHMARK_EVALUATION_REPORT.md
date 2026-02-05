@@ -94,6 +94,7 @@ Tests confirmed existing V6 scoring works correctly:
 | **Medium** | Remove score ceiling | Precision | Break ties (21% of results cap at 1.0) |
 | **Medium** | Test semantic embeddings | Recall | SPhilBERTa for thematic parallels |
 | **Medium** | Add lemma count bonus | Precision | Prioritize parallels with 3+ shared words |
+| **Medium** | Add source diversity penalty | Precision | Reduce noise from promiscuous source lines |
 | **Low** | Add search presets | UX | Common configurations for non-experts |
 
 **Deprioritized (tested, weak signal):** Rare word bonus, rare bigram filter, distance penalty increase.
@@ -328,6 +329,7 @@ These align with the summary action items in Section 1:
 | **Medium** | Remove score ceiling | **Precision** | Allow scores > 1.0 (currently 21% of results tie at 1.0) |
 | **Medium** | Test semantic embeddings | **Recall** | SPhilBERTa for thematic/conceptual parallels |
 | **Medium** | Add lemma count bonus | **Precision** | +20% per extra lemma to prioritize richer parallels |
+| **Medium** | Add source diversity penalty | **Precision** | Reduce noise from promiscuous source lines flooding results |
 | **Low** | Add search presets | **UX** | Common configurations in UI for non-expert users |
 | **Low** | Document stoplist trade-off | **UX** | Help text explaining recall/result-count trade-off |
 
