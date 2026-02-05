@@ -52,7 +52,22 @@ Structural echoes may be detected through several approaches, listed by feasibil
 | **Section position** | Proximity to book/chapter boundaries (beginnings, endings) | Requires marking section boundaries in corpus |
 | **Syntax parsing** | Match grammatical structures (subject-verb-object patterns) | *Future option* — few texts currently parsed |
 
-*On syntax parsing:* V6 includes a SyntaxMatcher module using Universal Dependencies format, but only a handful of Latin texts have UD treebank annotations. Modern parsers (LatinPipe, Stanza) achieve 85–95% accuracy on classical Latin, so automated parsing could expand coverage. This remains a future direction pending either (a) more manually parsed texts becoming available or (b) integration of automated UD parsing into the corpus pipeline.
+**Planned: Automated UD Parsing Integration**
+
+V6 includes a SyntaxMatcher module using Universal Dependencies format, but only a handful of texts have UD annotations. Modern parsers can expand coverage:
+
+| Language | Parser | Accuracy | Status |
+|----------|--------|----------|--------|
+| **Latin** | LatinPipe | 90–95% LAS | Plan to integrate |
+| **Greek** | Trankit/Stanza | ~79% LAS | Plan to integrate |
+
+**Implementation plan:**
+1. Run LatinPipe on Latin corpus texts (~1-2 sec/text)
+2. Run Trankit on Greek corpus texts
+3. Store CoNLL-U annotations alongside existing lemma data
+4. Extend SyntaxMatcher to use automated parses
+
+This would enable syntax-based matching across the full 2,100+ text corpus, not just the few manually parsed texts currently available.
 
 ### Scoring Validation
 
