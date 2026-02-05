@@ -10,3 +10,4 @@ flask-dance
 flask-login
 Flask-SQLAlchemy
 PyJWT
+stanza
