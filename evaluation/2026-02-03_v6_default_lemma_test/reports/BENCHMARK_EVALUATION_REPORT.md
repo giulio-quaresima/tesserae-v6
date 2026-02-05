@@ -21,16 +21,18 @@ This report evaluates Tesserae V6's intertextual search against three scholarly 
 
 ### Comparison with Prior Studies
 
-| Metric | Coffee 2012 (V3) | V6 (This Study) |
-|--------|------------------|-----------------|
-| Benchmark tested | Lucan BC1 vs Aeneid | Lucan BC1, VF, Achilleid |
-| Bigram lemma recall | Not distinguished | **100%** |
-| Meaningful recall (Lucan-Vergil) | ~27% (types 5-4) | **~24%** (types 4-5) |
-| Meaningful recall (other benchmarks) | Not tested | 15–32% |
-| Ranking quality | Not measured | First quantified |
-| Phrase matching | Assumed functional | **Bug identified** |
+| Metric | Coffee 2012 (V3) | Manjavacas 2019 | V6 (This Study) |
+|--------|------------------|-----------------|-----------------|
+| Benchmark tested | Lucan BC1 vs Aeneid | VF, Achilleid | Lucan BC1, VF, Achilleid |
+| Bigram lemma recall | Not distinguished | Not distinguished | **100%** |
+| Meaningful recall (Lucan-Vergil) | ~27% (types 5-4) | — | **~24%** (types 5-4) |
+| Meaningful recall (VF, Achilleid) | Not tested | Not reported | 15–32% (types 5-4) |
+| Ranking quality | Not measured | Feature analysis | First quantified |
+| Phrase matching | Assumed functional | Assumed functional | **Bug identified** |
 
 **Apples-to-apples:** On the Lucan-Vergil benchmark used by Coffee et al. 2012, V6 achieves comparable recall (~24%) to V3 (~27%). The lower figures (15% for VF, 32% for Achilleid) are from benchmarks Tesserae was never previously tested against.
+
+**Note on Manjavacas 2019:** Manjavacas et al. used the VF and Achilleid benchmarks to analyze *features* that distinguish true parallels from false positives, but did not report overall recall figures. Their work informs our feature-based analysis but is not directly comparable on recall metrics.
 
 **Key definitions:**
 - **Bigram lemma recall:** % of parallels with 2+ shared content-word lemmas. V6 achieves 100%.
