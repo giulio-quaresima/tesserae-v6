@@ -6,28 +6,6 @@
 
 ---
 
-## Table of Contents
-
-1. [Executive Summary](#1-executive-summary)
-2. [Key Findings](#2-key-findings)
-3. [Recommendations](#3-recommendations)
-4. [Methodology](#4-methodology)
-5. [Limitations](#5-limitations)
-
-**Appendices (Technical Details)**
-- [A. Lucan–Vergil Benchmark Results](#appendix-a-lucanvergil-benchmark-results)
-- [B. Valerius Flaccus Benchmark Results](#appendix-b-valerius-flaccus-benchmark-results)
-- [C. Statius Achilleid Benchmark Results](#appendix-c-statius-achilleid-benchmark-results)
-- [D. Ranking Quality Analysis](#appendix-d-ranking-quality-analysis)
-- [E. Phrase Matching Bug Analysis](#appendix-e-phrase-matching-bug-analysis)
-- [F. Summary Statistics](#appendix-f-summary-statistics)
-- [G. Test Configuration Reference](#appendix-g-test-configuration-reference)
-- [H. Benchmark Files](#appendix-h-benchmark-files)
-- [I. Reproduction Scripts](#appendix-i-reproduction-scripts)
-- [J. References](#appendix-j-references)
-
----
-
 ## 1. Executive Summary
 
 This report evaluates Tesserae V6's intertextual search against three scholarly benchmarks: Lucan–Vergil (Coffee et al. 2012), Valerius Flaccus (Manjavacas et al. 2019), and Statius Achilleid (Geneva 2015).
@@ -46,9 +24,11 @@ This report evaluates Tesserae V6's intertextual search against three scholarly 
 | Metric | Coffee 2012 (V3) | Manjavacas 2019 | V6 (This Study) |
 |--------|------------------|-----------------|-----------------|
 | Type 4-5 Recall (default) | ~30-40% | Comparable | ~27-39% (comparable) |
-| Lexical Recall (no stoplist) | Not distinguished | Not distinguished | **61-100%** |
+| Lexical Recall (no stoplist) | Not distinguished | Not distinguished | **61-100%** * |
 | Ranking quality | Not measured | Limited | First quantified |
 | Phrase matching | Assumed functional | Assumed functional | **Bug identified** |
+
+*\* Range reflects benchmark variation: 61% Lucan-Vergil (many entries lack overlap annotations), 100% VF and Achilleid (verified 2+ lemma entries).*
 
 **Key advance:** This study distinguishes between parallels the algorithm *can* find (2+ shared lemmas on same line) vs. parallels outside its design scope (thematic, single-word, multi-line).
 
@@ -78,12 +58,11 @@ Tests confirmed existing V6 scoring works correctly:
 | 2 | **SPhilBERTa embeddings** | Recall ↑ for thematic parallels | Needs testing |
 | 3 | **Lemma + semantic combined** | Best per Manjavacas 2019 | Needs testing |
 | 4 | **Edit distance matching** | Recall ↑ for orthographic variants | Needs testing |
-| 5 | **Syntax patterns** | Recall ↑ for structural parallels | Needs testing |
-| 6 | **Sound matching** | Recall ↑ for phonetic echoes | Needs testing |
+| 5 | **Sound matching** | Recall ↑ for phonetic echoes | Needs testing |
 
 **For precision:** Tighter stoplist (8× fewer results, 94% recall) or ranking improvements.
 
-**Deprioritized:** Rare bigram filtering, rare unigram boosting, distance penalty increase (tests show weak discrimination).
+**Deprioritized:** Rare bigram filtering, rare unigram boosting, distance penalty increase (tests show weak discrimination). Syntax patterns (too few syntactically parsed texts available; could revisit if more UD treebank data becomes available).
 
 ### Action Items
 
