@@ -35,12 +35,24 @@ This report evaluates Tesserae V6's intertextual search against three scholarly 
 
 ### Characterizing the Misses
 
-| Miss Type | % | Potential Tool |
-|-----------|---|----------------|
+| Miss Type | % | Potential Tools |
+|-----------|---|-----------------|
 | **Sub-threshold lexical** | ~40% | Lower threshold + semantic boost |
 | **Thematic/conceptual** | ~35% | Semantic embeddings, topic modeling |
-| **Syntactic/structural** | ~15% | Syntax parsing |
+| **Structural** | ~15% | Word order similarity, section position (see below) |
 | **Sound-based** | ~10% | Phonetic matching |
+
+**Structural parallels — expanded options:**
+
+Structural echoes may be detected through several approaches, listed by feasibility:
+
+| Approach | Description | Status |
+|----------|-------------|--------|
+| **Word order similarity** | Compare position of matched lemmas within their lines | Ready to implement |
+| **Section position** | Proximity to book/chapter boundaries (beginnings, endings) | Requires marking section boundaries in corpus |
+| **Syntax parsing** | Match grammatical structures (subject-verb-object patterns) | *Future option* — few texts currently parsed |
+
+*On syntax parsing:* V6 includes a SyntaxMatcher module using Universal Dependencies format, but only a handful of Latin texts have UD treebank annotations. Modern parsers (LatinPipe, Stanza) achieve 85–95% accuracy on classical Latin, so automated parsing could expand coverage. This remains a future direction pending either (a) more manually parsed texts becoming available or (b) integration of automated UD parsing into the corpus pipeline.
 
 ### Scoring Validation
 
