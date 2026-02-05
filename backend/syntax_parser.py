@@ -375,7 +375,9 @@ class StanzaParser:
         if language not in self.pipelines:
             try:
                 import stanza
-                lang_code = 'grc' if language == 'grc' else 'la'
+                # Map language codes correctly
+                lang_map = {'la': 'la', 'grc': 'grc', 'en': 'en'}
+                lang_code = lang_map.get(language, 'la')
                 stanza.download(lang_code, verbose=False)
                 self.pipelines[language] = stanza.Pipeline(
                     lang_code, 
@@ -596,3 +598,244 @@ syntax_matcher = SyntaxMatcher()
 
 def get_syntax_matcher():
     return syntax_matcher
+
+
+# =============================================================================
+# SYNTAX INDEX TABLE MANAGEMENT (for pre-computed parses in SQLite)
+# =============================================================================
+
+INDEX_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data', 'inverted_index')
+
+
+def ensure_syntax_table(language):
+    """
+    Create syntax table in the inverted index database if it doesn't exist.
+    
+    Schema:
+        text_id: Foreign key to texts table
+        ref: Line reference (e.g., "1.1")
+        tokens: JSON array of word forms
+        upos: JSON array of POS tags
+        heads: JSON array of head indices
+        deprels: JSON array of dependency relations
+        feats: JSON array of morphological features
+    """
+    import sqlite3
+    db_path = os.path.join(INDEX_DIR, f'{language}_index.db')
+    if not os.path.exists(db_path):
+        print(f"Index database not found: {db_path}")
+        return False
+    
+    try:
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS syntax (
+                text_id INTEGER,
+                ref TEXT,
+                tokens TEXT,
+                lemmas TEXT,
+                upos TEXT,
+                heads TEXT,
+                deprels TEXT,
+                feats TEXT,
+                PRIMARY KEY (text_id, ref),
+                FOREIGN KEY (text_id) REFERENCES texts(text_id)
+            )
+        ''')
+        
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_syntax_text ON syntax(text_id)')
+        conn.commit()
+        conn.close()
+        print(f"Syntax table ensured for {language}")
+        return True
+    
+    except Exception as e:
+        print(f"Failed to create syntax table: {e}")
+        return False
+
+
+def has_syntax_data(language):
+    """Check if syntax table exists and has data"""
+    import sqlite3
+    db_path = os.path.join(INDEX_DIR, f'{language}_index.db')
+    if not os.path.exists(db_path):
+        return False
+    
+    try:
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='syntax'")
+        if not cursor.fetchone():
+            conn.close()
+            return False
+        
+        cursor.execute('SELECT COUNT(*) FROM syntax')
+        count = cursor.fetchone()[0]
+        conn.close()
+        return count > 0
+    
+    except:
+        return False
+
+
+def get_syntax_stats(language):
+    """Get statistics about syntax data in the index"""
+    import sqlite3
+    db_path = os.path.join(INDEX_DIR, f'{language}_index.db')
+    if not os.path.exists(db_path):
+        return None
+    
+    try:
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='syntax'")
+        if not cursor.fetchone():
+            conn.close()
+            return {'has_table': False, 'line_count': 0, 'text_count': 0}
+        
+        cursor.execute('SELECT COUNT(*) FROM syntax')
+        line_count = cursor.fetchone()[0]
+        
+        cursor.execute('SELECT COUNT(DISTINCT text_id) FROM syntax')
+        text_count = cursor.fetchone()[0]
+        
+        conn.close()
+        return {
+            'has_table': True,
+            'line_count': line_count,
+            'text_count': text_count
+        }
+    
+    except Exception as e:
+        return {'error': str(e)}
+
+
+def get_syntax_for_line(filename, ref, language):
+    """
+    Retrieve pre-computed syntax data for a specific line.
+    
+    Args:
+        filename: Text filename (e.g., "vergil.aeneid.tess")
+        ref: Line reference (e.g., "1.1")
+        language: 'la', 'grc', or 'en'
+    
+    Returns:
+        SyntaxSentence object or None if not found
+    """
+    import sqlite3
+    db_path = os.path.join(INDEX_DIR, f'{language}_index.db')
+    if not os.path.exists(db_path):
+        return None
+    
+    try:
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            SELECT s.tokens, s.lemmas, s.upos, s.heads, s.deprels, s.feats
+            FROM syntax s
+            JOIN texts t ON s.text_id = t.text_id
+            WHERE t.filename = ? AND s.ref = ?
+        ''', (filename, ref))
+        
+        row = cursor.fetchone()
+        conn.close()
+        
+        if row:
+            tokens_json = json.loads(row[0]) if row[0] else []
+            lemmas_json = json.loads(row[1]) if row[1] else []
+            upos_json = json.loads(row[2]) if row[2] else []
+            heads_json = json.loads(row[3]) if row[3] else []
+            deprels_json = json.loads(row[4]) if row[4] else []
+            feats_json = json.loads(row[5]) if row[5] else []
+            
+            # Reconstruct SyntaxToken objects
+            syntax_tokens = []
+            for i in range(len(tokens_json)):
+                tok = SyntaxToken(
+                    id=i + 1,
+                    form=tokens_json[i] if i < len(tokens_json) else '',
+                    lemma=lemmas_json[i] if i < len(lemmas_json) else '',
+                    upos=upos_json[i] if i < len(upos_json) else 'X',
+                    xpos='_',
+                    feats=feats_json[i] if i < len(feats_json) else '_',
+                    head=heads_json[i] if i < len(heads_json) else 0,
+                    deprel=deprels_json[i] if i < len(deprels_json) else 'dep',
+                    deps='_',
+                    misc='_'
+                )
+                syntax_tokens.append(tok)
+            
+            text = ' '.join(tokens_json)
+            return SyntaxSentence(f"{filename}:{ref}", text, syntax_tokens)
+        
+        return None
+    
+    except Exception as e:
+        print(f"Error retrieving syntax data: {e}")
+        return None
+
+
+def store_syntax_for_line(text_id, ref, syntax_sentence, language):
+    """
+    Store parsed syntax data in the index.
+    
+    Args:
+        text_id: Integer ID from texts table
+        ref: Line reference
+        syntax_sentence: SyntaxSentence object
+        language: 'la', 'grc', or 'en'
+    
+    Returns:
+        True if successful, False otherwise
+    """
+    import sqlite3
+    if not syntax_sentence or not syntax_sentence.tokens:
+        return False
+    
+    db_path = os.path.join(INDEX_DIR, f'{language}_index.db')
+    if not os.path.exists(db_path):
+        return False
+    
+    try:
+        tokens = [t.form for t in syntax_sentence.tokens]
+        lemmas = [t.lemma for t in syntax_sentence.tokens]
+        upos = [t.upos for t in syntax_sentence.tokens]
+        heads = [t.head for t in syntax_sentence.tokens]
+        deprels = [t.deprel for t in syntax_sentence.tokens]
+        # Store feats as UD-style strings (e.g., "Case=Nom|Number=Sing")
+        # If already a dict, convert to UD string; if string, use as-is
+        def feats_to_string(f):
+            if isinstance(f, dict):
+                return '|'.join(f'{k}={v}' for k, v in f.items()) if f else '_'
+            return str(f) if f else '_'
+        feats = [feats_to_string(t.feats) for t in syntax_sentence.tokens]
+        
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            INSERT OR REPLACE INTO syntax (text_id, ref, tokens, lemmas, upos, heads, deprels, feats)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (
+            text_id,
+            ref,
+            json.dumps(tokens),
+            json.dumps(lemmas),
+            json.dumps(upos),
+            json.dumps(heads),
+            json.dumps(deprels),
+            json.dumps(feats)
+        ))
+        
+        conn.commit()
+        conn.close()
+        return True
+    
+    except Exception as e:
+        print(f"Error storing syntax data: {e}")
+        return False
