@@ -68,12 +68,13 @@ Tests confirmed existing V6 scoring works correctly:
 | 1 | **V3 dictionary synonyms** | Recall ↑ for synonym parallels | Ready to test |
 | 2 | **SPhilBERTa embeddings** | Recall ↑ for thematic parallels | Needs testing |
 | 3 | **Lemma + semantic combined** | Best per Manjavacas 2019 | Needs testing |
-| 4 | **Edit distance matching** | Recall ↑ for orthographic variants | Needs testing |
-| 5 | **Sound matching** | Recall ↑ for phonetic echoes | Needs testing |
+| 4 | **Syntax parsing** | Recall ↑ for structural parallels | Planned (see 3.4) |
+| 5 | **Edit distance matching** | Recall ↑ for orthographic variants | Needs testing |
+| 6 | **Sound matching** | Recall ↑ for phonetic echoes | Needs testing |
 
 **For precision:** Tighter stoplist (8× fewer results, 94% recall) or ranking improvements.
 
-**Deprioritized:** Rare bigram filtering, rare unigram boosting, distance penalty increase (tests show weak discrimination). Syntax patterns (too few syntactically parsed texts available; could revisit if more UD treebank data becomes available).
+**Deprioritized:** Rare bigram filtering, rare unigram boosting, distance penalty increase (tests show weak discrimination).
 
 ### Action Items
 
@@ -83,6 +84,7 @@ Tests confirmed existing V6 scoring works correctly:
 | **High** | Test V3 synonyms | Recall | Sub-threshold parallels with synonym overlap |
 | **Medium** | Remove score ceiling | Precision | Break ties (21% of results cap at 1.0) |
 | **Medium** | Test semantic embeddings | Recall | SPhilBERTa for thematic parallels |
+| **Medium** | Integrate syntax parsing | Recall | LatinPipe/Trankit for structural parallels (see 3.4) |
 | **Medium** | Add lemma count bonus | Precision | Prioritize parallels with 3+ shared words |
 | **Medium** | Add source diversity penalty | Precision | Reduce noise from promiscuous source lines |
 | **Low** | Add search presets | UX | Common configurations for non-experts |
@@ -318,6 +320,7 @@ These align with the summary action items in Section 1:
 | **High** | Test V3 synonyms | **Recall** | Integrate dictionary-based synonyms for sub-threshold parallels |
 | **Medium** | Remove score ceiling | **Precision** | Allow scores > 1.0 (currently 21% of results tie at 1.0) |
 | **Medium** | Test semantic embeddings | **Recall** | SPhilBERTa for thematic/conceptual parallels |
+| **Medium** | Integrate syntax parsing | **Recall** | LatinPipe/Trankit/spaCy for structural parallels (see 3.4) |
 | **Medium** | Add lemma count bonus | **Precision** | +20% per extra lemma to prioritize richer parallels |
 | **Medium** | Add source diversity penalty | **Precision** | Reduce noise from promiscuous source lines flooding results |
 | **Low** | Add search presets | **UX** | Common configurations in UI for non-expert users |
