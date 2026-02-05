@@ -30,122 +30,83 @@
 
 ## 1. Executive Summary
 
-This report evaluates Tesserae V6's intertextual search against three scholarly benchmarks:
+This report evaluates Tesserae V6's intertextual search against three scholarly benchmarks: Lucan–Vergil (Coffee et al. 2012), Valerius Flaccus (Manjavacas et al. 2019), and Statius Achilleid (Geneva 2015).
 
-| Benchmark | Source | Target | Reference |
-|-----------|--------|--------|-----------|
-| Lucan–Vergil | Bellum Civile 1 | Aeneid | Coffee et al. 2012 |
-| Valerius Flaccus | Argonautica 1 | Vergil, Ovid, Lucan, Statius | Manjavacas et al. 2019 |
-| Statius Achilleid | Achilleid | Aeneid, Metamorphoses, Thebaid | Geneva 2015 |
+### Key Results
 
-### Performance Summary
-
-| Metric | Lucan–Vergil | VF–Vergil | Achilleid |
-|--------|--------------|-----------|-----------|
-| **High-Quality Entries** | 213 (type 4-5) | 945 (commentary) | 921 (type 4-5) |
-| **2+ Lemma Matches** | 52 | 137 | 291 |
+| Metric | Lucan–Vergil | VF | Achilleid |
+|--------|--------------|-----|-----------|
 | **Recall (2+ lemma)** | **100%** | **100%** | **100%** |
-| **Recall (high-quality)** | 24.4% | 14.5% | 31.6% |
-| **Precision** | ~0.6% | ~2.7% | ~0.6% |
+| **Recall (high-quality)** | 24% | 15% | 32% |
 
-**Bottom line:** V6 has **excellent recall** on what lemma matching can find (100% on 2+ lemma matches) but **weak precision** (benchmark parallels buried among thousands of results).
+**Bottom line:** V6 finds **100% of parallels with 2+ shared content-word lemmas**. The 68–85% of scholarly parallels not found are thematic, sub-threshold (1 lemma), or rely on function words.
 
-### Boosting Precision
+### Characterizing the Misses
 
-With current lemma matching, precision can be improved by:
+| Miss Type | % | Potential Tool |
+|-----------|---|----------------|
+| **Sub-threshold lexical** | ~40% | Lower threshold + semantic boost |
+| **Thematic/conceptual** | ~35% | Semantic embeddings, topic modeling |
+| **Syntactic/structural** | ~15% | Syntax parsing |
+| **Sound-based** | ~10% | Phonetic matching |
 
-1. **Tighter stoplist** — Default stoplist reduces results 8× while keeping 94% recall (Achilleid)
-2. **Higher min_matches** — Requiring 3+ matches eliminates noise but loses some true positives
-3. **Ranking improvements** — Better scoring to surface true parallels (see Section 2.4)
-4. **Post-filtering** — Syntactic constraints, bigram frequency, or semantic re-ranking
+### Scoring Validation
 
-### Boosting Recall: Characterizing the Misses
+Tests confirmed existing V6 scoring works correctly:
+- **IDF Validation:** Rare vocabulary parallels already rank 4× higher
+- **Distance Validation:** Only 7% difference strong vs weak — no change needed
+- **Rare Vocabulary Filters:** Tested and deprioritized — noise shares same characteristics as true parallels
 
-V6 finds only 15–32% of high-quality scholarly parallels. The missed 68–85% fall into these categories:
+**Implication:** Need *different* signals (semantic, syntactic, phonetic), not stronger versions of existing signals (IDF, distance).
 
-| Miss Type | % of Misses | Example | Potential Tool |
-|-----------|-------------|---------|----------------|
-| **Sub-threshold lexical** | ~40% | 1 shared lemma only | Lower threshold + semantic boost |
-| **Thematic/conceptual** | ~35% | Same idea, different words | Topic modeling, semantic embeddings |
-| **Syntactic/structural** | ~15% | Parallel construction, no shared words | Syntax parsing, POS patterns |
-| **Sound-based** | ~10% | Alliteration, assonance | Phonetic matching |
+### Approaches to Improve Recall and Precision
 
-### Would Semantic Matching Help?
+| Priority | Approach | Impact | Status |
+|----------|----------|--------|--------|
+| 1 | **V3 dictionary synonyms** | Recall ↑ for synonym parallels | Ready to test |
+| 2 | **SPhilBERTa embeddings** | Recall ↑ for thematic parallels | Needs testing |
+| 3 | **Lemma + semantic combined** | Best per Manjavacas 2019 | Needs testing |
+| 4 | **Edit distance matching** | Recall ↑ for orthographic variants | Needs testing |
+| 5 | **Syntax patterns** | Recall ↑ for structural parallels | Needs testing |
+| 6 | **Sound matching** | Recall ↑ for phonetic echoes | Needs testing |
 
-**In theory, yes.** Semantic embeddings could capture thematic parallels that lemma matching misses.
+**For precision:** Tighter stoplist (8× fewer results, 94% recall) or ranking improvements.
 
-**In practice, results are mixed.** Manjavacas et al. 2019 tested word embeddings on the VF benchmark and found:
-- Word2Vec alone: lower precision than lemma matching
-- Best results: **lemma + embedding combination**
+**Deprioritized:** Rare bigram filtering, rare unigram boosting, distance penalty increase (tests show weak discrimination).
 
-**Recommendation:** Semantic should *augment* lemma matching, not replace it.
+### Action Items
 
-### Potential Approaches to Increase Recall
+| Priority | Item | Description |
+|----------|------|-------------|
+| **High** | Fix phrase matching | Currently splits within lines instead of spanning |
+| **High** | Test V3 synonyms | Integrate and benchmark |
+| **Medium** | Remove score ceiling | Currently caps at 1.0, creating ties |
+| **Medium** | Test semantic embeddings | SPhilBERTa on benchmarks |
+| **Low** | Add search presets | UI for common configurations |
 
-| Approach | Captures | Prior Results | Complexity |
-|----------|----------|---------------|------------|
-| **Lemma + semantic re-ranking** | Sub-threshold + thematic | Manjavacas: best combo | Medium |
-| **Topic modeling (LDA)** | Thematic parallels | Untested on benchmarks | Medium |
-| **Sentence embeddings (SPhilBERTa)** | Cross-lingual, thematic | V6 has this; needs testing | Low |
-| **Metrical matching** | Formal echoes in poetry | Untested; V6 has scansion data | Medium |
-| **Syntax patterns** | Structural parallels | Coffee 2018 explored | High |
-| **Sound matching** | Phonetic echoes | V6 has sound matching | Low |
+---
 
-**Best bet for near-term gains:** Combine lemma matching with semantic re-ranking (already partially implemented in V6).
+## Technical Details
 
 ### V3 Dictionary-Based Semantic Matching
 
-**To be evaluated:** Tesserae V3 includes an intra-language dictionary method for semantic matching that should be brought into V6 evaluation:
+V3 includes a dictionary-pivot method for semantic matching. Resources recovered:
 
-**What it does:** Uses Latin dictionary entries (Lewis & Short) to find semantically related words via English-pivot similarity. Words whose Latin→English dictionary definitions share similar English terms are treated as synonyms.
+| File (in `data/synonymy/`) | Entries |
+|----------------------------|---------|
+| `fixed_latin_syn_lem.csv` | 28,766 Latin synonyms |
+| `fixed_greek_syn_lem.csv` | 36,758 Greek synonyms |
+| `g_l.csv` | 34,535 Greek→Latin mappings |
 
-**How it differs from embeddings:**
-- Dictionary-based: Uses structured lexicographic relationships, not learned representations
-- Interpretable: Each semantic link traces to a dictionary entry
-- Intra-language only: Works within Latin (or Greek), not cross-lingual
+**Method:** Uses TF-IDF similarity on Latin→English dictionary definitions. Words with similar English glosses = synonyms. Limited to top 2 per headword by design (lower-ranked were related words, not true synonyms).
 
-**V3 Resources Available (located in `data/synonymy/`):**
+**Documentation:** `data/synonymy/V3_SYNONYM_DERIVATION.md`
 
-| File | Entries | Description |
-|------|---------|-------------|
-| `fixed_latin_syn_lem.csv` | 28,766 | Latin synonyms (max 2 per headword) |
-| `fixed_greek_syn_lem.csv` | 36,758 | Greek synonyms (max 2 per headword) |
-| `g_l.csv` | 34,535 | Greek→Latin cross-language mappings |
-
-**Distribution of synonyms (Latin):**
-- 31% have no synonyms (just headword)
-- 39% have 1 synonym
-- 30% have 2 synonyms (maximum allowed)
-
-**V3 "Top 2" Design Decision:** The V3 code (`sims-export.py`) limits output to the top 2 results per word. This was deliberate — lower-ranked matches were found to be "related words" not true synonyms. Higher TF-IDF similarity between English definitions = more reliable synonym relationship.
-
-**Derivation method documentation:** See `data/synonymy/V3_SYNONYM_DERIVATION.md`
-
-**Potential contribution:**
-| Use Case | Precision Impact | Recall Impact |
-|----------|------------------|---------------|
-| Capture synonym parallels | Medium | **High** — finds "gladius/ensis" type connections |
-| Semantic field matching | Medium | **High** — related concepts share entries |
-| Combine with lemma | Low | **Medium** — augments lexical matches |
-
-**Limitation:** Limited to dictionary coverage; may miss poetic/metaphorical extensions.
-
-**Status:** V3 dictionaries recovered and documented. Needs integration into V6 matcher and benchmark testing.
-
-### V6 Tools Available for Evaluation
-
-V6 already has several features that could augment lemma matching:
+### V6 Tools Tested for Precision/Recall
 
 #### 1. Rare Pairs (Bigram Search)
 
-**What it does:** Finds word pairs that rarely appear together across the corpus, even if individual words are common. A pair like "arma virum" might be common individually but distinctive as a collocation.
-
-**How it works:**
-- Extracts word pairs within a configurable window (default: adjacent to 3-word gap)
-- Calculates rarity score (0-1) based on how few texts contain the pair
-- Highlights pairs with rarity ≥ 0.7 (appear in very few documents)
-
-**Benchmark test results (February 2026):**
+Finds word pairs that rarely appear together. Tested on benchmarks (February 2026):
 
 | Benchmark | Parallels with rare bigram (rarity ≥0.7) |
 |-----------|------------------------------------------|
@@ -271,50 +232,6 @@ V6 already has several features that could augment lemma matching:
 | Find morphological variants | N/A | **Medium** — stem patterns like `am*` |
 
 **Best for:** Scholar-directed exploration, not automated matching.
-
-### Consolidated Test Findings (February 2026)
-
-This section summarizes all precision/recall enhancement tests conducted on the benchmark data.
-
-#### Tests That CONFIRMED Existing System Is Working
-
-| Test | Finding | Implication |
-|------|---------|-------------|
-| **IDF Scoring Validation** | Rare vocabulary parallels rank 4× higher (rank 80 vs 314) and score 14% higher | **No additional rare word filter needed** — IDF already handles this |
-| **Distance Discrimination** | Strong vs weak parallels: only 7% difference in proximity | **No additional distance penalty needed** — current weighting adequate |
-
-**Data files:** `idf_scoring_validation.json`, `distance_discrimination_test.json`
-
-#### Tests That ELIMINATED Potential Enhancements
-
-| Test | Finding | Conclusion |
-|------|---------|------------|
-| **Rare Bigrams (≥0.7)** | 100% of weak parallels also have rare bigrams | Does NOT discriminate quality |
-| **Rare Bigrams (≥0.99)** | Only ~10-15% difference strong vs weak | Weak signal, not useful as filter |
-| **Rare Unigrams** | 80-89% of strong parallels have rare vocabulary vs 74-75% of weak | ~15% difference — modest signal only |
-
-**Key insight:** The precision problem is NOT that IDF or distance scoring fails. Both work correctly. The problem is that **noise results share the same characteristics as true parallels** — they also have rare vocabulary and close word proximity. We need *different* signals (semantic, syntactic), not stronger versions of existing signals.
-
-**Data files:** `rare_vocabulary_discrimination_test.json`, `rare_vocabulary_all_benchmarks.json`
-
-### Recommended Evaluation Priorities
-
-Based on completed tests and remaining untested approaches:
-
-| Priority | Tool | Status | Expected Impact |
-|----------|------|--------|-----------------|
-| 1 | **V3 dictionary semantic** | Ready to test | Recall ↑ for synonym parallels |
-| 2 | **SPhilBERTa embeddings** | Untested | Recall ↑ for thematic parallels |
-| 3 | **Combined: lemma + semantic** | Untested | Best approach per Manjavacas 2019 |
-| 4 | **Syntax patterns** | Untested | Capture structural parallels |
-| 5 | **Sound matching** | Untested | Capture phonetic echoes |
-
-**DEPRIORITIZED (tests show weak discrimination):**
-- Rare bigram filtering (any threshold)
-- Rare unigram boosting
-- Distance penalty increase
-
-**Implication:** Semantic matching (V3 dictionary or embeddings) remains the most promising approach for both recall and precision gains. Vocabulary rarity and word proximity are already captured adequately by existing scoring.
 
 ---
 
