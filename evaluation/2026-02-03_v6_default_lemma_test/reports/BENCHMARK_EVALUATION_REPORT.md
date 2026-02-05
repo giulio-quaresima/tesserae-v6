@@ -78,20 +78,17 @@ Tests confirmed existing V6 scoring works correctly:
 
 ### Action Items
 
-| Priority | Item | Helps | Description |
-|----------|------|-------|-------------|
-| **High** | Fix phrase matching | Recall | Enables multi-line parallels (currently splits within lines) |
-| **High** | Test V3 synonyms | Recall | Sub-threshold parallels with synonym overlap |
-| **Medium** | Remove score ceiling | Precision | Break ties (21% of results cap at 1.0) |
-| **Medium** | Test semantic embeddings | Recall | SPhilBERTa for thematic parallels |
-| **Medium** | Integrate syntax parsing | Recall | LatinPipe/Trankit for structural parallels (see 3.4) |
-| **Medium** | Add lemma count bonus | Precision | Prioritize parallels with 3+ shared words |
-| **Medium** | Add source diversity penalty | Precision | Reduce noise from promiscuous source lines |
-| **Low** | Add search presets | UX | Common configurations for non-experts |
+**High priority:** Fix phrase matching (recall), test V3 synonyms (recall)
+
+**Medium priority:** Remove score ceiling (precision), test semantic embeddings (recall), integrate syntax parsing (recall, see 3.4), add lemma count bonus (precision), add source diversity penalty (precision)
+
+**Low priority:** Add search presets (UX), document stoplist trade-off (UX)
+
+**Quick fix:** Lemma table gap `genitore` → `genitor` (1 line fix)
 
 **Deprioritized (tested, weak signal):** Rare word bonus, rare bigram filter, distance penalty increase.
 
-See **Section 3.2** for full development roadmap.
+See **Section 3.2** for full action items table and **Section 3.4** for syntax parsing details.
 
 ---
 
