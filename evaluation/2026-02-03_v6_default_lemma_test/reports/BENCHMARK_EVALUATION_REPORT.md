@@ -1,4 +1,4 @@
-# Tesserae V6 Benchmark Evaluation Report
+# Tesserae V6 Latin Lemma Matching: Benchmark Evaluation and Supplements
 
 **Date:** February 4, 2026  
 **Version:** Tesserae V6  
