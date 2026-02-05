@@ -48,9 +48,9 @@ Structural echoes may be detected through several approaches, listed by feasibil
 
 | Approach | Description | Status |
 |----------|-------------|--------|
+| **Syntax parsing** | Match grammatical structures (subject-verb-object patterns) | *Planned* — LatinPipe (Latin), Trankit/Stanza (Greek), Stanza/spaCy (English) |
 | **Word order similarity** | Compare position of matched lemmas within their lines | Ready to implement |
 | **Section position** | Proximity to book/chapter boundaries (beginnings, endings) | Requires marking section boundaries in corpus |
-| **Syntax parsing** | Match grammatical structures (subject-verb-object patterns) | *Planned* — LatinPipe (Latin), Trankit/Stanza (Greek) |
 
 **Planned: Automated UD Parsing Integration**
 
