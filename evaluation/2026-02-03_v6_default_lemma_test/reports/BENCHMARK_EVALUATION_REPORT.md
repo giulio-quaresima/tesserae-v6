@@ -50,7 +50,7 @@ Structural echoes may be detected through several approaches, listed by feasibil
 |----------|-------------|--------|
 | **Word order similarity** | Compare position of matched lemmas within their lines | Ready to implement |
 | **Section position** | Proximity to book/chapter boundaries (beginnings, endings) | Requires marking section boundaries in corpus |
-| **Syntax parsing** | Match grammatical structures (subject-verb-object patterns) | *Future option* — few texts currently parsed |
+| **Syntax parsing** | Match grammatical structures (subject-verb-object patterns) | *Planned* — LatinPipe (Latin), Trankit/Stanza (Greek) |
 
 **Planned: Automated UD Parsing Integration**
 
@@ -60,6 +60,7 @@ V6 includes a SyntaxMatcher module using Universal Dependencies format, but only
 |----------|--------|----------|--------|
 | **Latin** | LatinPipe | 90–95% LAS | Plan to integrate |
 | **Greek** | Trankit/Stanza | ~79% LAS | Plan to integrate |
+| **English** | Stanza/spaCy | 92–95% LAS | Plan to integrate |
 
 **Implementation plan:**
 1. Run LatinPipe on Latin corpus texts (~1-2 sec/text)
