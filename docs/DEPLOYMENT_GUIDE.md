@@ -15,6 +15,7 @@ This guide covers deploying Tesserae V6 to a university server or any Linux-base
 - Application code: ~500MB
 - Embeddings: ~2GB (pre-computed, included in .zip)
 - Inverted Index: ~2.4GB
+- Syntax Index: ~200-400MB (LatinPipe parses)
 - Text Corpus: ~500MB
 - Python packages: ~2GB
 
@@ -272,17 +273,32 @@ tesserae/
 │   └── embeddings/          # ~2GB - Pre-computed semantic embeddings
 ├── data/
 │   ├── inverted_index/      # ~2.4GB - Search index
+│   │   └── syntax_latin.db  # ~200-400MB - LatinPipe syntax parses
 │   └── lemma_tables/        # Latin/Greek lookup tables
 ├── texts/
-│   ├── latin/               # Latin .tess files
-│   ├── greek/               # Greek .tess files
-│   └── english/             # English .tess files
+│   ├── la/                  # Latin .tess files (1,429 texts)
+│   ├── grc/                 # Greek .tess files (310 texts)
+│   └── en/                  # English .tess files (14 texts)
 ├── dist/                    # Built frontend (React)
 ├── main.py                  # Entry point
-├── requirements.txt
-└── backend/
-    └── app.py               # Flask application
+└── requirements.txt
 ```
+
+## Syntax Index Data
+
+The syntax index (`data/inverted_index/syntax_latin.db`) contains Universal Dependencies parses for all Latin texts, produced by LatinPipe (EvaLatin 2024 winner).
+
+**How it works:** The syntax data is stored as a standalone SQLite file (`syntax_latin.db`). The application reads directly from this file at runtime — no merge step is needed. (A merge script exists at `scripts/marvin_latinpipe/merge_syntax_index.py` for optionally combining syntax data into `la_index.db`, but standalone mode is the default.)
+
+**Deploying the syntax index:**
+1. Copy `syntax_latin.db` to `data/inverted_index/` on the target server
+2. The application auto-detects and reads from it when available
+3. Without it, syntax-based features are simply unavailable; all other search types work normally
+
+**Adding syntax for new texts (after initial index build):**
+When a new Latin text is approved via the admin panel, syntax parsing is automatically triggered using the LatinPipe REST API (no local model installation required). For bulk re-indexing, use the build script on Marvin (see `scripts/marvin_latinpipe/MARVIN_SETUP_GUIDE.md`).
+
+**Provenance:** LatinPipe `latinpipe-evalatin24-240520`, built February 6, 2026 on Marvin server.
 
 ## Startup Behavior
 
