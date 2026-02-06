@@ -187,10 +187,10 @@ def try_load_local_latinpipe(model_path, repo_path=None, local_port=8100):
 
     cmd = [
         sys.executable, server_script,
-        '--port', str(local_port),
         '--preload_models', 'all',
-        '--default_model', model_name,
-        '--models', model_name, model_dir, variant, 'LatinPipe',
+        str(local_port),
+        model_name,
+        model_name, model_dir, variant, 'LatinPipe',
     ]
 
     server_proc = subprocess.Popen(
