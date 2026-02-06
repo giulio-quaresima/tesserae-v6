@@ -111,66 +111,127 @@ def parse_with_latinpipe_api(text, max_retries=3):
     return None
 
 
-def parse_with_latinpipe_local(text, pipeline):
-    """Parse Latin text using local LatinPipe installation."""
+def parse_with_latinpipe_local(text, local_api_url):
+    """Parse Latin text using a locally-running LatinPipe server."""
+    import requests
     try:
-        import io
-        conllu_output = pipeline.process(text)
-        return parse_conllu(conllu_output)
+        response = requests.post(local_api_url, data={
+            'tokenizer': '',
+            'tagger': '',
+            'parser': '',
+            'data': text
+        }, timeout=60)
+
+        if response.status_code == 200:
+            result = response.json()
+            conllu = result.get('result', '')
+            return parse_conllu(conllu)
+        else:
+            print(f"    Local server error {response.status_code}: {response.text[:200]}")
+            return None
     except Exception as e:
         print(f"    Local parse error: {e}")
         return None
 
 
-def try_load_local_latinpipe(model_path, repo_path=None):
-    """Try to load LatinPipe locally. Returns pipeline or None.
+def try_load_local_latinpipe(model_path, repo_path=None, local_port=8100):
+    """Start a local LatinPipe server and return connection info, or None.
     
-    Args:
-        model_path: Path to model weights file (e.g., .../model.weights.h5)
-        repo_path: Path to the cloned evalatin2024-latinpipe repository root.
-                   If not provided, tries parent directories of model_path.
+    This starts the latinpipe_evalatin24_server.py on the specified port,
+    loads the model once, and keeps it running for fast repeated queries.
     """
+    import subprocess
+
     if not model_path or not os.path.exists(model_path):
         print(f"Model not found at: {model_path}")
         return None
-    try:
-        # Determine repo root containing latinpipe_evalatin24.py
-        if repo_path and os.path.isdir(repo_path):
-            search_dirs = [repo_path]
-        else:
-            # Walk up from model path looking for the module
-            search_dirs = [
-                os.path.dirname(model_path),
-                os.path.dirname(os.path.dirname(model_path)),
-                os.path.dirname(os.path.dirname(os.path.dirname(model_path))),
-            ]
-        
-        module_found = False
-        for d in search_dirs:
-            module_file = os.path.join(d, 'latinpipe_evalatin24.py')
-            if os.path.exists(module_file):
-                sys.path.insert(0, d)
-                module_found = True
-                print(f"Found LatinPipe module at: {d}")
-                break
-        
-        if not module_found:
-            print("Could not find latinpipe_evalatin24.py module.")
-            print("Make sure --repo-path points to the cloned evalatin2024-latinpipe directory,")
-            print("or install it with: cd evalatin2024-latinpipe && pip install -e .")
+
+    model_dir = os.path.dirname(model_path)
+    model_name = os.path.basename(model_dir)
+
+    if repo_path and os.path.isdir(repo_path):
+        search_dirs = [repo_path]
+    else:
+        search_dirs = [
+            os.path.dirname(model_path),
+            os.path.dirname(os.path.dirname(model_path)),
+        ]
+
+    server_script = None
+    for d in search_dirs:
+        candidate = os.path.join(d, 'latinpipe_evalatin24_server.py')
+        if os.path.exists(candidate):
+            server_script = candidate
+            break
+
+    if not server_script:
+        print("Could not find latinpipe_evalatin24_server.py")
+        print("Make sure --repo-path points to the cloned evalatin2024-latinpipe directory.")
+        return None
+
+    tokenizer_files = [f for f in os.listdir(model_dir) if f.endswith('.tokenizer')]
+    if not tokenizer_files:
+        print(f"No .tokenizer file found in {model_dir}")
+        print("The LatinPipe server requires a UDPipe tokenizer.")
+        print("Falling back to API mode.")
+        return None
+
+    variant = tokenizer_files[0].replace('.tokenizer', '')
+
+    local_api_url = f"http://localhost:{local_port}/process"
+
+    print(f"Found LatinPipe server script: {server_script}")
+    print(f"  Model dir: {model_dir}")
+    print(f"  Variant: {variant}")
+    print(f"  Starting local server on port {local_port}...")
+
+    cmd = [
+        sys.executable, server_script,
+        '--port', str(local_port),
+        '--preload_models', 'all',
+        '--default_model', model_name,
+        '--models', model_name, model_dir, variant, 'LatinPipe',
+    ]
+
+    server_proc = subprocess.Popen(
+        cmd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        cwd=os.path.dirname(server_script),
+    )
+
+    import requests as req_lib
+    print("  Waiting for server to load model (this may take 1-2 minutes)...")
+    for attempt in range(120):
+        time.sleep(2)
+        try:
+            r = req_lib.get(f"http://localhost:{local_port}/models", timeout=5)
+            if r.status_code == 200:
+                print(f"  Server ready! Models: {r.json()}")
+                return {
+                    'url': local_api_url,
+                    'process': server_proc,
+                    'port': local_port,
+                }
+        except req_lib.exceptions.ConnectionError:
+            if attempt % 10 == 9:
+                print(f"    Still loading... ({(attempt+1)*2}s)")
+        except Exception:
+            pass
+
+        if server_proc.poll() is not None:
+            stdout = server_proc.stdout.read().decode('utf-8', errors='replace')[-500:]
+            stderr = server_proc.stderr.read().decode('utf-8', errors='replace')[-500:]
+            print(f"  Server exited with code {server_proc.returncode}")
+            if stdout.strip():
+                print(f"  stdout: {stdout}")
+            if stderr.strip():
+                print(f"  stderr: {stderr}")
             return None
-        
-        from latinpipe_evalatin24 import LatinPipe
-        pipeline = LatinPipe.load(model_path)
-        print(f"Loaded local LatinPipe from {model_path}")
-        return pipeline
-    except ImportError as e:
-        print(f"LatinPipe module import failed: {e}")
-        print("Try: cd evalatin2024-latinpipe && pip install -e .")
-        return None
-    except Exception as e:
-        print(f"Error loading local LatinPipe: {e}")
-        return None
+
+    print("  Server did not start within 4 minutes. Falling back to API mode.")
+    server_proc.terminate()
+    return None
 
 
 def create_syntax_db(output_path):
@@ -366,26 +427,39 @@ def build_syntax_index(corpus_dir, output_path, specific_texts=None,
         lines_ok = 0
         lines_fail = 0
 
-        for j, line_data in enumerate(lines):
-            ref = line_data['ref']
-            text = line_data['text']
-
-            if use_api:
+        if use_api:
+            for j, line_data in enumerate(lines):
+                ref = line_data['ref']
+                text = line_data['text']
                 tokens = parse_with_latinpipe_api(text)
                 time.sleep(api_sleep)
-            else:
-                tokens = parse_with_latinpipe_local(text, local_pipeline)
 
-            if tokens:
-                if store_line_syntax(conn, text_id, ref, tokens):
-                    lines_ok += 1
+                if tokens:
+                    if store_line_syntax(conn, text_id, ref, tokens):
+                        lines_ok += 1
+                    else:
+                        lines_fail += 1
                 else:
                     lines_fail += 1
-            else:
-                lines_fail += 1
 
-            if (j + 1) % batch_size == 0:
-                conn.commit()
+                if (j + 1) % batch_size == 0:
+                    conn.commit()
+        else:
+            for j, line_data in enumerate(lines):
+                ref = line_data['ref']
+                text = line_data['text']
+                tokens = parse_with_latinpipe_local(text, local_pipeline['url'])
+
+                if tokens:
+                    if store_line_syntax(conn, text_id, ref, tokens):
+                        lines_ok += 1
+                    else:
+                        lines_fail += 1
+                else:
+                    lines_fail += 1
+
+                if (j + 1) % batch_size == 0:
+                    conn.commit()
 
         conn.commit()
         total_lines += lines_ok
@@ -408,6 +482,11 @@ def build_syntax_index(corpus_dir, output_path, specific_texts=None,
           len(tess_files), total_lines))
     conn.commit()
     conn.close()
+
+    if not use_api and local_pipeline and 'process' in local_pipeline:
+        print("\nShutting down local LatinPipe server...")
+        local_pipeline['process'].terminate()
+        local_pipeline['process'].wait(timeout=10)
 
     elapsed = time.time() - start_time
     print("\n" + "=" * 60)
