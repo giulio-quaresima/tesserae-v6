@@ -203,14 +203,8 @@ def parse_with_latinpipe_local(text, local_api_url, max_retries=3):
     return None
 
 
-def try_load_local_latinpipe(model_path, repo_path=None, local_port=8100):
-    """Start a local LatinPipe server and return connection info, or None.
-    
-    This starts the latinpipe_evalatin24_server.py on the specified port,
-    loads the model once, and keeps it running for fast repeated queries.
-    """
-    import subprocess
-
+def _find_server_config(model_path, repo_path=None):
+    """Find server script, model dir, model name, and variant. Returns dict or None."""
     if not model_path or not os.path.exists(model_path):
         print(f"Model not found at: {model_path}")
         return None
@@ -242,23 +236,31 @@ def try_load_local_latinpipe(model_path, repo_path=None, local_port=8100):
     if not tokenizer_files:
         print(f"No .tokenizer file found in {model_dir}")
         print("The LatinPipe server requires a UDPipe tokenizer.")
-        print("Falling back to API mode.")
         return None
 
     variant = tokenizer_files[0].replace('.tokenizer', '')
 
+    return {
+        'server_script': server_script,
+        'model_dir': model_dir,
+        'model_name': model_name,
+        'variant': variant,
+    }
+
+
+def _start_server(config, local_port=8100):
+    """Start the LatinPipe server and wait for it to be ready. Returns pipeline dict or None."""
+    import subprocess
+
     local_api_url = f"http://localhost:{local_port}/process"
 
-    print(f"Found LatinPipe server script: {server_script}")
-    print(f"  Model dir: {model_dir}")
-    print(f"  Variant: {variant}")
     print(f"  Starting local server on port {local_port}...")
 
     cmd = [
-        sys.executable, server_script,
+        sys.executable, config['server_script'],
         str(local_port),
-        model_name,
-        model_name, model_dir, variant, 'LatinPipe',
+        config['model_name'],
+        config['model_name'], config['model_dir'], config['variant'], 'LatinPipe',
         '--preload_models', 'all',
     ]
 
@@ -266,7 +268,7 @@ def try_load_local_latinpipe(model_path, repo_path=None, local_port=8100):
         cmd,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
-        cwd=os.path.dirname(server_script),
+        cwd=os.path.dirname(config['server_script']),
     )
 
     import requests as req_lib
@@ -298,9 +300,65 @@ def try_load_local_latinpipe(model_path, repo_path=None, local_port=8100):
                 print(f"  stderr: {stderr}")
             return None
 
-    print("  Server did not start within 4 minutes. Falling back to API mode.")
+    print("  Server did not start within 4 minutes.")
     server_proc.terminate()
     return None
+
+
+def check_server_health(local_pipeline):
+    """Check if the local LatinPipe server is still responding."""
+    import requests as req_lib
+    try:
+        r = req_lib.get(f"http://localhost:{local_pipeline['port']}/models", timeout=5)
+        return r.status_code == 200
+    except Exception:
+        return False
+
+
+def restart_server_if_needed(local_pipeline, server_config, local_port=8100):
+    """Check server health and restart if it's dead. Returns updated pipeline or None."""
+    if check_server_health(local_pipeline):
+        return local_pipeline
+
+    print("  ** Server is not responding, restarting...")
+    try:
+        local_pipeline['process'].terminate()
+        local_pipeline['process'].wait(timeout=5)
+    except Exception:
+        try:
+            local_pipeline['process'].kill()
+        except Exception:
+            pass
+
+    time.sleep(2)
+    new_pipeline = _start_server(server_config, local_port)
+    if new_pipeline:
+        print("  ** Server restarted successfully!")
+    else:
+        print("  ** Server restart FAILED!")
+    return new_pipeline
+
+
+def try_load_local_latinpipe(model_path, repo_path=None, local_port=8100):
+    """Start a local LatinPipe server and return connection info, or None.
+    
+    This starts the latinpipe_evalatin24_server.py on the specified port,
+    loads the model once, and keeps it running for fast repeated queries.
+    Also returns the server_config for use in auto-restart.
+    """
+    config = _find_server_config(model_path, repo_path)
+    if not config:
+        print("Falling back to API mode.")
+        return None, None
+
+    print(f"Found LatinPipe server script: {config['server_script']}")
+    print(f"  Model dir: {config['model_dir']}")
+    print(f"  Variant: {config['variant']}")
+
+    pipeline = _start_server(config, local_port)
+    if pipeline:
+        return pipeline, config
+    return None, None
 
 
 def create_syntax_db(output_path):
@@ -438,8 +496,9 @@ def build_syntax_index(corpus_dir, output_path, specific_texts=None,
     print(f"Found {len(tess_files)} .tess files in {corpus_dir}")
 
     local_pipeline = None
+    server_config = None
     if not use_api:
-        local_pipeline = try_load_local_latinpipe(model_path, repo_path)
+        local_pipeline, server_config = try_load_local_latinpipe(model_path, repo_path)
         if not local_pipeline:
             print("Falling back to API mode")
             use_api = True
@@ -484,6 +543,9 @@ def build_syntax_index(corpus_dir, output_path, specific_texts=None,
     total_errors = 0
     start_time = time.time()
 
+    server_restart_count = 0
+    texts_since_restart = 0
+
     for i, filepath in enumerate(tess_files):
         filename = os.path.basename(filepath)
         text_id = get_or_create_text_id(conn, filename)
@@ -492,6 +554,17 @@ def build_syntax_index(corpus_dir, output_path, specific_texts=None,
         if not lines:
             print(f"  [{i+1}/{len(tess_files)}] {filename}: no lines found")
             continue
+
+        if not use_api and local_pipeline and server_config:
+            if texts_since_restart > 0 and texts_since_restart % 50 == 0:
+                if not check_server_health(local_pipeline):
+                    print(f"  ** Server health check failed at text {i+1}, restarting...")
+                    local_pipeline = restart_server_if_needed(local_pipeline, server_config)
+                    if not local_pipeline:
+                        print("  ** Cannot restart server, aborting.")
+                        break
+                    server_restart_count += 1
+            texts_since_restart += 1
 
         lines_ok = 0
         lines_fail = 0
@@ -520,6 +593,13 @@ def build_syntax_index(corpus_dir, output_path, specific_texts=None,
                 combined_text = '\n\n'.join(ld['text'] for ld in chunk)
 
                 sentences = parse_batch_local(combined_text, local_pipeline['url'])
+
+                if sentences is None and server_config:
+                    print(f"    Batch failed, checking server health...")
+                    local_pipeline = restart_server_if_needed(local_pipeline, server_config)
+                    if local_pipeline:
+                        server_restart_count += 1
+                        sentences = parse_batch_local(combined_text, local_pipeline['url'])
 
                 if sentences:
                     n_sentences = len(sentences)
@@ -589,6 +669,8 @@ def build_syntax_index(corpus_dir, output_path, specific_texts=None,
     print(f"  Texts processed: {len(tess_files)}")
     print(f"  Lines indexed:   {total_lines}")
     print(f"  Errors:          {total_errors}")
+    if server_restart_count > 0:
+        print(f"  Server restarts: {server_restart_count}")
     print(f"  Time elapsed:    {format_time(elapsed)}")
     print(f"  Output file:     {output_path}")
     print(f"\nCopy {output_path} to your Replit project and run the merge script.")
