@@ -77,6 +77,66 @@ def parse_conllu(conllu_text):
     return tokens
 
 
+def parse_conllu_sentences(conllu_text):
+    """Parse CoNLL-U output into a list of sentences, each a list of tokens."""
+    sentences = []
+    current = []
+    for line in conllu_text.strip().split('\n'):
+        if not line:
+            if current:
+                sentences.append(current)
+                current = []
+            continue
+        if line.startswith('#'):
+            continue
+        parts = line.split('\t')
+        if len(parts) >= 10 and parts[0].isdigit():
+            current.append({
+                'id': int(parts[0]),
+                'form': parts[1],
+                'lemma': parts[2].lower() if parts[2] else '',
+                'upos': parts[3],
+                'feats': parts[5] if parts[5] != '_' else '_',
+                'head': int(parts[6]) if parts[6] != '_' else 0,
+                'deprel': parts[7] if parts[7] != '_' else '',
+            })
+    if current:
+        sentences.append(current)
+    return sentences
+
+
+def parse_batch_local(lines_text, local_api_url, max_retries=3):
+    """Send a batch of text to local LatinPipe and get back list of sentence token lists."""
+    import requests
+    for attempt in range(max_retries):
+        try:
+            response = requests.post(local_api_url, data={
+                'tokenizer': '',
+                'tagger': '',
+                'parser': '',
+                'data': lines_text
+            }, timeout=600)
+
+            if response.status_code == 200:
+                result = response.json()
+                conllu = result.get('result', '')
+                return parse_conllu_sentences(conllu)
+            else:
+                print(f"    Local server error {response.status_code}: {response.text[:200]}")
+                return None
+        except requests.exceptions.Timeout:
+            print(f"    Batch timeout (attempt {attempt + 1}/{max_retries}), retrying...")
+            time.sleep(10)
+        except requests.exceptions.ConnectionError:
+            print(f"    Connection error (attempt {attempt + 1}/{max_retries}), retrying in 15s...")
+            time.sleep(15)
+        except Exception as e:
+            print(f"    Batch parse error: {e}")
+            return None
+    print(f"    Failed after {max_retries} retries")
+    return None
+
+
 def parse_with_latinpipe_api(text, max_retries=3):
     """Parse Latin text using LatinPipe REST API."""
     import requests
@@ -454,21 +514,47 @@ def build_syntax_index(corpus_dir, output_path, specific_texts=None,
                 if (j + 1) % batch_size == 0:
                     conn.commit()
         else:
-            for j, line_data in enumerate(lines):
-                ref = line_data['ref']
-                text = line_data['text']
-                tokens = parse_with_latinpipe_local(text, local_pipeline['url'])
+            chunk_size = 50
+            for chunk_start in range(0, len(lines), chunk_size):
+                chunk = lines[chunk_start:chunk_start + chunk_size]
+                combined_text = '\n\n'.join(ld['text'] for ld in chunk)
 
-                if tokens:
-                    if store_line_syntax(conn, text_id, ref, tokens):
-                        lines_ok += 1
+                sentences = parse_batch_local(combined_text, local_pipeline['url'])
+
+                if sentences:
+                    n_sentences = len(sentences)
+                    n_lines = len(chunk)
+                    if n_sentences == n_lines:
+                        for k, line_data in enumerate(chunk):
+                            if store_line_syntax(conn, text_id, line_data['ref'], sentences[k]):
+                                lines_ok += 1
+                            else:
+                                lines_fail += 1
+                    elif n_sentences >= n_lines:
+                        sent_idx = 0
+                        for k, line_data in enumerate(chunk):
+                            merged = list(sentences[sent_idx])
+                            sent_idx += 1
+                            while sent_idx < n_sentences and sent_idx < (k + 1) * n_sentences // n_lines:
+                                merged.extend(sentences[sent_idx])
+                                sent_idx += 1
+                            if store_line_syntax(conn, text_id, line_data['ref'], merged):
+                                lines_ok += 1
+                            else:
+                                lines_fail += 1
                     else:
-                        lines_fail += 1
+                        for k, line_data in enumerate(chunk):
+                            if k < n_sentences:
+                                if store_line_syntax(conn, text_id, line_data['ref'], sentences[k]):
+                                    lines_ok += 1
+                                else:
+                                    lines_fail += 1
+                            else:
+                                lines_fail += 1
                 else:
-                    lines_fail += 1
+                    lines_fail += len(chunk)
 
-                if (j + 1) % batch_size == 0:
-                    conn.commit()
+                conn.commit()
 
         conn.commit()
         total_lines += lines_ok
