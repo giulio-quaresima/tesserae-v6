@@ -111,27 +111,36 @@ def parse_with_latinpipe_api(text, max_retries=3):
     return None
 
 
-def parse_with_latinpipe_local(text, local_api_url):
+def parse_with_latinpipe_local(text, local_api_url, max_retries=3):
     """Parse Latin text using a locally-running LatinPipe server."""
     import requests
-    try:
-        response = requests.post(local_api_url, data={
-            'tokenizer': '',
-            'tagger': '',
-            'parser': '',
-            'data': text
-        }, timeout=60)
+    for attempt in range(max_retries):
+        try:
+            response = requests.post(local_api_url, data={
+                'tokenizer': '',
+                'tagger': '',
+                'parser': '',
+                'data': text
+            }, timeout=300)
 
-        if response.status_code == 200:
-            result = response.json()
-            conllu = result.get('result', '')
-            return parse_conllu(conllu)
-        else:
-            print(f"    Local server error {response.status_code}: {response.text[:200]}")
+            if response.status_code == 200:
+                result = response.json()
+                conllu = result.get('result', '')
+                return parse_conllu(conllu)
+            else:
+                print(f"    Local server error {response.status_code}: {response.text[:200]}")
+                return None
+        except requests.exceptions.Timeout:
+            print(f"    Local timeout (attempt {attempt + 1}/{max_retries}), retrying...")
+            time.sleep(5)
+        except requests.exceptions.ConnectionError:
+            print(f"    Local connection error (attempt {attempt + 1}/{max_retries}), retrying in 10s...")
+            time.sleep(10)
+        except Exception as e:
+            print(f"    Local parse error: {e}")
             return None
-    except Exception as e:
-        print(f"    Local parse error: {e}")
-        return None
+    print(f"    Failed after {max_retries} retries")
+    return None
 
 
 def try_load_local_latinpipe(model_path, repo_path=None, local_port=8100):
