@@ -37,6 +37,36 @@ The following directories are listed in `.gitignore` and will NOT sync to GitHub
 
 ---
 
+### 2b. Syntax Index (~200-400 MB estimated)
+**Location:** `data/inverted_index/syntax_latin.db`
+
+**Contents:**
+- Universal Dependencies syntax parses for all 1,429 Latin .tess files
+- Per-line data: tokens, lemmas, UPOS tags, dependency heads, dependency relations, morphological features
+- Parsed by LatinPipe (EvaLatin 2024 winner, ~90-95% LAS accuracy)
+
+**Provenance:**
+- Parser: LatinPipe (`latinpipe-evalatin24-240520`)
+- Model: EvaLatin 2024 winning system (https://github.com/ufal/evalatin2024-latinpipe)
+- Build date: February 6, 2026
+- Build location: Marvin server (marvin.caset.buffalo.edu)
+- Build method: Local LatinPipe server, batch mode (50 lines/request), ~82 lines/second
+- Build script: `scripts/marvin_latinpipe/build_latinpipe_syntax.py`
+
+**What happens without it:** Syntax-based matching features won't work, but all other search types function normally.
+
+**How to rebuild:** Run `build_latinpipe_syntax.py` on Marvin with local LatinPipe model (~1-2 hours for full corpus). See `scripts/marvin_latinpipe/MARVIN_SETUP_GUIDE.md`.
+
+**Runtime behavior:** The application reads directly from `syntax_latin.db` as a standalone SQLite file. A merge script (`scripts/marvin_latinpipe/merge_syntax_index.py`) exists for optionally combining into `la_index.db`, but standalone mode is the default.
+
+**Sync between Replit and Marvin:**
+- The same file lives at `data/inverted_index/syntax_latin.db` on both machines
+- Master copy is built on Marvin; copy to Replit after building
+- When new texts are added, they can be parsed individually via the LatinPipe REST API (no local model needed)
+- To add a single new text's syntax: use the admin text approval pipeline (automatic) or run the build script with `--texts filename.tess`
+
+---
+
 ### 3. Lemma Lookup Tables (~40 MB)
 **Location:** `data/lemma_tables/`
 
@@ -84,11 +114,12 @@ The following directories are listed in `.gitignore` and will NOT sync to GitHub
 |-----------|------|---------------|------------------|--------------|
 | `backend/embeddings/` | ~2 GB | Not needed | **REQUIRED** | Difficult |
 | `data/inverted_index/` | ~2.4 GB | **REQUIRED** | **REQUIRED** | Yes (Admin) |
+| `data/inverted_index/syntax_latin.db` | ~200-400 MB | Not needed | Not needed | Yes (Marvin) |
 | `data/lemma_tables/` | ~40 MB | **REQUIRED** | **REQUIRED** | Yes (script) |
 | `texts/` | ~308 MB | **REQUIRED** | **REQUIRED** | Re-download |
 | `cache/` | ~5 MB | Not needed | Not needed | Auto-rebuilds |
 
-**Total excluded: ~4.7 GB**
+**Total excluded: ~5.0-5.1 GB**
 
 ---
 
@@ -103,6 +134,7 @@ If you lose the data files, here's what to do:
 | **Inverted index** | Admin panel → "Rebuild Index" (~10 min) | Easy |
 | **Cache** | Auto-rebuilds on first use | Automatic |
 | **Embeddings** | Run embedding scripts (~30 min/language, needs sentence-transformers) | Moderate |
+| **Syntax index** | Run `build_latinpipe_syntax.py` on Marvin (~1-2 hours, needs LatinPipe) | Moderate |
 
 ### What Takes the Most Time?
 1. **Embeddings** - About 30 minutes per language to regenerate (Latin, Greek, English). Not hard, just slow.
