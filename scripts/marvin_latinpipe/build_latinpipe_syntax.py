@@ -137,6 +137,16 @@ def parse_batch_local(lines_text, local_api_url, max_retries=3):
     return None
 
 
+def parse_lines_individually(lines, local_api_url):
+    """Fallback: parse lines one at a time when batch mode fails."""
+    results = []
+    for ld in lines:
+        tokens = parse_with_latinpipe_local(ld['text'], local_api_url, max_retries=2)
+        if tokens:
+            results.append((ld, tokens))
+    return results
+
+
 def parse_with_latinpipe_api(text, max_retries=3):
     """Parse Latin text using LatinPipe REST API."""
     import requests
@@ -556,7 +566,7 @@ def build_syntax_index(corpus_dir, output_path, specific_texts=None,
             continue
 
         if not use_api and local_pipeline and server_config:
-            if texts_since_restart > 0 and texts_since_restart % 50 == 0:
+            if texts_since_restart > 0 and texts_since_restart % 5 == 0:
                 if not check_server_health(local_pipeline):
                     print(f"  ** Server health check failed at text {i+1}, restarting...")
                     local_pipeline = restart_server_if_needed(local_pipeline, server_config)
@@ -564,6 +574,7 @@ def build_syntax_index(corpus_dir, output_path, specific_texts=None,
                         print("  ** Cannot restart server, aborting.")
                         break
                     server_restart_count += 1
+                    time.sleep(5)
             texts_since_restart += 1
 
         lines_ok = 0
@@ -587,7 +598,7 @@ def build_syntax_index(corpus_dir, output_path, specific_texts=None,
                 if (j + 1) % batch_size == 0:
                     conn.commit()
         else:
-            chunk_size = 50
+            chunk_size = 20
             for chunk_start in range(0, len(lines), chunk_size):
                 chunk = lines[chunk_start:chunk_start + chunk_size]
                 combined_text = '\n\n'.join(ld['text'] for ld in chunk)
@@ -595,11 +606,23 @@ def build_syntax_index(corpus_dir, output_path, specific_texts=None,
                 sentences = parse_batch_local(combined_text, local_pipeline['url'])
 
                 if sentences is None and server_config:
-                    print(f"    Batch failed, checking server health...")
+                    print(f"    Batch of {len(chunk)} failed, restarting server...")
                     local_pipeline = restart_server_if_needed(local_pipeline, server_config)
                     if local_pipeline:
                         server_restart_count += 1
+                        time.sleep(5)
                         sentences = parse_batch_local(combined_text, local_pipeline['url'])
+
+                    if sentences is None and local_pipeline:
+                        print(f"    Batch retry failed, falling back to line-by-line...")
+                        individual_results = parse_lines_individually(chunk, local_pipeline['url'])
+                        for ld, tokens in individual_results:
+                            if store_line_syntax(conn, text_id, ld['ref'], tokens):
+                                lines_ok += 1
+                            else:
+                                lines_fail += 1
+                        conn.commit()
+                        continue
 
                 if sentences:
                     n_sentences = len(sentences)
