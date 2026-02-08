@@ -199,7 +199,13 @@ export default function AdminPanel() {
       approved_filename: request.approved_filename || request.suggested_filename || '',
       text_date: request.text_date || '',
       admin_notes: request.admin_notes || '',
-      content: request.content || ''
+      content: request.content || '',
+      author_era: request.author_era || '',
+      author_year: request.author_year != null ? String(request.author_year) : '',
+      e_source: request.e_source || '',
+      e_source_url: request.e_source_url || '',
+      print_source: request.print_source || '',
+      added_by: request.added_by || ''
     });
     updateTessPreview(request.content || '', request.official_author || request.author, request.official_work || request.work);
   };
@@ -1260,7 +1266,7 @@ export default function AdminPanel() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Language</label>
                   <div className="px-3 py-2 bg-gray-100 rounded text-sm">
@@ -1268,13 +1274,33 @@ export default function AdminPanel() {
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Text Date / Era</label>
-                  <input
-                    type="text"
-                    value={editingRequest.text_date}
-                    onChange={e => setEditingRequest(prev => ({ ...prev, text_date: e.target.value }))}
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Era</label>
+                  <select
+                    value={editingRequest.author_era}
+                    onChange={e => setEditingRequest(prev => ({ ...prev, author_era: e.target.value }))}
                     className="w-full border rounded px-3 py-2 text-sm"
-                    placeholder="e.g., 19 BCE, 1st century CE"
+                  >
+                    <option value="">Select era...</option>
+                    <option value="Archaic">Archaic</option>
+                    <option value="Classical">Classical</option>
+                    <option value="Hellenistic">Hellenistic</option>
+                    <option value="Republic">Republic</option>
+                    <option value="Augustan">Augustan</option>
+                    <option value="Early Imperial">Early Imperial</option>
+                    <option value="Later Imperial">Later Imperial</option>
+                    <option value="Late Antique">Late Antique</option>
+                    <option value="Early Medieval">Early Medieval</option>
+                    <option value="Unknown">Unknown</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Year (negative = BCE)</label>
+                  <input
+                    type="number"
+                    value={editingRequest.author_year}
+                    onChange={e => setEditingRequest(prev => ({ ...prev, author_year: e.target.value }))}
+                    className="w-full border rounded px-3 py-2 text-sm"
+                    placeholder="e.g., -19 for 19 BCE"
                   />
                 </div>
                 <div>
@@ -1293,6 +1319,64 @@ export default function AdminPanel() {
                     >
                       Auto
                     </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="border border-amber-200 rounded-lg p-4 bg-amber-50">
+                <h4 className="text-sm font-semibold text-amber-900 mb-3">Sources Entry (for Sources page)</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">e-Source</label>
+                    <select
+                      value={editingRequest.e_source}
+                      onChange={e => setEditingRequest(prev => ({ ...prev, e_source: e.target.value }))}
+                      className="w-full border rounded px-3 py-2 text-sm"
+                    >
+                      <option value="">Select source...</option>
+                      <option value="Perseus">Perseus</option>
+                      <option value="The Latin Library">The Latin Library</option>
+                      <option value="DigilibLT">DigilibLT</option>
+                      <option value="Open Greek and Latin">Open Greek and Latin</option>
+                      <option value="MQDQ">MQDQ (Musisque Deoque)</option>
+                      <option value="Corpus Scriptorum Latinorum">Corpus Scriptorum Latinorum</option>
+                      <option value="Bibliotheca Augustana">Bibliotheca Augustana</option>
+                      <option value="Forum Romanum">Forum Romanum</option>
+                      <option value="Divus Angelus">Divus Angelus</option>
+                      <option value="Moby Shakespeare">Moby Shakespeare</option>
+                      <option value="User Submission">User Submission</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">e-Source URL</label>
+                    <input
+                      type="url"
+                      value={editingRequest.e_source_url}
+                      onChange={e => setEditingRequest(prev => ({ ...prev, e_source_url: e.target.value }))}
+                      className="w-full border rounded px-3 py-2 text-sm"
+                      placeholder="https://..."
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Print Source (citation)</label>
+                    <input
+                      type="text"
+                      value={editingRequest.print_source}
+                      onChange={e => setEditingRequest(prev => ({ ...prev, print_source: e.target.value }))}
+                      className="w-full border rounded px-3 py-2 text-sm"
+                      placeholder="e.g., Rudolf Hercher, Erotici Scriptores Graeci, Vol 1. Leipzig: Teubneri, 1858."
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Added by</label>
+                    <input
+                      type="text"
+                      value={editingRequest.added_by}
+                      onChange={e => setEditingRequest(prev => ({ ...prev, added_by: e.target.value }))}
+                      className="w-full border rounded px-3 py-2 text-sm"
+                      placeholder="Name of person who added this text"
+                    />
                   </div>
                 </div>
               </div>
