@@ -154,12 +154,15 @@ export default function AboutPage({ onNavigate }) {
             Our corpus draws from authoritative sources including Perseus Digital Library, CSEL, and other 
             scholarly editions. Provenance information is tracked for each text.
           </p>
-          <button
+        </section>
+
+        <section>
+          <h3
+            className="text-lg font-semibold text-gray-900 mb-3 cursor-pointer hover:text-amber-700"
             onClick={() => onNavigate && onNavigate('text-credits')}
-            className="text-sm text-amber-600 hover:underline font-medium"
           >
-            View Text Credits & Provenance →
-          </button>
+            Text Credits and Provenance →
+          </h3>
         </section>
 
         <section>
