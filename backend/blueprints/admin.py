@@ -64,6 +64,16 @@ def log_admin_action(action, target_type=None, target_id=None, details=None):
         logger.error(f"Failed to log admin action: {e}")
 
 
+def _parse_year(value):
+    """Safely parse a year value to int or None."""
+    if value is None or value == '' or value == 'null':
+        return None
+    try:
+        return int(value)
+    except (ValueError, TypeError):
+        return None
+
+
 def check_admin_auth():
     """Check admin authentication"""
     password = request.headers.get('X-Admin-Password', '')
@@ -106,7 +116,8 @@ def get_requests():
                 SELECT id, name, email, author, work, language, notes, content, 
                        status, created_at, reviewed_at, reviewed_by, admin_notes,
                        text_date, approved_filename, official_author, official_work,
-                       admin_updated_at
+                       admin_updated_at, author_era, author_year,
+                       e_source, e_source_url, print_source, added_by
                 FROM text_requests
                 ORDER BY created_at DESC
             ''')
@@ -139,6 +150,12 @@ def get_requests():
                 'official_author': row[15] or row[3],
                 'official_work': row[16] or row[4],
                 'admin_updated_at': row[17].isoformat() if row[17] else None,
+                'author_era': row[18] or '',
+                'author_year': row[19],
+                'e_source': row[20] or '',
+                'e_source_url': row[21] or '',
+                'print_source': row[22] or '',
+                'added_by': row[23] or '',
                 'suggested_filename': suggested_filename
             })
         return jsonify({'requests': requests})
@@ -168,7 +185,13 @@ def update_request(request_id):
                     official_author = COALESCE(%s, official_author),
                     official_work = COALESCE(%s, official_work),
                     content = COALESCE(%s, content),
-                    admin_updated_at = %s
+                    admin_updated_at = %s,
+                    author_era = COALESCE(NULLIF(%s, ''), author_era),
+                    author_year = COALESCE(%s, author_year),
+                    e_source = COALESCE(NULLIF(%s, ''), e_source),
+                    e_source_url = COALESCE(NULLIF(%s, ''), e_source_url),
+                    print_source = COALESCE(NULLIF(%s, ''), print_source),
+                    added_by = COALESCE(NULLIF(%s, ''), added_by)
                 WHERE id = %s
             ''', (
                 data.get('status'),
@@ -181,6 +204,12 @@ def update_request(request_id):
                 data.get('official_work'),
                 data.get('content'),
                 datetime.now(),
+                data.get('author_era', ''),
+                _parse_year(data.get('author_year')),
+                data.get('e_source', ''),
+                data.get('e_source_url', ''),
+                data.get('print_source', ''),
+                data.get('added_by', ''),
                 request_id
             ))
         log_admin_action('update_request', 'text_request', request_id, {
@@ -217,14 +246,16 @@ def approve_and_add_text(request_id):
         with get_db_cursor() as cur:
             cur.execute('''
                 SELECT author, work, language, content, 
-                       official_author, official_work, approved_filename
+                       official_author, official_work, approved_filename,
+                       author_era, author_year, e_source, e_source_url, print_source, added_by
                 FROM text_requests WHERE id = %s
             ''', (request_id,))
             row = cur.fetchone()
             if not row:
                 return jsonify({'error': 'Request not found'}), 404
             
-            orig_author, orig_work, language, db_content, official_author, official_work, approved_filename = row
+            orig_author, orig_work, language, db_content, official_author, official_work, approved_filename, \
+                db_era, db_year, db_e_source, db_e_source_url, db_print_source, db_added_by = row
             
             author = official_author or orig_author
             work = official_work or orig_work
@@ -314,11 +345,30 @@ def approve_and_add_text(request_id):
         # Step 7: Add to text_provenance.json
         _update_text_provenance(text_id, author, work, language)
         
-        # Step 8: Check if author is new (not in author_dates)
+        # Step 8: Save author era/year to author_dates.json if provided
         author_key = safe_author.replace('.', '_').replace('-', '_')
         is_new_author = not (_author_dates and 
                             language in _author_dates and 
                             author_key in _author_dates[language])
+        
+        era = db_era or ''
+        year = db_year
+        if era or year is not None:
+            if language not in _author_dates:
+                _author_dates[language] = {}
+            _author_dates[language][author_key] = {
+                'year': int(year) if year is not None else None,
+                'era': era or 'Unknown',
+                'note': ''
+            }
+            try:
+                with open(_author_dates_path, 'w') as f:
+                    json.dump(_author_dates, f, indent=2)
+            except Exception as e:
+                logger.warning(f"Could not save author dates: {e}")
+        
+        # Step 9: Add to text_sources.json for the Sources page
+        _add_to_text_sources(author, work, db_e_source, db_e_source_url, db_print_source, db_added_by)
         
         log_admin_action('approve_request', 'text_request', request_id, {
             'filename': filename,
@@ -420,6 +470,39 @@ def _update_text_provenance(text_id, author, title, language):
         logger.info(f"Added {text_id} to text_provenance.json")
     except Exception as e:
         logger.error(f"Failed to update text_provenance.json: {e}")
+
+
+def _add_to_text_sources(author, work, e_source, e_source_url, print_source, added_by):
+    """Append a new entry to data/text_sources.json for the Sources page."""
+    if not any([e_source, print_source, added_by]):
+        return
+    try:
+        project_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+        sources_path = os.path.join(project_root, 'data', 'text_sources.json')
+        
+        if os.path.exists(sources_path):
+            with open(sources_path, 'r', encoding='utf-8') as f:
+                sources = json.load(f)
+        else:
+            sources = []
+        
+        sources.append({
+            'author': author or '',
+            'work': work or '',
+            'e_source': e_source or '',
+            'e_source_url': e_source_url or '',
+            'print_source': print_source or '',
+            'added_by': added_by or ''
+        })
+        
+        sources.sort(key=lambda x: (x.get('author', '').lower(), x.get('work', '').lower()))
+        
+        with open(sources_path, 'w', encoding='utf-8') as f:
+            json.dump(sources, f, indent=2, ensure_ascii=False)
+        
+        logger.info(f"Added {author} - {work} to text_sources.json")
+    except Exception as e:
+        logger.error(f"Failed to update text_sources.json: {e}")
 
 
 @admin_bp.route('/requests/<int:request_id>', methods=['DELETE'])
