@@ -1,12 +1,13 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Header, Navigation } from './components/layout';
-import { SearchModeToggle, TextSelector, SearchSettings, SearchResults, LineSearch, CrossLingualSearch, WildcardSearch, SavedSearches, CorpusSearchResults } from './components/search';
+import { SearchModeToggle, TextSelector, SearchSettings, SearchResults, LineSearch, CrossLingualSearch, WildcardSearch, SavedSearches, CorpusSearchResults, RarePairsSettings } from './components/search';
 import RareResultsDisplay from './components/search/RareResultsDisplay';
 import { Modal, LoadingSpinner } from './components/common';
 import { CorpusBrowser, RareWordsExplorer } from './components/corpus';
 import { Repository } from './components/repository';
 import { AdminPanel } from './components/admin';
 import { AboutPage, HelpPage, DownloadsPage, PrivacyPage } from './components/pages';
+import TextCredits from './components/about/TextCredits';
 import VisualizationsPage from './components/pages/VisualizationsPage';
 import { useCorpus, useSearch } from './hooks';
 import { getSessionValue, setSessionValue } from './utils/storage';
@@ -22,6 +23,7 @@ const pathToPageType = {
   '/about': 'about',
   '/help': 'help',
   '/privacy': 'privacy',
+  '/text-credits': 'text-credits',
   '/admin': 'admin'
 };
 
@@ -36,6 +38,7 @@ const pageTypeToPath = {
   'about': '/about',
   'help': '/help',
   'privacy': '/privacy',
+  'text-credits': '/text-credits',
   'admin': '/admin'
 };
 
@@ -109,7 +112,9 @@ function App() {
     target_unit_type: 'line',
     max_distance: 999,
     max_results: 0,
-    bigram_boost: false
+    bigram_boost: false,
+    sort_by: 'rarity',
+    stoplist: false
   });
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
   
@@ -532,6 +537,13 @@ function App() {
                     />
                   )}
 
+                  {(searchMode === 'bigram' || searchMode === 'hapax') && (
+                    <RarePairsSettings
+                      settings={settings}
+                      setSettings={setSettings}
+                    />
+                  )}
+
                   <div className="flex justify-center mt-6">
                     {searchLoading ? (
                       <button
@@ -570,6 +582,7 @@ function App() {
                     targetText={targetText}
                     onRegister={handleRegister}
                     onCorpusSearch={handleCorpusSearch}
+                    language={activeTab}
                     elapsedTime={searchElapsedTime}
                   />
                 ) : (
@@ -654,7 +667,11 @@ function App() {
         )}
 
         {pageType === 'about' && (
-          <AboutPage />
+          <AboutPage onNavigate={setPageType} />
+        )}
+
+        {pageType === 'text-credits' && (
+          <TextCredits />
         )}
 
         {pageType === 'help' && (

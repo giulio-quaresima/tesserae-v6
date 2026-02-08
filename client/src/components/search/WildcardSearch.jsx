@@ -111,11 +111,20 @@ const WildcardSearch = ({ language }) => {
 
   const allResults = results?.results || [];
 
+  const genreFilteredResults = useMemo(() => {
+    return allResults.filter(r => {
+      const isPoetry = r.is_poetry !== false;
+      if (!showPoetry && isPoetry) return false;
+      if (!showProse && !isPoetry) return false;
+      return true;
+    });
+  }, [allResults, showPoetry, showProse]);
+
   const getTimelineData = useCallback(() => {
-    if (!allResults || allResults.length === 0) return null;
+    if (!genreFilteredResults || genreFilteredResults.length === 0) return null;
     
     const eraCounts = {};
-    allResults.forEach(r => {
+    genreFilteredResults.forEach(r => {
       const era = r.era || 'Unknown';
       eraCounts[era] = (eraCounts[era] || 0) + 1;
     });
@@ -129,20 +138,20 @@ const WildcardSearch = ({ language }) => {
         backgroundColor: sortedEras.map(era => ERA_COLORS[era] || 'rgba(128,128,128,0.7)')
       }]
     };
-  }, [allResults]);
+  }, [genreFilteredResults]);
 
   const getAuthorTimelineData = useCallback(() => {
-    if (!allResults || allResults.length === 0) return null;
+    if (!genreFilteredResults || genreFilteredResults.length === 0) return null;
     
     const authorCounts = {};
-    allResults.forEach(r => {
+    genreFilteredResults.forEach(r => {
       const author = r.author || 'Unknown';
       authorCounts[author] = (authorCounts[author] || 0) + 1;
     });
     
     const sortedAuthors = Object.keys(authorCounts).sort((a, b) => {
-      const aResult = allResults.find(r => r.author === a);
-      const bResult = allResults.find(r => r.author === b);
+      const aResult = genreFilteredResults.find(r => r.author === a);
+      const bResult = genreFilteredResults.find(r => r.author === b);
       const aYear = aResult?.year || 9999;
       const bYear = bResult?.year || 9999;
       if (aYear !== bYear) return aYear - bYear;
@@ -157,7 +166,7 @@ const WildcardSearch = ({ language }) => {
         backgroundColor: 'rgba(155, 35, 53, 0.7)'
       }]
     };
-  }, [allResults]);
+  }, [genreFilteredResults]);
 
   const exportCSV = useCallback(() => {
     if (!filteredResults || filteredResults.length === 0) return;

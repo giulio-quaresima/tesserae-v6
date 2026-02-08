@@ -9,6 +9,15 @@ const displayGreekWithFinalSigma = (text) => {
   return text.replace(/σ(?=\s|$|[,.;:!?])/g, 'ς');
 };
 
+const getDictionaryUrl = (word, language) => {
+  if (!word) return null;
+  if (language === 'en') {
+    return `https://en.wiktionary.org/wiki/${encodeURIComponent(word)}`;
+  }
+  // Latin and Greek both use Logeion
+  return `https://logeion.uchicago.edu/${encodeURIComponent(word)}`;
+};
+
 const highlightMatchedWords = (text, matchedWords, lemma1, lemma2) => {
   if (!text || (!matchedWords?.length && !lemma1 && !lemma2)) return text;
   
@@ -129,6 +138,7 @@ const RareResultsDisplay = ({
   targetText,
   onRegister,
   onCorpusSearch,
+  language = 'la',
   elapsedTime = 0
 }) => {
   const [showTimeline, setShowTimeline] = useState(false);
@@ -428,6 +438,43 @@ const RareResultsDisplay = ({
                   <span className="font-semibold text-lg text-amber-700">
                     {displayName}
                   </span>
+                  {isHapax && r.lemma && getDictionaryUrl(r.lemma, language) && (
+                    <a
+                      href={getDictionaryUrl(r.lemma, language)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-gray-400 hover:text-amber-600 text-xs"
+                      title={`Look up "${r.lemma}" in ${language === 'en' ? 'Wiktionary' : 'Logeion'}`}
+                    >
+                      📖
+                    </a>
+                  )}
+                  {!isHapax && (r.word1 || r.word2) && (
+                    <div className="flex gap-1">
+                      {r.word1 && getDictionaryUrl(r.word1, language) && (
+                        <a
+                          href={getDictionaryUrl(r.word1, language)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-gray-400 hover:text-amber-600 text-xs"
+                          title={`Look up "${r.word1}" in ${language === 'en' ? 'Wiktionary' : 'Logeion'}`}
+                        >
+                          📖
+                        </a>
+                      )}
+                      {r.word2 && getDictionaryUrl(r.word2, language) && (
+                        <a
+                          href={getDictionaryUrl(r.word2, language)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-gray-400 hover:text-amber-600 text-xs"
+                          title={`Look up "${r.word2}" in ${language === 'en' ? 'Wiktionary' : 'Logeion'}`}
+                        >
+                          📖
+                        </a>
+                      )}
+                    </div>
+                  )}
                   <span className="text-xs px-2 py-0.5 rounded bg-amber-100 text-amber-700">
                     {r.rarity_percent ? `${r.rarity_percent.toFixed(1)}% rare` : 
                      r.corpus_count ? `${r.corpus_count} in corpus` : isHapax ? 'rare' : ''}

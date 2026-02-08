@@ -304,11 +304,20 @@ export default function LineSearch({ language }) {
     link.click();
   };
 
+  const genreFilteredResults = useMemo(() => {
+    return deduplicatedResults.filter(r => {
+      const isPoetry = r.is_poetry !== false;
+      if (!showPoetry && isPoetry) return false;
+      if (!showProse && !isPoetry) return false;
+      return true;
+    });
+  }, [deduplicatedResults, showPoetry, showProse]);
+
   const getTimelineData = useCallback(() => {
-    if (!deduplicatedResults || deduplicatedResults.length === 0) return null;
+    if (!genreFilteredResults || genreFilteredResults.length === 0) return null;
     
     const eraCounts = {};
-    deduplicatedResults.forEach(r => {
+    genreFilteredResults.forEach(r => {
       const era = r.era || 'Unknown';
       eraCounts[era] = (eraCounts[era] || 0) + 1;
     });
@@ -325,20 +334,20 @@ export default function LineSearch({ language }) {
         borderWidth: 1
       }]
     };
-  }, [deduplicatedResults]);
+  }, [genreFilteredResults]);
 
   const getAuthorTimelineData = useCallback(() => {
-    if (!deduplicatedResults || deduplicatedResults.length === 0) return null;
+    if (!genreFilteredResults || genreFilteredResults.length === 0) return null;
     
     const authorCounts = {};
-    deduplicatedResults.forEach(r => {
+    genreFilteredResults.forEach(r => {
       const author = r.author || 'Unknown';
       authorCounts[author] = (authorCounts[author] || 0) + 1;
     });
     
     const sortedAuthors = Object.keys(authorCounts).sort((a, b) => {
-      const aResult = deduplicatedResults.find(r => r.author === a);
-      const bResult = deduplicatedResults.find(r => r.author === b);
+      const aResult = genreFilteredResults.find(r => r.author === a);
+      const bResult = genreFilteredResults.find(r => r.author === b);
       const aYear = aResult?.year || 9999;
       const bYear = bResult?.year || 9999;
       if (aYear !== bYear) return aYear - bYear;
@@ -355,7 +364,7 @@ export default function LineSearch({ language }) {
         borderWidth: 1
       }]
     };
-  }, [deduplicatedResults]);
+  }, [genreFilteredResults]);
 
   const chartOptions = {
     responsive: true,

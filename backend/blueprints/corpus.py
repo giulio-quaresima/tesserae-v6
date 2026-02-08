@@ -165,6 +165,63 @@ def get_provenance():
     })
 
 
+@corpus_bp.route('/text-credits')
+def get_text_credits():
+    """Get text credits and provenance information grouped by source."""
+    provenance = load_provenance()
+    sources_info = provenance.get('sources', {})
+    texts_prov = provenance.get('texts', {})
+
+    all_texts = []
+    for language in ['la', 'grc', 'en']:
+        lang_dir = os.path.join(_texts_dir, language)
+        if not os.path.exists(lang_dir):
+            continue
+        for filename in sorted(os.listdir(lang_dir)):
+            if not filename.endswith('.tess'):
+                continue
+            text_key = filename.replace('.tess', '')
+            metadata = get_text_metadata(os.path.join(lang_dir, filename))
+            prov = texts_prov.get(text_key, texts_prov.get(filename, {}))
+            source_key = prov.get('source', 'tesserae_original')
+            source_info = sources_info.get(source_key, {})
+            all_texts.append({
+                'id': filename,
+                'author': prov.get('author') or metadata.get('author', ''),
+                'title': prov.get('title') or metadata.get('title', ''),
+                'language': language,
+                'source_key': source_key,
+                'source_name': prov.get('source_name') or source_info.get('name', 'Tesserae Project'),
+                'source_url': prov.get('source_url') or source_info.get('url', ''),
+                'date_added': prov.get('date_added') or prov.get('added_date', ''),
+            })
+
+    grouped = {}
+    for t in all_texts:
+        key = t['source_key']
+        if key not in grouped:
+            info = sources_info.get(key, {})
+            grouped[key] = {
+                'source_key': key,
+                'source_name': t['source_name'],
+                'source_url': t['source_url'],
+                'description': info.get('description', ''),
+                'texts': [],
+            }
+        grouped[key]['texts'].append(t)
+
+    for g in grouped.values():
+        g['texts'].sort(key=lambda x: (x['author'], x['title']))
+        g['text_count'] = len(g['texts'])
+
+    result = sorted(grouped.values(), key=lambda x: (-x['text_count'], x['source_name']))
+
+    return jsonify({
+        'sources': result,
+        'total_texts': len(all_texts),
+    })
+
+
 @corpus_bp.route('/texts/hierarchy')
 def get_texts_hierarchy():
     """Get hierarchical text structure: Author -> Work -> Parts"""

@@ -58,6 +58,16 @@ def normalize_greek(text: str) -> str:
             result.append(char)
     return ''.join(result)
 
+def normalize_latin(text: str) -> str:
+    """
+    Normalize Latin text for searching (v/u and j/i equivalence).
+    Classical Latin texts often vary between v/u and j/i.
+    Normalizing both the search pattern and the text being searched
+    ensures matches regardless of which convention the text uses.
+    """
+    return text.replace('v', 'u').replace('V', 'U').replace('j', 'i').replace('J', 'I')
+
+
 TEXTS_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'texts')
 
 
@@ -184,17 +194,22 @@ def search_file(filepath: str, parsed_query: Dict, case_sensitive: bool = False,
         ref = match.group(1)
         text = match.group(2)
         
-        search_text = normalize_greek(text) if is_greek else text
+        is_latin = language == 'la'
+        if is_greek:
+            search_text = normalize_greek(text)
+        elif is_latin:
+            search_text = normalize_latin(text)
+        else:
+            search_text = text
         
-        if matches_query(search_text, parsed_query, flags, is_greek):
-            highlight_indices = get_highlight_indices(text, parsed_query, flags, is_greek)
+        if matches_query(search_text, parsed_query, flags, is_greek, is_latin):
+            highlight_indices = get_highlight_indices(text, parsed_query, flags, is_greek, is_latin)
             
             # For prose, extract only sentences containing matches
             display_text = text
             if is_prose and len(text) > 150:
                 display_text = extract_sentences_with_matches(text, highlight_indices)
-                # Recalculate indices for the extracted text
-                highlight_indices = get_highlight_indices(display_text, parsed_query, flags, is_greek)
+                highlight_indices = get_highlight_indices(display_text, parsed_query, flags, is_greek, is_latin)
             
             # Apply HTML highlighting
             highlighted_text = apply_highlighting(display_text, highlight_indices)
@@ -209,7 +224,7 @@ def search_file(filepath: str, parsed_query: Dict, case_sensitive: bool = False,
     return results
 
 
-def matches_query(text: str, parsed_query: Dict, flags: int, is_greek: bool = False) -> bool:
+def matches_query(text: str, parsed_query: Dict, flags: int, is_greek: bool = False, is_latin: bool = False) -> bool:
     """Check if text matches the parsed query."""
     query_type = parsed_query.get('type', 'simple')
     
@@ -217,26 +232,26 @@ def matches_query(text: str, parsed_query: Dict, flags: int, is_greek: bool = Fa
         return False
     
     if query_type == 'simple':
-        return all(matches_term(text, term, flags, is_greek) for term in parsed_query['terms'])
+        return all(matches_term(text, term, flags, is_greek, is_latin) for term in parsed_query['terms'])
     
     if query_type == 'and':
-        return all(matches_term(text, term, flags, is_greek) for term in parsed_query['terms'])
+        return all(matches_term(text, term, flags, is_greek, is_latin) for term in parsed_query['terms'])
     
     if query_type == 'or':
-        return any(matches_term(text, term, flags, is_greek) for term in parsed_query['terms'])
+        return any(matches_term(text, term, flags, is_greek, is_latin) for term in parsed_query['terms'])
     
     if query_type == 'not':
-        include_match = matches_term(text, parsed_query['include'], flags, is_greek)
-        exclude_match = matches_term(text, parsed_query['exclude'], flags, is_greek)
+        include_match = matches_term(text, parsed_query['include'], flags, is_greek, is_latin)
+        exclude_match = matches_term(text, parsed_query['exclude'], flags, is_greek, is_latin)
         return include_match and not exclude_match
     
     if query_type == 'proximity':
-        return matches_proximity(text, parsed_query, flags, is_greek)
+        return matches_proximity(text, parsed_query, flags, is_greek, is_latin)
     
     return False
 
 
-def matches_proximity(text: str, parsed_query: Dict, flags: int, is_greek: bool = False) -> bool:
+def matches_proximity(text: str, parsed_query: Dict, flags: int, is_greek: bool = False, is_latin: bool = False) -> bool:
     """Check if two terms appear within the specified character distance."""
     term1 = parsed_query['term1']
     term2 = parsed_query['term2']
@@ -248,11 +263,19 @@ def matches_proximity(text: str, parsed_query: Dict, flags: int, is_greek: bool 
     if is_greek:
         pattern1 = normalize_greek(pattern1)
         pattern2 = normalize_greek(pattern2)
+    elif is_latin:
+        pattern1 = normalize_latin(pattern1)
+        pattern2 = normalize_latin(pattern2)
     
     pattern1 = r'\b' + pattern1 + r'\b'
     pattern2 = r'\b' + pattern2 + r'\b'
     
-    search_text = normalize_greek(text) if is_greek else text
+    if is_greek:
+        search_text = normalize_greek(text)
+    elif is_latin:
+        search_text = normalize_latin(text)
+    else:
+        search_text = text
     
     matches1 = list(re.finditer(pattern1, search_text, flags))
     matches2 = list(re.finditer(pattern2, search_text, flags))
@@ -274,16 +297,18 @@ def matches_proximity(text: str, parsed_query: Dict, flags: int, is_greek: bool 
     return False
 
 
-def matches_term(text: str, term: Dict, flags: int, is_greek: bool = False) -> bool:
+def matches_term(text: str, term: Dict, flags: int, is_greek: bool = False, is_latin: bool = False) -> bool:
     """Check if text matches a single term."""
     pattern = term['pattern']
     if is_greek:
         pattern = normalize_greek(pattern)
+    elif is_latin:
+        pattern = normalize_latin(pattern)
     pattern = r'\b' + pattern + r'\b'
     return bool(re.search(pattern, text, flags))
 
 
-def get_highlight_indices(text: str, parsed_query: Dict, flags: int, is_greek: bool = False) -> List[List[int]]:
+def get_highlight_indices(text: str, parsed_query: Dict, flags: int, is_greek: bool = False, is_latin: bool = False) -> List[List[int]]:
     """Get character indices to highlight in the text."""
     indices = []
     terms = []
@@ -297,12 +322,19 @@ def get_highlight_indices(text: str, parsed_query: Dict, flags: int, is_greek: b
     elif query_type == 'proximity':
         terms = [parsed_query['term1'], parsed_query['term2']]
     
-    search_text = normalize_greek(text) if is_greek else text
+    if is_greek:
+        search_text = normalize_greek(text)
+    elif is_latin:
+        search_text = normalize_latin(text)
+    else:
+        search_text = text
     
     for term in terms:
         pattern = term['pattern']
         if is_greek:
             pattern = normalize_greek(pattern)
+        elif is_latin:
+            pattern = normalize_latin(pattern)
         pattern = r'\b' + pattern + r'\b'
         for match in re.finditer(pattern, search_text, flags):
             indices.append([match.start(), match.end()])
@@ -559,8 +591,7 @@ def wildcard_search(
             except Exception as e:
                 logger.error(f"Error processing {filename}: {e}")
     
-    # Sort chronologically by year, then by author name
-    all_results.sort(key=lambda r: (r.get('year', 9999), r.get('author', ''), r.get('reference', '')))
+    all_results.sort(key=lambda r: (r.get('year') or 9999, r.get('author', ''), r.get('reference', '')))
     
     # Truncate after sorting
     truncated = len(all_results) > max_results
