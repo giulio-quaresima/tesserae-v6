@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 
-export default function AboutPage() {
+export default function AboutPage({ onNavigate }) {
   const [versionInfo, setVersionInfo] = useState({ version: '6.0', last_updated: null });
 
   useEffect(() => {
@@ -150,10 +150,16 @@ export default function AboutPage() {
               <div className="text-sm text-gray-600">English Texts</div>
             </div>
           </div>
-          <p className="text-gray-700 text-sm">
+          <p className="text-gray-700 text-sm mb-3">
             Our corpus draws from authoritative sources including Perseus Digital Library, CSEL, and other 
             scholarly editions. Provenance information is tracked for each text.
           </p>
+          <button
+            onClick={() => onNavigate && onNavigate('text-credits')}
+            className="text-sm text-amber-600 hover:underline font-medium"
+          >
+            View Text Credits & Provenance →
+          </button>
         </section>
 
         <section>

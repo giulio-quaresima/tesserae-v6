@@ -23,6 +23,15 @@ function extractLineNumber(ref) {
   return match ? match[1] : ref;
 }
 
+function getDictionaryUrl(word, language) {
+  if (!word) return null;
+  if (language === 'en') {
+    return `https://en.wiktionary.org/wiki/${encodeURIComponent(word)}`;
+  }
+  // Latin and Greek both use Logeion
+  return `https://logeion.uchicago.edu/${encodeURIComponent(word)}`;
+}
+
 export default function RareWordsExplorer() {
   const [language, setLanguage] = useState('la');
   const [words, setWords] = useState([]);
@@ -295,6 +304,18 @@ export default function RareWordsExplorer() {
                       <span className="flex items-center gap-1">
                         {word.lemma}
                         <span className="text-gray-400 text-xs">{expandedWord === word.lemma ? '▼' : '▶'}</span>
+                        {getDictionaryUrl(word.lemma, language) && (
+                          <a
+                            href={getDictionaryUrl(word.lemma, language)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-gray-400 hover:text-amber-600 text-xs ml-1"
+                            title={`Look up "${word.lemma}" in ${language === 'en' ? 'Wiktionary' : 'Logeion'}`}
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            📖
+                          </a>
+                        )}
                       </span>
                     </td>
                     <td className="px-2 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-600">
@@ -311,6 +332,19 @@ export default function RareWordsExplorer() {
                     <tr key={`${word.lemma}-details`}>
                       <td colSpan="100" className="px-4 py-3 bg-gray-50">
                         <div className="space-y-2">
+                          <div className="flex items-center gap-2">
+                            {getDictionaryUrl(word.lemma, language) && (
+                              <a
+                                href={getDictionaryUrl(word.lemma, language)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-gray-400 hover:text-amber-600 text-sm"
+                                title={`Look up "${word.lemma}" in ${language === 'en' ? 'Wiktionary' : 'Logeion'}`}
+                              >
+                                📖 {language === 'en' ? 'Wiktionary' : 'Logeion'}
+                              </a>
+                            )}
+                          </div>
                           {expandedDetails[word.lemma].definition && (
                             <div className="text-sm">
                               <span className="font-medium">Definition: </span>

@@ -1,6 +1,7 @@
 export { default as SearchModeToggle } from './SearchModeToggle';
 export { default as TextSelector } from './TextSelector';
 export { default as SearchSettings } from './SearchSettings';
+export { default as RarePairsSettings } from './RarePairsSettings';
 export { default as SearchResults } from './SearchResults';
 export { default as LineSearch } from './LineSearch';
 export { default as CrossLingualSearch } from './CrossLingualSearch';

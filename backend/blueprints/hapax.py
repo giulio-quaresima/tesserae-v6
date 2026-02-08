@@ -37,8 +37,60 @@ logger = get_logger('hapax')
 
 
 # =============================================================================
+# STOPLIST DEFINITIONS
+# =============================================================================
+LATIN_STOPWORDS = {
+    'et', 'in', 'est', 'non', 'ut', 'cum', 'ad', 'sed', 'si', 'quod', 'qui', 'quae', 'que',
+    'de', 'ex', 'per', 'ab', 'ac', 'atque', 'aut', 'nec', 'neque', 'enim', 'nam', 'iam',
+    'tamen', 'autem', 'quidem', 'hic', 'haec', 'hoc', 'ille', 'illa', 'illud', 'is', 'ea',
+    'id', 'se', 'suus', 'ego', 'tu', 'nos', 'vos', 'sum', 'esse', 'sui'
+}
+
+GREEK_STOPWORDS = {
+    'καί', 'δέ', 'τε', 'ὁ', 'ἡ', 'τό', 'ἐν', 'εἰς', 'ἐκ', 'ἀπό', 'πρός', 'ὑπό', 'μέν',
+    'γάρ', 'ἀλλά', 'οὐ', 'μή', 'ὡς', 'αὐτός', 'οὗτος', 'ἐγώ', 'σύ', 'εἰμί'
+}
+
+
+# =============================================================================
 # HELPER FUNCTIONS
 # =============================================================================
+
+
+def extract_reference_numbers(ref_str):
+    """
+    Extract numeric parts from CTS reference (e.g., "verg. aen. 1.5" -> (1, 5)).
+    Returns tuple of integers for sorting by occurrence order.
+    """
+    import re
+    if not ref_str:
+        return (float('inf'), float('inf'))
+    
+    numbers = re.findall(r'\d+', ref_str)
+    if not numbers:
+        return (float('inf'), float('inf'))
+    
+    try:
+        nums = tuple(int(n) for n in numbers)
+        # Pad with 0s to ensure consistent tuple lengths
+        return nums + (0,) * (2 - len(nums)) if len(nums) < 2 else nums[:2]
+    except (ValueError, TypeError):
+        return (float('inf'), float('inf'))
+
+
+def is_word_in_stoplist(word, language):
+    """Check if a word is in the stoplist for the given language"""
+    if not word:
+        return False
+    
+    word_lower = word.lower().strip()
+    
+    if language == 'la':
+        return word_lower in LATIN_STOPWORDS
+    elif language == 'grc':
+        return word_lower in GREEK_STOPWORDS
+    
+    return False
 
 
 def get_dictionary_form(lemma_key, language):
@@ -1198,9 +1250,11 @@ def rare_bigram_search():
     POST body:
         source: source text filename
         target: target text filename  
-        language: 'la', 'grc', or 'en'
+        language: 'la', 'grc', or 'en' (default: 'la')
         min_rarity: minimum rarity score (0-1, default 0.9)
         limit: max results to return (default 100)
+        sort_by: sort results by 'rarity' (default) or 'occurrence' (order in source text)
+        stoplist: filter out common function words - true or false (default: false)
     """
     try:
         from backend.bigram_frequency import (
@@ -1214,6 +1268,10 @@ def rare_bigram_search():
         language = data.get('language', 'la')
         min_rarity = float(data.get('min_rarity', 0.9))
         limit = int(data.get('limit', 100))
+        sort_by = data.get('sort_by', 'rarity').lower()
+        use_stoplist = data.get('stoplist', False)
+        if isinstance(use_stoplist, str):
+            use_stoplist = use_stoplist.lower() in ('true', '1', 'yes')
         
         if not source_id or not target_id:
             return jsonify({'error': 'Please select both source and target texts'}), 400
@@ -1320,12 +1378,17 @@ def rare_bigram_search():
         
         results = []
         for bg_key in shared_bigrams:
+            words = bg_key.split('|')
+            lemma1 = words[0] if len(words) > 0 else ''
+            lemma2 = words[1] if len(words) > 1 else ''
+            
+            # Apply stoplist filter before rarity check
+            if use_stoplist:
+                if is_word_in_stoplist(lemma1, language) or is_word_in_stoplist(lemma2, language):
+                    continue
+            
             rarity = get_bigram_rarity_score(bg_key, language)
             if rarity >= min_rarity:
-                words = bg_key.split('|')
-                lemma1 = words[0] if len(words) > 0 else ''
-                lemma2 = words[1] if len(words) > 1 else ''
-                
                 # Get proper dictionary forms for display
                 dict_form1 = get_dictionary_form(lemma1, language)
                 dict_form2 = get_dictionary_form(lemma2, language)
@@ -1344,6 +1407,11 @@ def rare_bigram_search():
                 
                 matched_words = list(matched_words)
                 
+                # Extract first source reference for occurrence-based sorting
+                first_source_ref = ''
+                if source_bigram_locations[bg_key]:
+                    first_source_ref = source_bigram_locations[bg_key][0].get('ref', '')
+                
                 results.append({
                     'bigram': f'{dict_form1} + {dict_form2}',
                     'word1': lemma1,
@@ -1356,10 +1424,20 @@ def rare_bigram_search():
                     'source_occurrences': len(source_bigram_locations[bg_key]),
                     'target_occurrences': len(target_bigram_locations[bg_key]),
                     'source_locations': source_bigram_locations[bg_key][:5],
-                    'target_locations': target_bigram_locations[bg_key][:5]
+                    'target_locations': target_bigram_locations[bg_key][:5],
+                    '_first_source_ref': first_source_ref
                 })
         
-        results.sort(key=lambda x: -x['rarity'])
+        # Sort by occurrence order or rarity
+        if sort_by == 'occurrence':
+            results.sort(key=lambda x: extract_reference_numbers(x['_first_source_ref']))
+        else:
+            results.sort(key=lambda x: -x['rarity'])
+        
+        # Remove internal sorting key before returning
+        for result in results:
+            result.pop('_first_source_ref', None)
+        
         results = results[:limit]
         
         return jsonify({

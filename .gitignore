@@ -53,6 +53,9 @@ backend/embeddings/
 # Attached assets (user uploads during development)
 attached_assets/
 
+# Data files (not code)
+trans3.csv
+
 # Private drafts and manuals (stay on Replit only)
 docs/ARTICLE_METHODS_DRAFT.md
 docs/PRIVATE_DEPLOYMENT_MANUAL.md
