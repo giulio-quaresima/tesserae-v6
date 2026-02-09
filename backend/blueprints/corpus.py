@@ -75,12 +75,16 @@ def get_texts():
             metadata = get_text_metadata(os.path.join(lang_dir, filename))
             metadata['language'] = language
             author_key = metadata.get('author_key', '').lower()
-            if author_key in author_dates:
-                metadata['year'] = author_dates[author_key].get('year')
-                metadata['era'] = author_dates[author_key].get('era')
-            else:
-                metadata['year'] = None
-                metadata['era'] = None
+            if 'year' not in metadata:
+                if author_key in author_dates:
+                    metadata['year'] = author_dates[author_key].get('year')
+                else:
+                    metadata['year'] = None
+            if 'era' not in metadata:
+                if author_key in author_dates:
+                    metadata['era'] = author_dates[author_key].get('era')
+                else:
+                    metadata['era'] = None
             texts.append(metadata)
     
     texts.sort(key=lambda x: (x['author'], x['title']))
@@ -105,12 +109,16 @@ def get_authors():
             metadata = get_text_metadata(os.path.join(lang_dir, filename))
             metadata['language'] = language
             author_key = metadata.get('author_key', '').lower()
-            if author_key in author_dates:
-                metadata['year'] = author_dates[author_key].get('year')
-                metadata['era'] = author_dates[author_key].get('era')
-            else:
-                metadata['year'] = None
-                metadata['era'] = None
+            if 'year' not in metadata:
+                if author_key in author_dates:
+                    metadata['year'] = author_dates[author_key].get('year')
+                else:
+                    metadata['year'] = None
+            if 'era' not in metadata:
+                if author_key in author_dates:
+                    metadata['era'] = author_dates[author_key].get('era')
+                else:
+                    metadata['era'] = None
             author = metadata['author']
             if author not in authors:
                 authors[author] = {'works': [], 'year': metadata.get('year'), 'era': metadata.get('era')}
@@ -193,12 +201,16 @@ def get_texts_hierarchy():
         if filename.endswith('.tess'):
             metadata = get_text_metadata(os.path.join(lang_dir, filename))
             author_key = metadata.get('author_key', '').lower()
-            if author_key in author_dates:
-                metadata['year'] = author_dates[author_key].get('year')
-                metadata['era'] = author_dates[author_key].get('era')
-            else:
-                metadata['year'] = None
-                metadata['era'] = None
+            if 'year' not in metadata:
+                if author_key in author_dates:
+                    metadata['year'] = author_dates[author_key].get('year')
+                else:
+                    metadata['year'] = None
+            if 'era' not in metadata:
+                if author_key in author_dates:
+                    metadata['era'] = author_dates[author_key].get('era')
+                else:
+                    metadata['era'] = None
             texts.append(metadata)
     
     hierarchy = build_text_hierarchy(texts)
