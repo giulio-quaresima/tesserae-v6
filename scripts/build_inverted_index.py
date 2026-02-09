@@ -66,8 +66,36 @@ def build_index(language, text_processor, verbose=True, resume=True):
             )
         ''')
         
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS lines (
+                text_id INTEGER,
+                ref TEXT,
+                content TEXT,
+                lemmas TEXT,
+                tokens TEXT,
+                PRIMARY KEY (text_id, ref),
+                FOREIGN KEY (text_id) REFERENCES texts(text_id)
+            )
+        ''')
+        
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_lemma ON postings(lemma)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_text ON postings(text_id)')
+        conn.commit()
+        conn.close()
+    else:
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS lines (
+                text_id INTEGER,
+                ref TEXT,
+                content TEXT,
+                lemmas TEXT,
+                tokens TEXT,
+                PRIMARY KEY (text_id, ref),
+                FOREIGN KEY (text_id) REFERENCES texts(text_id)
+            )
+        ''')
         conn.commit()
         conn.close()
     
@@ -113,6 +141,8 @@ def build_index(language, text_processor, verbose=True, resume=True):
         for unit in units:
             ref = unit.get('ref', '')
             lemmas = unit.get('lemmas', [])
+            tokens = unit.get('tokens', [])
+            text_content = unit.get('text', '')
             
             lemma_positions = {}
             for pos, lemma in enumerate(lemmas):
@@ -126,6 +156,11 @@ def build_index(language, text_processor, verbose=True, resume=True):
                     (lemma, text_id, ref, json.dumps(positions))
                 )
                 total_postings += 1
+            
+            cursor.execute(
+                'INSERT OR IGNORE INTO lines (text_id, ref, content, lemmas, tokens) VALUES (?, ?, ?, ?, ?)',
+                (text_id, ref, text_content, json.dumps(lemmas), json.dumps(tokens))
+            )
         
         if (i + 1) % 50 == 0:
             conn.commit()

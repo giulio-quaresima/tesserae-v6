@@ -321,6 +321,8 @@ def index_single_text(filepath, language, text_processor):
         for unit in units:
             ref = unit.get('ref', '')
             lemmas = unit.get('lemmas', [])
+            tokens = unit.get('tokens', [])
+            text_content = unit.get('text', '')
             
             lemma_positions = {}
             for i, lemma in enumerate(lemmas):
@@ -334,6 +336,11 @@ def index_single_text(filepath, language, text_processor):
                     (lemma, text_id, ref, json.dumps(positions))
                 )
                 postings_count += 1
+            
+            cursor.execute(
+                'INSERT OR IGNORE INTO lines (text_id, ref, content, lemmas, tokens) VALUES (?, ?, ?, ?, ?)',
+                (text_id, ref, text_content, json.dumps(lemmas), json.dumps(tokens))
+            )
         
         conn.commit()
         conn.close()
