@@ -2,6 +2,10 @@
 """
 Build an inverted index for fast lemma-based searches.
 Maps lemma → list of (text_id, line_ref, positions) for instant lookups.
+
+For Latin, can optionally use LatinPipe syntax database (syntax_latin.db) to get
+high-quality lemmatizations from the EvaLatin 2024 parser, falling back to the
+text_processor for texts not covered by the syntax database.
 """
 import os
 import sys
@@ -15,6 +19,35 @@ from backend.text_processor import TextProcessor
 
 TEXTS_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'texts')
 INDEX_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data', 'inverted_index')
+
+
+def load_syntax_data(language):
+    """Load LatinPipe syntax data for use during index build.
+    Returns a dict mapping (filename_stem, locus) -> (tokens, lemmas) or None."""
+    if language != 'la':
+        return None
+    syntax_db = os.path.join(INDEX_DIR, 'syntax_latin.db')
+    if not os.path.exists(syntax_db):
+        return None
+    try:
+        conn = sqlite3.connect(syntax_db)
+        cursor = conn.cursor()
+        cursor.execute('SELECT text_id, locus, tokens, lemmas FROM syntax')
+        data = {}
+        count = 0
+        for row in cursor:
+            text_id, locus, tokens_json, lemmas_json = row
+            toks = json.loads(tokens_json) if tokens_json.startswith('[') else tokens_json.split()
+            lems = json.loads(lemmas_json) if lemmas_json.startswith('[') else lemmas_json.split()
+            norm_lems = [l.lower().replace('j', 'i').replace('v', 'u') for l in lems]
+            data[(text_id, locus)] = (toks, norm_lems)
+            count += 1
+        conn.close()
+        print(f"  Loaded {count} lines from LatinPipe syntax database")
+        return data
+    except Exception as e:
+        print(f"  Could not load syntax data: {e}")
+        return None
 
 def get_text_files(language):
     """Get all .tess files for a language"""

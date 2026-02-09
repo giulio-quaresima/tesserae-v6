@@ -141,15 +141,27 @@ def calculate_match_distance(text: str, matched_words: list, language: str = 'la
             words_list = [normalize_latin(w) for w in words_list]
             matched_words_normalized = [normalize_latin(w) for w in matched_words_normalized]
     
-    match_positions = []
+    positions_by_word = {}
     for i, word in enumerate(words_list):
         if word in matched_words_normalized:
-            match_positions.append(i)
+            if word not in positions_by_word:
+                positions_by_word[word] = []
+            positions_by_word[word].append(i)
     
-    if len(match_positions) < 2:
+    if len(positions_by_word) < 2:
         return 0
     
-    return match_positions[-1] - match_positions[0]
+    all_position_lists = list(positions_by_word.values())
+    min_dist = float('inf')
+    for a_idx in range(len(all_position_lists)):
+        for b_idx in range(a_idx + 1, len(all_position_lists)):
+            for pa in all_position_lists[a_idx]:
+                for pb in all_position_lists[b_idx]:
+                    d = abs(pa - pb)
+                    if d < min_dist:
+                        min_dist = d
+    
+    return min_dist if min_dist != float('inf') else 0
 
 
 def passes_distance_filter(text: str, matched_words: list, text_id: str, language: str = 'la') -> bool:

@@ -8,6 +8,28 @@ The Greek index (`grc_index.db`) is similarly partial: 514 of 659 texts (77%).
 
 The build script supports **resume mode**, so it will only process the missing files.
 
+## Lemma Table Improvements (February 2026)
+
+The lemma table (`data/lemma_tables/latin_lemmas.json`) has been expanded from 39K to 62K entries by incorporating:
+- 6 UD treebanks: Perseus, PROIEL, ITTB, LLCT, UDante, CIRCSE
+- LatinPipe syntax database mappings (542K parsed lines)
+
+Key improvements:
+- `crines` → `crinis`, `uertice` → `uertex`, `crinibus` → `crinis` (previously unmapped)
+- Much better coverage of medieval, legal, and poetic vocabulary
+
+**Query-time workaround**: A reverse lemma lookup table bridges the old index (which stores inflected forms as lemmas) with proper canonical lemmas. This means the current index works without a full rebuild, but a rebuild will produce cleaner results.
+
+### Recommended: Full Rebuild with LatinPipe
+
+For best lemmatization quality, rebuild the index using the `--use-syntax-db` flag, which uses the LatinPipe syntax database for higher-quality lemma assignments:
+
+```bash
+python scripts/build_inverted_index.py -l la --use-syntax-db --force
+```
+
+The `--force` flag forces a complete rebuild (not resume). Without `--use-syntax-db`, the build uses CLTK lemmatization + the expanded lemma table.
+
 ## Step-by-Step Instructions
 
 ### 1. SSH into Marvin
@@ -119,9 +141,18 @@ curl -s -X POST "http://localhost:5000/api/line-search" \
 ```
 
 **Expected with full index:**
-- Lemma search: ~400+ results (up from 302 with partial index)
+- Lemma search: 500+ results (currently 500 with partial index + query-time fallbacks)
+- Must include: Ovid (25+), Quintilian (1+), Seneca (3+)
 - Exact search: ~50+ results (up from 38)
 - All previously missing authors (Plautus, Silius Italicus, Seneca complete works, etc.) should appear
+
+**Additional reference test (Neil Bernstein case):**
+```bash
+curl -s -X POST "http://localhost:5000/api/line-search" \
+  -H "Content-Type: application/json" \
+  -d '{"query": "vertice crinis", "language": "la", "search_type": "lemma", "max_results": 100}'
+```
+- Must include Catullus 64.350 ("Cum in cinerem canos soluent a uertice crines")
 
 ### 8. Also backfill lines data for the original 900 texts
 
