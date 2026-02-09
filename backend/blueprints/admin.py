@@ -9,6 +9,7 @@ import json
 
 from backend.db_utils import get_db_cursor
 from backend.logging_config import get_logger
+from backend.utils import get_text_metadata, get_override, set_override, load_metadata_overrides
 from backend.lemma_cache import (
     rebuild_lemma_cache, get_cache_stats as get_lemma_cache_stats,
     clear_lemma_cache
@@ -1290,4 +1291,132 @@ def get_audit_log():
             return jsonify({'entries': entries})
     except Exception as e:
         logger.error(f"Failed to fetch audit log: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@admin_bp.route('/corpus-texts', methods=['GET'])
+def get_corpus_texts_for_admin():
+    """List all corpus texts with current metadata for admin editing"""
+    if not check_admin_auth():
+        return jsonify({'error': 'Unauthorized'}), 401
+    
+    try:
+        language = request.args.get('language', None)
+        languages = [language] if language else ['la', 'grc', 'en']
+        
+        all_texts = []
+        for lang in languages:
+            lang_dir = os.path.join(_texts_dir, lang)
+            if not os.path.exists(lang_dir):
+                continue
+            
+            author_dates = (_author_dates or {}).get(lang, {})
+            
+            for filename in sorted(os.listdir(lang_dir)):
+                if not filename.endswith('.tess'):
+                    continue
+                filepath = os.path.join(lang_dir, filename)
+                metadata = get_text_metadata(filepath)
+                metadata['language'] = lang
+                
+                author_key = metadata.get('author_key', '').lower()
+                if 'year' not in metadata:
+                    if author_key in author_dates:
+                        metadata['year'] = author_dates[author_key].get('year')
+                    else:
+                        metadata['year'] = None
+                if 'era' not in metadata:
+                    if author_key in author_dates:
+                        metadata['era'] = author_dates[author_key].get('era')
+                    else:
+                        metadata['era'] = None
+                
+                override = get_override(filename)
+                metadata['override'] = override if override else None
+                
+                all_texts.append(metadata)
+        
+        all_texts.sort(key=lambda x: (x.get('language', ''), x.get('author', ''), x.get('title', '')))
+        return jsonify({'texts': all_texts, 'total': len(all_texts)})
+    except Exception as e:
+        logger.error(f"Failed to list corpus texts: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@admin_bp.route('/text-metadata/<path:text_id>', methods=['GET'])
+def get_text_metadata_admin(text_id):
+    """Get metadata for a specific text including any overrides"""
+    if not check_admin_auth():
+        return jsonify({'error': 'Unauthorized'}), 401
+    
+    try:
+        filepath = None
+        for lang in ['la', 'grc', 'en']:
+            candidate = os.path.join(_texts_dir, lang, text_id)
+            if os.path.exists(candidate):
+                filepath = candidate
+                break
+        
+        if not filepath:
+            return jsonify({'error': 'Text not found'}), 404
+        
+        metadata = get_text_metadata(filepath)
+        metadata['language'] = lang
+        override = get_override(text_id)
+        
+        return jsonify({
+            'metadata': metadata,
+            'override': override,
+            'available_fields': ['text_type', 'display_author', 'display_work', 'year', 'era', 'notes']
+        })
+    except Exception as e:
+        logger.error(f"Failed to get text metadata: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@admin_bp.route('/text-metadata/<path:text_id>', methods=['PUT'])
+def update_text_metadata(text_id):
+    """Save metadata overrides for a text"""
+    if not check_admin_auth():
+        return jsonify({'error': 'Unauthorized'}), 401
+    
+    try:
+        filepath = None
+        for lang in ['la', 'grc', 'en']:
+            candidate = os.path.join(_texts_dir, lang, text_id)
+            if os.path.exists(candidate):
+                filepath = candidate
+                break
+        
+        if not filepath:
+            return jsonify({'error': 'Text not found'}), 404
+        
+        data = request.get_json() or {}
+        allowed_fields = {'text_type', 'display_author', 'display_work', 'year', 'era', 'notes'}
+        fields = {k: v for k, v in data.items() if k in allowed_fields}
+        
+        if 'year' in fields and fields['year'] is not None and fields['year'] != '':
+            fields['year'] = _parse_year(fields['year'])
+        
+        if 'text_type' in fields and fields['text_type'] not in ('poetry', 'prose', '', None):
+            return jsonify({'error': 'text_type must be "poetry" or "prose"'}), 400
+        
+        old_override = get_override(text_id)
+        set_override(text_id, fields)
+        
+        log_admin_action('update_metadata', 'text', text_id, {
+            'old': old_override,
+            'new': fields
+        })
+        
+        new_metadata = get_text_metadata(filepath)
+        
+        return jsonify({
+            'success': True,
+            'text_id': text_id,
+            'override': get_override(text_id),
+            'metadata': new_metadata
+        })
+    except Exception as e:
+        logger.error(f"Failed to update text metadata: {e}")
         return jsonify({'error': str(e)}), 500

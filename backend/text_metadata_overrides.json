@@ -1,0 +1,4 @@
+{
+  "_description": "Per-text metadata overrides. Keyed by text filename (e.g. 'eobanus.heroidum.tess'). Fields: text_type (poetry/prose), display_author, display_work, year, era, notes. Only include fields you want to override.",
+  "_last_updated": "2026-02-09"
+}

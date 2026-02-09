@@ -3,6 +3,60 @@ Tesserae V6 - Utility Functions
 """
 import os
 import re
+import json
+import logging
+
+logger = logging.getLogger(__name__)
+
+OVERRIDES_PATH = os.path.join(os.path.dirname(__file__), 'text_metadata_overrides.json')
+_overrides_cache = None
+_overrides_mtime = 0
+
+def load_metadata_overrides(force_reload=False):
+    global _overrides_cache, _overrides_mtime
+    try:
+        mtime = os.path.getmtime(OVERRIDES_PATH)
+        if not force_reload and _overrides_cache is not None and mtime == _overrides_mtime:
+            return _overrides_cache
+        with open(OVERRIDES_PATH, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        _overrides_cache = {k: v for k, v in data.items() if not k.startswith('_')}
+        _overrides_mtime = mtime
+        return _overrides_cache
+    except Exception as e:
+        logger.warning(f"Could not load metadata overrides: {e}")
+        return {}
+
+def save_metadata_overrides(overrides):
+    global _overrides_cache, _overrides_mtime
+    try:
+        with open(OVERRIDES_PATH, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+    except Exception:
+        data = {}
+    meta_keys = {k: v for k, v in data.items() if k.startswith('_')}
+    meta_keys['_last_updated'] = __import__('datetime').date.today().isoformat()
+    merged = {**meta_keys, **overrides}
+    with open(OVERRIDES_PATH, 'w', encoding='utf-8') as f:
+        json.dump(merged, f, indent=2, ensure_ascii=False)
+    _overrides_cache = overrides
+    _overrides_mtime = os.path.getmtime(OVERRIDES_PATH)
+
+def get_override(text_id):
+    overrides = load_metadata_overrides()
+    return overrides.get(text_id, {})
+
+def set_override(text_id, fields):
+    overrides = load_metadata_overrides()
+    if not fields or all(v == '' or v is None for v in fields.values()):
+        overrides.pop(text_id, None)
+    else:
+        clean = {k: v for k, v in fields.items() if v is not None and v != ''}
+        if clean:
+            overrides[text_id] = clean
+        else:
+            overrides.pop(text_id, None)
+    save_metadata_overrides(overrides)
 
 def load_corpus(directory):
     """Load all .tess files from a directory"""
@@ -66,7 +120,12 @@ def detect_text_type(filename, content=None):
     
     Default to poetry (line-based) since most classical texts in the corpus are poetic.
     Only mark as prose when confidently identified.
+    Checks metadata overrides first.
     """
+    override = get_override(filename)
+    if 'text_type' in override:
+        return override['text_type']
+    
     name_lower = filename.lower().replace('.tess', '')
     
     for work in PROSE_WORKS:
@@ -207,7 +266,17 @@ def get_text_metadata(filepath):
     
     text_type = detect_text_type(filename)
     
-    return {
+    override = get_override(filename)
+    if 'display_author' in override:
+        author = override['display_author']
+    if 'display_work' in override:
+        work = override['display_work']
+        if is_part and part_display:
+            title = f"{work}, {part_display}"
+        else:
+            title = work
+    
+    result = {
         'id': filename,
         'author': author,
         'author_key': author_raw,
@@ -221,6 +290,15 @@ def get_text_metadata(filepath):
         'filepath': filepath,
         'text_type': text_type
     }
+    
+    if 'year' in override:
+        result['year'] = override['year']
+    if 'era' in override:
+        result['era'] = override['era']
+    if override:
+        result['has_override'] = True
+    
+    return result
 
 def build_text_hierarchy(texts):
     """Build hierarchical structure: Author -> Work -> Parts"""
