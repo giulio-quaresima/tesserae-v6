@@ -1247,11 +1247,26 @@ def line_search():
                 return lemma
             
             query_lemmas = set()
+            token_to_lemma_fallbacks = {}
             if search_type == 'lemma':
+                from backend.text_processor import get_reverse_lemma_table
+                reverse_table = get_reverse_lemma_table(language)
                 query_tokens = query.lower().split()
                 for token in query_tokens:
                     lemmas = text_processor.lemmatize_word(token, language)
-                    query_lemmas.update(normalize_latin_lemma(l) for l in lemmas)
+                    normalized_lemmas = [normalize_latin_lemma(l) for l in lemmas]
+                    normalized_token = normalize_latin_lemma(token)
+                    query_lemmas.update(normalized_lemmas)
+                    if not normalized_lemmas:
+                        query_lemmas.add(normalized_token)
+                    for nl in normalized_lemmas:
+                        fallbacks = set()
+                        if nl != normalized_token:
+                            fallbacks.add(normalized_token)
+                        if nl in reverse_table:
+                            fallbacks.update(reverse_table[nl])
+                        if fallbacks:
+                            token_to_lemma_fallbacks[nl] = fallbacks
                 if not query_lemmas:
                     query_lemmas = set(normalize_latin_lemma(t) for t in query_tokens)
             else:
@@ -1267,7 +1282,7 @@ def line_search():
             
             # FAST PATH: Use inverted index if available (O(1) lookup vs O(n) scan)
             if search_type == 'lemma' and is_index_available(language) and len(filtered_query_lemmas) >= 2:
-                candidates = find_co_occurring_lemmas(list(filtered_query_lemmas), language, min_matches=2)
+                candidates = find_co_occurring_lemmas(list(filtered_query_lemmas), language, min_matches=2, fallback_forms=token_to_lemma_fallbacks if token_to_lemma_fallbacks else None)
                 use_indexed_lines = has_lines_data(language)
                 
                 # Group candidates by text
@@ -1334,28 +1349,37 @@ def line_search():
                         locus = locus_parts[-1] if locus_parts else ref
                         locus = clean_cts_reference(locus)
                         
-                        # Find matched words in text using pre-indexed lemmas
                         matched_words = []
-                        indexed_lemmas = set(line_info.get('lemmas', [])) if line_info else set()
+                        matched_indexed_lemmas = []
+                        indexed_lemmas_list = line_info.get('lemmas', []) if line_info else []
                         indexed_tokens = line_info.get('tokens', []) if line_info else []
                         
-                        # Use indexed data if available, otherwise fallback to quick token matching
-                        if indexed_lemmas:
-                            # Match query lemmas against indexed lemmas
-                            matching_query_lemmas = indexed_lemmas & filtered_query_lemmas
-                            if matching_query_lemmas:
-                                # Find the actual words that correspond to matching lemmas
-                                for i, lemma in enumerate(line_info.get('lemmas', [])):
-                                    if lemma in matching_query_lemmas and i < len(indexed_tokens):
-                                        matched_words.append(indexed_tokens[i])
-                        else:
-                            # Quick fallback: just check token overlap without full lemmatization
-                            text_tokens = set(re.sub(r'[^\w\s]', '', text.lower()).split())
-                            for token in text_tokens:
-                                if token in filtered_query_lemmas:
-                                    matched_words.append(token)
+                        all_fallback_forms = set()
+                        for ql in filtered_query_lemmas:
+                            all_fallback_forms.add(ql)
+                            if token_to_lemma_fallbacks and ql in token_to_lemma_fallbacks:
+                                all_fallback_forms.update(token_to_lemma_fallbacks[ql])
                         
-                        if len(set(matched_words)) < 2:
+                        if indexed_lemmas_list and indexed_tokens:
+                            for i, lemma in enumerate(indexed_lemmas_list):
+                                if lemma in all_fallback_forms and i < len(indexed_tokens):
+                                    matched_words.append(indexed_tokens[i])
+                                    matched_indexed_lemmas.append(lemma)
+                        else:
+                            text_tokens = re.sub(r'[^\w\s]', '', text.lower()).split()
+                            for token in text_tokens:
+                                norm_token = normalize_latin_lemma(token)
+                                if norm_token in all_fallback_forms:
+                                    matched_words.append(token)
+                                    matched_indexed_lemmas.append(norm_token)
+                        
+                        unique_matched_lemmas = set()
+                        for idx_lemma in matched_indexed_lemmas:
+                            for ql in filtered_query_lemmas:
+                                if idx_lemma == ql or (token_to_lemma_fallbacks and ql in token_to_lemma_fallbacks and idx_lemma in token_to_lemma_fallbacks[ql]):
+                                    unique_matched_lemmas.add(ql)
+                        
+                        if len(unique_matched_lemmas) < 2:
                             continue
                         
                         # Exclude source line if specified (normalize both sides for robust matching)

@@ -42,17 +42,22 @@ import unicodedata
 # Loaded lazily on first use to speed up server startup
 LATIN_LEMMA_TABLE = None
 GREEK_LEMMA_TABLE = None
+LATIN_REVERSE_LEMMA = None
+GREEK_REVERSE_LEMMA = None
 _lemma_tables_loaded = False
 
 def load_lemma_tables():
     """Load pre-computed lemma lookup tables from UD treebanks (lazy loading)"""
     global LATIN_LEMMA_TABLE, GREEK_LEMMA_TABLE, _lemma_tables_loaded
+    global LATIN_REVERSE_LEMMA, GREEK_REVERSE_LEMMA
     
     if _lemma_tables_loaded:
         return
     
     LATIN_LEMMA_TABLE = {}
     GREEK_LEMMA_TABLE = {}
+    LATIN_REVERSE_LEMMA = {}
+    GREEK_REVERSE_LEMMA = {}
     
     base_dir = os.path.dirname(os.path.dirname(__file__))
     latin_path = os.path.join(base_dir, 'data', 'lemma_tables', 'latin_lemmas.json')
@@ -62,6 +67,10 @@ def load_lemma_tables():
         try:
             with open(latin_path, 'r', encoding='utf-8') as f:
                 LATIN_LEMMA_TABLE = json.load(f)
+            for form, lemma in LATIN_LEMMA_TABLE.items():
+                if lemma not in LATIN_REVERSE_LEMMA:
+                    LATIN_REVERSE_LEMMA[lemma] = set()
+                LATIN_REVERSE_LEMMA[lemma].add(form)
             print(f"Loaded {len(LATIN_LEMMA_TABLE)} Latin lemma mappings from UD treebanks")
         except Exception as e:
             print(f"Failed to load Latin lemma table: {e}")
@@ -72,6 +81,10 @@ def load_lemma_tables():
         try:
             with open(greek_path, 'r', encoding='utf-8') as f:
                 GREEK_LEMMA_TABLE = json.load(f)
+            for form, lemma in GREEK_LEMMA_TABLE.items():
+                if lemma not in GREEK_REVERSE_LEMMA:
+                    GREEK_REVERSE_LEMMA[lemma] = set()
+                GREEK_REVERSE_LEMMA[lemma].add(form)
             print(f"Loaded {len(GREEK_LEMMA_TABLE)} Greek lemma mappings from UD treebanks")
         except Exception as e:
             print(f"Failed to load Greek lemma table: {e}")
@@ -85,7 +98,6 @@ def get_latin_lemma_table():
     global LATIN_LEMMA_TABLE
     if LATIN_LEMMA_TABLE is None:
         load_lemma_tables()
-    # Always return a dict, never None
     return LATIN_LEMMA_TABLE if LATIN_LEMMA_TABLE is not None else {}
 
 def get_greek_lemma_table():
@@ -93,8 +105,18 @@ def get_greek_lemma_table():
     global GREEK_LEMMA_TABLE
     if GREEK_LEMMA_TABLE is None:
         load_lemma_tables()
-    # Always return a dict, never None
     return GREEK_LEMMA_TABLE if GREEK_LEMMA_TABLE is not None else {}
+
+def get_reverse_lemma_table(language='la'):
+    """Get reverse lemma table (lemma -> set of inflected forms), loading if necessary"""
+    global LATIN_REVERSE_LEMMA, GREEK_REVERSE_LEMMA
+    if LATIN_REVERSE_LEMMA is None:
+        load_lemma_tables()
+    if language == 'la':
+        return LATIN_REVERSE_LEMMA if LATIN_REVERSE_LEMMA is not None else {}
+    elif language == 'grc':
+        return GREEK_REVERSE_LEMMA if GREEK_REVERSE_LEMMA is not None else {}
+    return {}
 
 # =============================================================================
 # LAZY LOADING FOR CLTK/NLTK MODELS

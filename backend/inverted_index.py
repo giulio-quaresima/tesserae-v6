@@ -48,13 +48,17 @@ def is_index_available(language):
     db_path = os.path.join(INDEX_DIR, f'{language}_index.db')
     return os.path.exists(db_path)
 
-def lookup_lemmas(lemmas, language):
+def lookup_lemmas(lemmas, language, fallback_forms=None):
     """
     Look up multiple lemmas and return matching text locations.
     
     Args:
         lemmas: List of lemmas to search for
         language: 'la', 'grc', or 'en'
+        fallback_forms: Optional dict mapping lemma -> set of inflected forms to also
+                       search for. Matches on fallback forms count as matches for the
+                       canonical lemma. This bridges the gap between properly lemmatized
+                       queries and indexes built with older/incomplete lemma tables.
     
     Returns:
         Dict mapping (text_id, ref) to list of matching lemmas and positions
@@ -66,17 +70,26 @@ def lookup_lemmas(lemmas, language):
     cursor = conn.cursor()
     results = {}
     
-    # For Latin, expand lemmas to include both u/v and i/j variants
-    # This handles inconsistency between index (may have 'vir') and query ('uir')
+    # Map expanded variants back to original lemmas for consistent counting
+    lemma_mapping = {}
     expanded_lemmas = set(lemmas)
-    if language == 'la':
-        for lemma in lemmas:
-            # Add u→v and v→u variants
-            expanded_lemmas.add(lemma.replace('u', 'v'))
-            expanded_lemmas.add(lemma.replace('v', 'u'))
-            # Add i→j and j→i variants
-            expanded_lemmas.add(lemma.replace('i', 'j'))
-            expanded_lemmas.add(lemma.replace('j', 'i'))
+    
+    for orig in lemmas:
+        lemma_mapping[orig] = orig
+        if language == 'la':
+            for variant in [orig.replace('u', 'v'), orig.replace('v', 'u'),
+                           orig.replace('i', 'j'), orig.replace('j', 'i')]:
+                expanded_lemmas.add(variant)
+                lemma_mapping[variant] = orig
+            if fallback_forms and orig in fallback_forms:
+                fb_list = list(fallback_forms[orig])[:30]
+                for fb in fb_list:
+                    expanded_lemmas.add(fb)
+                    lemma_mapping[fb] = orig
+                    for variant in [fb.replace('u', 'v'), fb.replace('v', 'u'),
+                                   fb.replace('i', 'j'), fb.replace('j', 'i')]:
+                        expanded_lemmas.add(variant)
+                        lemma_mapping[variant] = orig
     
     expanded_list = list(expanded_lemmas)
     placeholders = ','.join(['?' for _ in expanded_list])
@@ -87,16 +100,6 @@ def lookup_lemmas(lemmas, language):
         WHERE p.lemma IN ({placeholders})
     '''
     
-    # Map expanded variants back to original lemmas for consistent counting
-    lemma_mapping = {}
-    original_lemmas = set(lemmas)
-    for orig in lemmas:
-        lemma_mapping[orig] = orig
-        lemma_mapping[orig.replace('u', 'v')] = orig
-        lemma_mapping[orig.replace('v', 'u')] = orig
-        lemma_mapping[orig.replace('i', 'j')] = orig
-        lemma_mapping[orig.replace('j', 'i')] = orig
-    
     try:
         cursor.execute(query, expanded_list)
         for row in cursor.fetchall():
@@ -104,7 +107,6 @@ def lookup_lemmas(lemmas, language):
             key = (filename, ref)
             if key not in results:
                 results[key] = {'lemmas': set(), 'positions': {}}
-            # Map back to the original query lemma for consistent matching
             canonical = lemma_mapping.get(lemma, lemma)
             results[key]['lemmas'].add(canonical)
             results[key]['positions'][canonical] = json.loads(positions_json)
@@ -113,7 +115,7 @@ def lookup_lemmas(lemmas, language):
     
     return results
 
-def find_co_occurring_lemmas(lemmas, language, min_matches=2, max_distance=None):
+def find_co_occurring_lemmas(lemmas, language, min_matches=2, max_distance=None, fallback_forms=None):
     """
     Find all text locations where at least min_matches of the given lemmas co-occur.
     
@@ -122,11 +124,14 @@ def find_co_occurring_lemmas(lemmas, language, min_matches=2, max_distance=None)
         language: 'la', 'grc', or 'en'
         min_matches: Minimum number of lemmas that must appear together
         max_distance: Maximum token distance between any matching lemmas (None = no limit)
+        fallback_forms: Optional dict mapping lemma -> set of inflected forms to also
+                       search for. Matches on fallback forms count as matches for the
+                       canonical lemma.
     
     Returns:
         List of (filename, ref, matching_lemmas, positions_dict) tuples
     """
-    all_matches = lookup_lemmas(lemmas, language)
+    all_matches = lookup_lemmas(lemmas, language, fallback_forms=fallback_forms)
     
     results = []
     for (filename, ref), data in all_matches.items():
