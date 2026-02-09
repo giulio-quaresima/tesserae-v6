@@ -307,6 +307,21 @@ function App() {
     }
   }, [sourceText, targetText, activeTab, settings, searchMode, search, searchRareWords, searchWordPairs]);
 
+  const prevRarePairsSettings = useRef({ sort_by: settings.sort_by, stoplist: settings.stoplist });
+  useEffect(() => {
+    const prev = prevRarePairsSettings.current;
+    const changed = prev.sort_by !== settings.sort_by || prev.stoplist !== settings.stoplist;
+    prevRarePairsSettings.current = { sort_by: settings.sort_by, stoplist: settings.stoplist };
+    if (changed && searchMode === 'bigram' && results.length > 0 && sourceText && targetText && !searchLoading) {
+      searchWordPairs({
+        source: sourceText,
+        target: targetText,
+        language: activeTab,
+        ...settings
+      });
+    }
+  }, [settings.sort_by, settings.stoplist, searchMode, results.length, sourceText, targetText, activeTab, settings, searchWordPairs, searchLoading]);
+
   const handleRegister = useCallback((result) => {
     setRegisterPending(result);
     setRegisterScore(0);
