@@ -73,6 +73,15 @@ export default function AdminPanel() {
   const [auditLog, setAuditLog] = useState([]);
   const [auditLogLoading, setAuditLogLoading] = useState(false);
   
+  const [sourcesData, setSourcesData] = useState([]);
+  const [sourcesLoading, setSourcesLoading] = useState(false);
+  const [sourcesFilter, setSourcesFilter] = useState('');
+  const [editingSource, setEditingSource] = useState(null);
+  const [addingSource, setAddingSource] = useState(false);
+  const [newSource, setNewSource] = useState({ author: '', work: '', e_source: '', e_source_url: '', print_source: '', added_by: '' });
+  const [sourcesSaving, setSourcesSaving] = useState(false);
+  const [sourcesMessage, setSourcesMessage] = useState(null);
+  
   const [bigramStats, setBigramStats] = useState({});
   const [buildingBigram, setBuildingBigram] = useState(null);
   const [bigramError, setBigramError] = useState(null);
@@ -445,6 +454,98 @@ export default function AdminPanel() {
     }
   }, [isAuthenticated, activeTab]);
 
+  useEffect(() => {
+    if (isAuthenticated && activeTab === 'sources') {
+      loadSources();
+    }
+  }, [isAuthenticated, activeTab]);
+
+  const loadSources = async () => {
+    setSourcesLoading(true);
+    try {
+      const res = await fetch('/api/admin/sources', {
+        headers: { 'X-Admin-Password': password, 'X-Admin-Username': adminUsername }
+      });
+      const data = await res.json();
+      setSourcesData(data.sources || []);
+    } catch (e) {
+      console.error('Failed to load sources:', e);
+    }
+    setSourcesLoading(false);
+  };
+
+  const saveSource = async (id, updates) => {
+    setSourcesSaving(true);
+    setSourcesMessage(null);
+    try {
+      const res = await fetch(`/api/admin/sources/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'X-Admin-Password': password, 'X-Admin-Username': adminUsername },
+        body: JSON.stringify(updates)
+      });
+      if (res.ok) {
+        setSourcesMessage({ type: 'success', text: 'Source updated successfully' });
+        setEditingSource(null);
+        loadSources();
+      } else {
+        const err = await res.json();
+        setSourcesMessage({ type: 'error', text: err.error || 'Failed to update' });
+      }
+    } catch (e) {
+      setSourcesMessage({ type: 'error', text: e.message });
+    }
+    setSourcesSaving(false);
+  };
+
+  const deleteSource = async (id, author, work) => {
+    if (!window.confirm(`Delete source entry for "${author} - ${work}"?`)) return;
+    try {
+      const res = await fetch(`/api/admin/sources/${id}`, {
+        method: 'DELETE',
+        headers: { 'X-Admin-Password': password, 'X-Admin-Username': adminUsername }
+      });
+      if (res.ok) {
+        setSourcesMessage({ type: 'success', text: 'Source deleted' });
+        loadSources();
+      }
+    } catch (e) {
+      setSourcesMessage({ type: 'error', text: e.message });
+    }
+  };
+
+  const addNewSource = async () => {
+    if (!newSource.author && !newSource.work) return;
+    setSourcesSaving(true);
+    setSourcesMessage(null);
+    try {
+      const res = await fetch('/api/admin/sources', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Admin-Password': password, 'X-Admin-Username': adminUsername },
+        body: JSON.stringify(newSource)
+      });
+      if (res.ok) {
+        setSourcesMessage({ type: 'success', text: 'Source added successfully' });
+        setNewSource({ author: '', work: '', e_source: '', e_source_url: '', print_source: '', added_by: '' });
+        setAddingSource(false);
+        loadSources();
+      } else {
+        const err = await res.json();
+        setSourcesMessage({ type: 'error', text: err.error || 'Failed to add' });
+      }
+    } catch (e) {
+      setSourcesMessage({ type: 'error', text: e.message });
+    }
+    setSourcesSaving(false);
+  };
+
+  const filteredSources = sourcesData.filter(s => {
+    if (!sourcesFilter.trim()) return true;
+    const q = sourcesFilter.toLowerCase();
+    return (s.author || '').toLowerCase().includes(q) ||
+           (s.work || '').toLowerCase().includes(q) ||
+           (s.e_source || '').toLowerCase().includes(q);
+  });
+
   if (!isAuthenticated) {
     return (
       <div className="max-w-md mx-auto mt-12">
@@ -525,7 +626,7 @@ export default function AdminPanel() {
       <div className="bg-white rounded-lg shadow">
         <div className="border-b">
           <nav className="flex flex-wrap">
-            {['requests', 'feedback', 'cache', 'stats', 'analytics', 'audit', 'settings'].map(tab => (
+            {['requests', 'feedback', 'sources', 'cache', 'stats', 'analytics', 'audit', 'settings'].map(tab => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
@@ -537,6 +638,7 @@ export default function AdminPanel() {
               >
                 {tab === 'requests' ? 'Text Requests' : 
                  tab === 'feedback' ? 'Feedback' :
+                 tab === 'sources' ? 'Sources' :
                  tab === 'cache' ? 'Cache Management' : 
                  tab === 'stats' ? 'Corpus Stats' :
                  tab === 'analytics' ? 'User Analytics' :
@@ -650,6 +752,147 @@ export default function AdminPanel() {
                       </div>
                     </div>
                   ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'sources' && (
+            <div className="space-y-4">
+              <div className="flex flex-wrap justify-between items-center gap-3">
+                <h3 className="font-medium text-gray-900">Text Sources (Sources Page)</h3>
+                <div className="flex items-center gap-3">
+                  <span className="text-sm text-gray-500">{filteredSources.length} of {sourcesData.length} entries</span>
+                  <button
+                    onClick={() => { setAddingSource(true); setSourcesMessage(null); }}
+                    className="px-3 py-1.5 bg-green-600 text-white rounded text-sm hover:bg-green-700"
+                  >
+                    + Add Source
+                  </button>
+                </div>
+              </div>
+
+              {sourcesMessage && (
+                <div className={`text-sm p-2 rounded ${sourcesMessage.type === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                  {sourcesMessage.text}
+                </div>
+              )}
+
+              <input
+                type="text"
+                placeholder="Filter by author, work, or source..."
+                value={sourcesFilter}
+                onChange={e => setSourcesFilter(e.target.value)}
+                className="w-full sm:w-80 px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+              />
+
+              {addingSource && (
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4 space-y-3">
+                  <h4 className="font-medium text-green-900">Add New Source Entry</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Author</label>
+                      <input type="text" value={newSource.author} onChange={e => setNewSource(p => ({...p, author: e.target.value}))} className="w-full border rounded px-2 py-1.5 text-sm" placeholder="e.g., Vergil" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Work</label>
+                      <input type="text" value={newSource.work} onChange={e => setNewSource(p => ({...p, work: e.target.value}))} className="w-full border rounded px-2 py-1.5 text-sm" placeholder="e.g., Aeneid" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">e-Source</label>
+                      <input type="text" value={newSource.e_source} onChange={e => setNewSource(p => ({...p, e_source: e.target.value}))} className="w-full border rounded px-2 py-1.5 text-sm" placeholder="e.g., The Latin Library" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">e-Source URL</label>
+                      <input type="text" value={newSource.e_source_url} onChange={e => setNewSource(p => ({...p, e_source_url: e.target.value}))} className="w-full border rounded px-2 py-1.5 text-sm" placeholder="https://..." />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Print Source (citation)</label>
+                      <input type="text" value={newSource.print_source} onChange={e => setNewSource(p => ({...p, print_source: e.target.value}))} className="w-full border rounded px-2 py-1.5 text-sm" placeholder="e.g., R. Mynors, OCT, 1969" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Added by</label>
+                      <input type="text" value={newSource.added_by} onChange={e => setNewSource(p => ({...p, added_by: e.target.value}))} className="w-full border rounded px-2 py-1.5 text-sm" placeholder="Name" />
+                    </div>
+                  </div>
+                  <div className="flex gap-2 pt-1">
+                    <button onClick={addNewSource} disabled={sourcesSaving || (!newSource.author && !newSource.work)} className="px-3 py-1.5 bg-green-600 text-white rounded text-sm hover:bg-green-700 disabled:opacity-50">
+                      {sourcesSaving ? 'Adding...' : 'Add'}
+                    </button>
+                    <button onClick={() => setAddingSource(false)} className="px-3 py-1.5 bg-gray-200 text-gray-700 rounded text-sm hover:bg-gray-300">
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {sourcesLoading ? (
+                <div className="text-center py-8"><LoadingSpinner /></div>
+              ) : (
+                <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                  <table className="min-w-full divide-y divide-gray-200 text-sm">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-3 py-2 text-left font-semibold text-gray-700">Author</th>
+                        <th className="px-3 py-2 text-left font-semibold text-gray-700">Work</th>
+                        <th className="px-3 py-2 text-left font-semibold text-gray-700">e-Source</th>
+                        <th className="px-3 py-2 text-left font-semibold text-gray-700">Print Source</th>
+                        <th className="px-3 py-2 text-left font-semibold text-gray-700">Added by</th>
+                        <th className="px-3 py-2 text-right font-semibold text-gray-700">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {filteredSources.map(entry => (
+                        <tr key={entry.id} className="hover:bg-gray-50">
+                          {editingSource && editingSource.id === entry.id ? (
+                            <>
+                              <td className="px-3 py-1.5"><input type="text" value={editingSource.author} onChange={e => setEditingSource(p => ({...p, author: e.target.value}))} className="w-full border rounded px-2 py-1 text-sm" /></td>
+                              <td className="px-3 py-1.5"><input type="text" value={editingSource.work} onChange={e => setEditingSource(p => ({...p, work: e.target.value}))} className="w-full border rounded px-2 py-1 text-sm" /></td>
+                              <td className="px-3 py-1.5">
+                                <input type="text" value={editingSource.e_source} onChange={e => setEditingSource(p => ({...p, e_source: e.target.value}))} className="w-full border rounded px-2 py-1 text-sm mb-1" placeholder="Source name" />
+                                <input type="text" value={editingSource.e_source_url} onChange={e => setEditingSource(p => ({...p, e_source_url: e.target.value}))} className="w-full border rounded px-2 py-1 text-xs text-gray-500" placeholder="URL" />
+                              </td>
+                              <td className="px-3 py-1.5"><input type="text" value={editingSource.print_source} onChange={e => setEditingSource(p => ({...p, print_source: e.target.value}))} className="w-full border rounded px-2 py-1 text-sm" /></td>
+                              <td className="px-3 py-1.5"><input type="text" value={editingSource.added_by} onChange={e => setEditingSource(p => ({...p, added_by: e.target.value}))} className="w-full border rounded px-2 py-1 text-sm" /></td>
+                              <td className="px-3 py-1.5 text-right whitespace-nowrap">
+                                <button onClick={() => saveSource(editingSource.id, editingSource)} disabled={sourcesSaving} className="text-green-600 hover:text-green-800 text-xs font-medium mr-2">
+                                  {sourcesSaving ? 'Saving...' : 'Save'}
+                                </button>
+                                <button onClick={() => setEditingSource(null)} className="text-gray-500 hover:text-gray-700 text-xs">
+                                  Cancel
+                                </button>
+                              </td>
+                            </>
+                          ) : (
+                            <>
+                              <td className="px-3 py-2 text-gray-900 font-medium whitespace-nowrap">{entry.author}</td>
+                              <td className="px-3 py-2 text-gray-700">{entry.work}</td>
+                              <td className="px-3 py-2 whitespace-nowrap">
+                                {entry.e_source_url ? (
+                                  <a href={entry.e_source_url} target="_blank" rel="noopener noreferrer" className="text-red-700 hover:underline text-xs">{entry.e_source}</a>
+                                ) : (
+                                  <span className="text-gray-700 text-xs">{entry.e_source}</span>
+                                )}
+                              </td>
+                              <td className="px-3 py-2 text-gray-600 text-xs max-w-xs truncate" title={entry.print_source}>{entry.print_source}</td>
+                              <td className="px-3 py-2 text-gray-600 whitespace-nowrap text-xs">{entry.added_by}</td>
+                              <td className="px-3 py-2 text-right whitespace-nowrap">
+                                <button onClick={() => setEditingSource({...entry})} className="text-blue-600 hover:text-blue-800 text-xs font-medium mr-2">
+                                  Edit
+                                </button>
+                                <button onClick={() => deleteSource(entry.id, entry.author, entry.work)} className="text-red-600 hover:text-red-800 text-xs font-medium">
+                                  Delete
+                                </button>
+                              </td>
+                            </>
+                          )}
+                        </tr>
+                      ))}
+                      {filteredSources.length === 0 && (
+                        <tr><td colSpan={6} className="px-4 py-8 text-center text-gray-500">No entries found.</td></tr>
+                      )}
+                    </tbody>
+                  </table>
                 </div>
               )}
             </div>

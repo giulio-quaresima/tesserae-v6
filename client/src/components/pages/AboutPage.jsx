@@ -157,12 +157,22 @@ export default function AboutPage({ onNavigate }) {
         </section>
 
         <section>
-          <h3
-            className="text-lg font-semibold text-gray-900 mb-3 cursor-pointer hover:text-amber-700"
+          <button
             onClick={() => onNavigate && onNavigate('text-credits')}
+            className="w-full text-left bg-amber-50 border border-amber-200 rounded-lg p-5 hover:bg-amber-100 hover:border-amber-300 transition-colors group cursor-pointer"
           >
-            Text Credits and Provenance →
-          </h3>
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-amber-800 group-hover:text-amber-900">
+                Text Credits and Provenance
+              </h3>
+              <svg className="w-5 h-5 text-amber-600 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </div>
+            <p className="text-sm text-amber-700 mt-2">
+              View electronic and print sources for every text in our corpus, with links to the original databases and full citation information.
+            </p>
+          </button>
         </section>
 
         <section>

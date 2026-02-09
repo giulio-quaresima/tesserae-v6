@@ -505,6 +505,116 @@ def _add_to_text_sources(author, work, e_source, e_source_url, print_source, add
         logger.error(f"Failed to update text_sources.json: {e}")
 
 
+def _get_sources_path():
+    """Return the path to data/text_sources.json."""
+    project_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+    return os.path.join(project_root, 'data', 'text_sources.json')
+
+
+def _load_sources():
+    """Load text_sources.json and return the list."""
+    path = _get_sources_path()
+    if os.path.exists(path):
+        with open(path, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    return []
+
+
+def _save_sources(sources):
+    """Save the sources list to text_sources.json, sorted by author then work."""
+    sources.sort(key=lambda x: (x.get('author', '').lower(), x.get('work', '').lower()))
+    path = _get_sources_path()
+    with open(path, 'w', encoding='utf-8') as f:
+        json.dump(sources, f, indent=2, ensure_ascii=False)
+
+
+@admin_bp.route('/sources', methods=['GET'])
+def get_sources():
+    """Get all text source entries (admin only)."""
+    if not check_admin_auth():
+        return jsonify({'error': 'Unauthorized'}), 401
+    try:
+        sources = _load_sources()
+        indexed = [{'id': i, **entry} for i, entry in enumerate(sources)]
+        return jsonify({'sources': indexed, 'total': len(indexed)})
+    except Exception as e:
+        logger.error(f"Failed to load sources: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@admin_bp.route('/sources', methods=['POST'])
+def add_source():
+    """Add a new source entry (admin only)."""
+    if not check_admin_auth():
+        return jsonify({'error': 'Unauthorized'}), 401
+    data = request.get_json() or {}
+    if not data.get('author') and not data.get('work'):
+        return jsonify({'error': 'Author or work is required'}), 400
+    try:
+        sources = _load_sources()
+        sources.append({
+            'author': data.get('author', ''),
+            'work': data.get('work', ''),
+            'e_source': data.get('e_source', ''),
+            'e_source_url': data.get('e_source_url', ''),
+            'print_source': data.get('print_source', ''),
+            'added_by': data.get('added_by', '')
+        })
+        _save_sources(sources)
+        log_admin_action('add_source', 'text_source', None, {
+            'author': data.get('author', ''),
+            'work': data.get('work', '')
+        })
+        return jsonify({'success': True, 'total': len(sources)})
+    except Exception as e:
+        logger.error(f"Failed to add source: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@admin_bp.route('/sources/<int:source_id>', methods=['PUT'])
+def update_source(source_id):
+    """Update an existing source entry (admin only)."""
+    if not check_admin_auth():
+        return jsonify({'error': 'Unauthorized'}), 401
+    data = request.get_json() or {}
+    try:
+        sources = _load_sources()
+        if source_id < 0 or source_id >= len(sources):
+            return jsonify({'error': 'Source not found'}), 404
+        for field in ['author', 'work', 'e_source', 'e_source_url', 'print_source', 'added_by']:
+            if field in data:
+                sources[source_id][field] = data[field]
+        _save_sources(sources)
+        log_admin_action('update_source', 'text_source', source_id, {
+            'fields_updated': list(data.keys())
+        })
+        return jsonify({'success': True})
+    except Exception as e:
+        logger.error(f"Failed to update source: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@admin_bp.route('/sources/<int:source_id>', methods=['DELETE'])
+def delete_source(source_id):
+    """Delete a source entry (admin only)."""
+    if not check_admin_auth():
+        return jsonify({'error': 'Unauthorized'}), 401
+    try:
+        sources = _load_sources()
+        if source_id < 0 or source_id >= len(sources):
+            return jsonify({'error': 'Source not found'}), 404
+        removed = sources.pop(source_id)
+        _save_sources(sources)
+        log_admin_action('delete_source', 'text_source', source_id, {
+            'author': removed.get('author', ''),
+            'work': removed.get('work', '')
+        })
+        return jsonify({'success': True, 'total': len(sources)})
+    except Exception as e:
+        logger.error(f"Failed to delete source: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
 @admin_bp.route('/requests/<int:request_id>', methods=['DELETE'])
 def delete_request(request_id):
     """Delete a text request (admin only)"""
