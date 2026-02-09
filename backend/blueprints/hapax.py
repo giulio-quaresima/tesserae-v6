@@ -1253,8 +1253,9 @@ def rare_bigram_search():
         language: 'la', 'grc', or 'en' (default: 'la')
         min_rarity: minimum rarity score (0-1, default 0.9)
         limit: max results to return (default 100)
-        sort_by: sort results by 'rarity' (default) or 'occurrence' (order in source text)
-        stoplist: filter out common function words - true or false (default: false)
+        stoplist_basis: 'none', 'source_target', 'source', 'target', or 'corpus' (default: 'source_target')
+        stoplist_size: number of top-frequency words to exclude (default: 0 = curated list)
+        stoplist: legacy boolean for backward compatibility
     """
     try:
         from backend.bigram_frequency import (
@@ -1268,10 +1269,16 @@ def rare_bigram_search():
         language = data.get('language', 'la')
         min_rarity = float(data.get('min_rarity', 0.9))
         limit = int(data.get('limit', 100))
-        sort_by = data.get('sort_by', 'rarity').lower()
+        
+        stoplist_basis = data.get('stoplist_basis', 'source_target')
+        stoplist_size = int(data.get('stoplist_size', 0))
         use_stoplist = data.get('stoplist', False)
         if isinstance(use_stoplist, str):
             use_stoplist = use_stoplist.lower() in ('true', '1', 'yes')
+        if stoplist_basis == 'none':
+            use_stoplist = False
+        elif stoplist_basis in ('source_target', 'source', 'target', 'corpus'):
+            use_stoplist = True
         
         if not source_id or not target_id:
             return jsonify({'error': 'Please select both source and target texts'}), 400
@@ -1322,6 +1329,35 @@ def rare_bigram_search():
                         'text': normalize_line_text(unit.get('text', ''), language),
                         'words': [lemmas[i], lemmas[i+1]]
                     })
+        
+        dynamic_stopwords = set()
+        if use_stoplist and stoplist_size > 0:
+            source_lemma_freq = {}
+            target_lemma_freq = {}
+            for unit in source_units:
+                for lemma in unit.get('lemmas', []):
+                    if lemma:
+                        source_lemma_freq[lemma.lower()] = source_lemma_freq.get(lemma.lower(), 0) + 1
+            for unit in target_units:
+                for lemma in unit.get('lemmas', []):
+                    if lemma:
+                        target_lemma_freq[lemma.lower()] = target_lemma_freq.get(lemma.lower(), 0) + 1
+            
+            if stoplist_basis == 'source':
+                freq = source_lemma_freq
+            elif stoplist_basis == 'target':
+                freq = target_lemma_freq
+            elif stoplist_basis == 'source_target':
+                freq = {}
+                for k, v in source_lemma_freq.items():
+                    freq[k] = freq.get(k, 0) + v
+                for k, v in target_lemma_freq.items():
+                    freq[k] = freq.get(k, 0) + v
+            else:
+                freq = source_lemma_freq
+            
+            sorted_words = sorted(freq.items(), key=lambda x: -x[1])
+            dynamic_stopwords = set(w for w, _ in sorted_words[:stoplist_size])
         
         shared_bigrams = set(source_bigram_locations.keys()) & set(target_bigram_locations.keys())
         
@@ -1382,10 +1418,13 @@ def rare_bigram_search():
             lemma1 = words[0] if len(words) > 0 else ''
             lemma2 = words[1] if len(words) > 1 else ''
             
-            # Apply stoplist filter before rarity check
             if use_stoplist:
-                if is_word_in_stoplist(lemma1, language) or is_word_in_stoplist(lemma2, language):
-                    continue
+                if stoplist_size > 0 and dynamic_stopwords:
+                    if lemma1.lower() in dynamic_stopwords or lemma2.lower() in dynamic_stopwords:
+                        continue
+                else:
+                    if is_word_in_stoplist(lemma1, language) or is_word_in_stoplist(lemma2, language):
+                        continue
             
             rarity = get_bigram_rarity_score(bg_key, language)
             if rarity >= min_rarity:
@@ -1428,16 +1467,7 @@ def rare_bigram_search():
                     '_first_source_ref': first_source_ref
                 })
         
-        # Sort by occurrence order or rarity
-        if sort_by == 'occurrence':
-            results.sort(key=lambda x: extract_reference_numbers(x['_first_source_ref']))
-        else:
-            results.sort(key=lambda x: -x['rarity'])
-        
-        # Remove internal sorting key before returning
-        for result in results:
-            result.pop('_first_source_ref', None)
-        
+        results.sort(key=lambda x: -x['rarity'])
         results = results[:limit]
         
         return jsonify({

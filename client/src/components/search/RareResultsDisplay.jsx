@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useMemo } from 'react';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js';
 import { Bar } from 'react-chartjs-2';
 
@@ -143,10 +143,40 @@ const RareResultsDisplay = ({
 }) => {
   const [showTimeline, setShowTimeline] = useState(false);
   const [timelineView, setTimelineView] = useState('target');
+  const [sortBy, setSortBy] = useState('rarity');
   const chartRef = useRef(null);
 
   const isHapax = searchMode === 'hapax';
   const title = isHapax ? 'Shared Rare Words' : 'Shared Rare Pairs';
+
+  const extractRefNumbers = (ref) => {
+    if (!ref) return [Infinity, Infinity];
+    const nums = ref.match(/\d+/g);
+    if (!nums) return [Infinity, Infinity];
+    return nums.map(Number);
+  };
+
+  const sortedResults = useMemo(() => {
+    if (!Array.isArray(results)) return [];
+    return [...results].sort((a, b) => {
+      if (sortBy === 'rarity') {
+        return (b.rarity || 0) - (a.rarity || 0);
+      }
+      if (sortBy === 'occurrence') {
+        const aRef = a._first_source_ref || a.source_locations?.[0]?.ref || '';
+        const bRef = b._first_source_ref || b.source_locations?.[0]?.ref || '';
+        const aNums = extractRefNumbers(aRef);
+        const bNums = extractRefNumbers(bRef);
+        for (let i = 0; i < Math.max(aNums.length, bNums.length); i++) {
+          const aNum = aNums[i] || 0;
+          const bNum = bNums[i] || 0;
+          if (aNum !== bNum) return aNum - bNum;
+        }
+        return 0;
+      }
+      return 0;
+    });
+  }, [results, sortBy]);
 
   const exportCSV = useCallback(() => {
     if (!results || results.length === 0) return;
@@ -328,6 +358,19 @@ const RareResultsDisplay = ({
         
         <div className="flex flex-col sm:flex-row gap-2">
           <div className="flex items-center gap-2">
+            {!isHapax && (
+              <>
+                <span className="text-sm text-gray-600">Sort:</span>
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                  className="border rounded px-2 py-1 text-sm"
+                >
+                  <option value="rarity">Rarity</option>
+                  <option value="occurrence">Source Location</option>
+                </select>
+              </>
+            )}
             <button
               onClick={() => setShowTimeline(!showTimeline)}
               className={`text-xs px-3 py-1.5 rounded whitespace-nowrap ${
@@ -417,7 +460,7 @@ const RareResultsDisplay = ({
       )}
 
       <div className="space-y-3">
-        {results.slice(0, displayLimit).map((r, i) => {
+        {sortedResults.slice(0, displayLimit).map((r, i) => {
           // Prefer bigram with display forms, otherwise use surface forms from text when available
           let displayName = r.display_form || r.lemma || r.bigram;
           if (!displayName && r.word1 && r.word2) {

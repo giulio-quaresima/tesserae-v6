@@ -12,28 +12,51 @@ const RarePairsSettings = ({ settings, setSettings }) => {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Sort By
+            Stoplist Basis
           </label>
           <select
-            value={settings.sort_by || 'rarity'}
-            onChange={(e) => handleChange('sort_by', e.target.value)}
+            value={settings.stoplist_basis || 'source_target'}
+            onChange={(e) => handleChange('stoplist_basis', e.target.value)}
             className="w-full border rounded px-2 py-2 text-sm"
           >
-            <option value="rarity">Sort by Rarity</option>
-            <option value="occurrence">Sort by Occurrence</option>
+            <option value="none">No Stoplist</option>
+            <option value="source_target">Source + Target</option>
+            <option value="source">Source Only</option>
+            <option value="target">Target Only</option>
           </select>
         </div>
 
-        <div className="flex items-end">
-          <label className="flex items-center gap-2 text-sm text-gray-700">
-            <input
-              type="checkbox"
-              checked={settings.stoplist || false}
-              onChange={(e) => handleChange('stoplist', e.target.checked)}
-              className="rounded border-gray-300"
-            />
-            <span>Exclude common words (stoplist)</span>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Stoplist Size
           </label>
+          <input
+            type="text"
+            inputMode="numeric"
+            value={settings.stoplist_size === 0 ? 'Default' : settings.stoplist_size}
+            onChange={(e) => {
+              const val = e.target.value.replace(/[^0-9]/g, '');
+              if (val === '' || e.target.value.toLowerCase() === 'default') {
+                handleChange('stoplist_size', 0);
+              } else {
+                handleChange('stoplist_size', Math.min(500, parseInt(val)));
+              }
+            }}
+            onBlur={() => {
+              if (settings.stoplist_size === '' || settings.stoplist_size === 'Default') {
+                handleChange('stoplist_size', 0);
+              }
+            }}
+            onFocus={(e) => {
+              if (settings.stoplist_size === 0) {
+                e.target.select();
+              }
+            }}
+            disabled={settings.stoplist_basis === 'none'}
+            placeholder="Default"
+            className="w-full border rounded px-2 py-2 text-sm disabled:opacity-50"
+          />
+          <p className="text-xs text-gray-400 mt-1">Default = curated list + high-frequency words</p>
         </div>
       </div>
     </div>
