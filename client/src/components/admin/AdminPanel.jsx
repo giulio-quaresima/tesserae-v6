@@ -765,7 +765,7 @@ export default function AdminPanel() {
                   <span className="text-sm text-gray-500">{filteredSources.length} of {sourcesData.length} entries</span>
                   <button
                     onClick={() => { setAddingSource(true); setSourcesMessage(null); }}
-                    className="px-3 py-1.5 bg-green-600 text-white rounded text-sm hover:bg-green-700"
+                    className="px-3 py-1.5 bg-red-700 text-white rounded text-sm hover:bg-red-800"
                   >
                     + Add Source
                   </button>
@@ -787,8 +787,8 @@ export default function AdminPanel() {
               />
 
               {addingSource && (
-                <div className="bg-green-50 border border-green-200 rounded-lg p-4 space-y-3">
-                  <h4 className="font-medium text-green-900">Add New Source Entry</h4>
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 space-y-3">
+                  <h4 className="font-medium text-amber-900">Add New Source Entry</h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div>
                       <label className="block text-xs font-medium text-gray-700 mb-1">Author</label>
@@ -816,7 +816,7 @@ export default function AdminPanel() {
                     </div>
                   </div>
                   <div className="flex gap-2 pt-1">
-                    <button onClick={addNewSource} disabled={sourcesSaving || (!newSource.author && !newSource.work)} className="px-3 py-1.5 bg-green-600 text-white rounded text-sm hover:bg-green-700 disabled:opacity-50">
+                    <button onClick={addNewSource} disabled={sourcesSaving || (!newSource.author && !newSource.work)} className="px-3 py-1.5 bg-red-700 text-white rounded text-sm hover:bg-red-800 disabled:opacity-50">
                       {sourcesSaving ? 'Adding...' : 'Add'}
                     </button>
                     <button onClick={() => setAddingSource(false)} className="px-3 py-1.5 bg-gray-200 text-gray-700 rounded text-sm hover:bg-gray-300">
@@ -855,7 +855,7 @@ export default function AdminPanel() {
                               <td className="px-3 py-1.5"><input type="text" value={editingSource.print_source} onChange={e => setEditingSource(p => ({...p, print_source: e.target.value}))} className="w-full border rounded px-2 py-1 text-sm" /></td>
                               <td className="px-3 py-1.5"><input type="text" value={editingSource.added_by} onChange={e => setEditingSource(p => ({...p, added_by: e.target.value}))} className="w-full border rounded px-2 py-1 text-sm" /></td>
                               <td className="px-3 py-1.5 text-right whitespace-nowrap">
-                                <button onClick={() => saveSource(editingSource.id, editingSource)} disabled={sourcesSaving} className="text-green-600 hover:text-green-800 text-xs font-medium mr-2">
+                                <button onClick={() => saveSource(editingSource.id, editingSource)} disabled={sourcesSaving} className="text-red-700 hover:text-red-900 text-xs font-medium mr-2">
                                   {sourcesSaving ? 'Saving...' : 'Save'}
                                 </button>
                                 <button onClick={() => setEditingSource(null)} className="text-gray-500 hover:text-gray-700 text-xs">
