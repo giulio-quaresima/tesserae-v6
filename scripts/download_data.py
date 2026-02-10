@@ -44,7 +44,7 @@ def file_exists_and_valid(filepath):
 
 
 def verify_checksum(filepath, expected_sha256):
-    if expected_sha256 == "PENDING":
+    if not expected_sha256 or expected_sha256.lower() == "pending":
         return True, "checksum not yet set"
     sha256 = hashlib.sha256()
     with open(filepath, "rb") as f:
@@ -175,7 +175,7 @@ def download_files(manifest, file_filter=None):
                 print(f"  {f['filename']} — {f['description']}")
             sys.exit(1)
 
-    total_size = sum(f.get("size_compressed", 0) for f in files_to_download)
+    total_size = sum(f.get("size_compressed") or 0 for f in files_to_download)
     print(f"\n=== Tesserae V6 Data Downloader ===\n")
     print(f"Source: {base_url}")
     print(f"Files to download: {len(files_to_download)}")
@@ -210,8 +210,8 @@ def download_files(manifest, file_filter=None):
             failed += 1
             continue
 
-        sha256 = entry.get("sha256", "PENDING")
-        if sha256 != "PENDING":
+        sha256 = entry.get("sha256", "")
+        if sha256 and sha256.lower() != "pending":
             print(f"  Verifying checksum...", end=" ")
             ok, msg = verify_checksum(archive_path, sha256)
             if ok:

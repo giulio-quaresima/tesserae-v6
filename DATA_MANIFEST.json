@@ -46,6 +46,17 @@
       "sha256": "eb5d29a760137eeaa6dcc160a35cc38956976ff82a3808ff1a2dd3f818660477",
       "required": false,
       "rebuild_instructions": "Run build_latinpipe_syntax.py on Marvin with local LatinPipe model (~1-2 hours)"
+    },
+    {
+      "filename": "latin_lemmas_extended.db.tar.gz",
+      "extract_to": "data/lemma_tables/latin_lemmas_extended.db",
+      "description": "Extended Latin lemma lookup table (62,000 entries from 6 UD treebanks + LatinPipe)",
+      "size_compressed": null,
+      "size_compressed_human": "pending — not yet packaged on Marvin",
+      "size_uncompressed_human": "15 MB",
+      "sha256": "pending",
+      "required": false,
+      "rebuild_instructions": "Rebuilt automatically during Latin index build with --use-syntax-db"
     }
   ],
   "notes": {
