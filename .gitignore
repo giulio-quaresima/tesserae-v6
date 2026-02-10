@@ -71,3 +71,6 @@ evaluation/
 
 # Pre-computed embeddings (too large for Git)
 backend/embeddings/
+
+# Large dataset files
+vf_intertext_dataset_2.0.tab
