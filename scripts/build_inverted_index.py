@@ -23,7 +23,8 @@ INDEX_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data', 'in
 
 def load_syntax_data(language):
     """Load LatinPipe syntax data for use during index build.
-    Returns a dict mapping (filename_stem, locus) -> (tokens, lemmas) or None."""
+    Returns a dict mapping (filename, ref) -> (tokens, lemmas) or None.
+    The filename key matches .tess filenames (e.g. 'vergil.aeneid.part.1.tess')."""
     if language != 'la':
         return None
     syntax_db = os.path.join(INDEX_DIR, 'syntax_latin.db')
@@ -32,18 +33,25 @@ def load_syntax_data(language):
     try:
         conn = sqlite3.connect(syntax_db)
         cursor = conn.cursor()
-        cursor.execute('SELECT text_id, locus, tokens, lemmas FROM syntax')
+        id_to_filename = {}
+        cursor.execute('SELECT text_id, filename FROM texts')
+        for row in cursor:
+            id_to_filename[row[0]] = row[1]
+        cursor.execute('SELECT text_id, ref, tokens, lemmas FROM syntax')
         data = {}
         count = 0
         for row in cursor:
-            text_id, locus, tokens_json, lemmas_json = row
+            syn_text_id, ref, tokens_json, lemmas_json = row
+            filename = id_to_filename.get(syn_text_id)
+            if filename is None:
+                continue
             toks = json.loads(tokens_json) if tokens_json.startswith('[') else tokens_json.split()
             lems = json.loads(lemmas_json) if lemmas_json.startswith('[') else lemmas_json.split()
             norm_lems = [l.lower().replace('j', 'i').replace('v', 'u') for l in lems]
-            data[(text_id, locus)] = (toks, norm_lems)
+            data[(filename, ref)] = (toks, norm_lems)
             count += 1
         conn.close()
-        print(f"  Loaded {count} lines from LatinPipe syntax database")
+        print(f"  Loaded {count} lines from LatinPipe syntax database ({len(id_to_filename)} texts)")
         return data
     except Exception as e:
         print(f"  Could not load syntax data: {e}")
@@ -56,14 +64,36 @@ def get_text_files(language):
         return []
     return [f for f in os.listdir(lang_dir) if f.endswith('.tess')]
 
-def build_index(language, text_processor, verbose=True, resume=True):
-    """Build inverted index for a language (resumable by default)"""
+def build_index(language, text_processor, verbose=True, resume=True, force=False, use_syntax_db=False):
+    """Build inverted index for a language.
+    
+    Args:
+        language: 'la', 'grc', or 'en'
+        text_processor: TextProcessor instance
+        verbose: Print progress
+        resume: Skip files already in the index (default True)
+        force: Drop existing index and rebuild from scratch (overrides resume)
+        use_syntax_db: For Latin, use LatinPipe syntax database for higher-quality lemmas
+    """
     os.makedirs(INDEX_DIR, exist_ok=True)
     db_path = os.path.join(INDEX_DIR, f'{language}_index.db')
     
+    syntax_data = None
+    if use_syntax_db and language == 'la':
+        if verbose:
+            print("Loading LatinPipe syntax database for high-quality lemmatization...")
+        syntax_data = load_syntax_data(language)
+        if syntax_data is None:
+            print("  WARNING: Could not load syntax database, falling back to standard lemmatization")
+    
     existing_files = set()
     
-    if os.path.exists(db_path) and resume:
+    if force and os.path.exists(db_path):
+        if verbose:
+            print(f"  --force: Removing existing index {db_path}")
+        os.remove(db_path)
+    
+    if os.path.exists(db_path) and resume and not force:
         try:
             conn = sqlite3.connect(db_path)
             cursor = conn.cursor()
@@ -140,6 +170,9 @@ def build_index(language, text_processor, verbose=True, resume=True):
     total_files = len(text_files)
     remaining = len(files_to_process)
     total_postings = 0
+    total_lines = 0
+    syntax_hits = 0
+    syntax_misses = 0
     
     if verbose:
         if existing_files:
@@ -177,6 +210,18 @@ def build_index(language, text_processor, verbose=True, resume=True):
             tokens = unit.get('tokens', [])
             text_content = unit.get('text', '')
             
+            if syntax_data is not None:
+                syntax_key = (filename, ref)
+                if syntax_key in syntax_data:
+                    syn_tokens, syn_lemmas = syntax_data[syntax_key]
+                    lemmas = syn_lemmas
+                    tokens = syn_tokens
+                    syntax_hits += 1
+                else:
+                    syntax_misses += 1
+            
+            total_lines += 1
+            
             lemma_positions = {}
             for pos, lemma in enumerate(lemmas):
                 if lemma not in lemma_positions:
@@ -198,7 +243,7 @@ def build_index(language, text_processor, verbose=True, resume=True):
         if (i + 1) % 50 == 0:
             conn.commit()
             if verbose:
-                print(f"  Processed {i + 1}/{remaining} files...")
+                print(f"  Processed {i + 1}/{remaining} files ({total_lines} lines, {total_postings} postings)...")
     
     conn.commit()
     
@@ -210,8 +255,10 @@ def build_index(language, text_processor, verbose=True, resume=True):
     file_size = os.path.getsize(db_path) / (1024 * 1024)
     
     if verbose:
-        print(f"  Completed: {total_files} texts, {unique_lemmas} unique lemmas, {total_postings} postings")
+        print(f"  Completed: {total_files} texts, {total_lines} lines, {unique_lemmas} unique lemmas, {total_postings} postings")
         print(f"  Index size: {file_size:.1f} MB")
+        if syntax_data is not None:
+            print(f"  LatinPipe syntax hits: {syntax_hits}, fallback to CLTK: {syntax_misses}")
         print(f"  Saved to: {db_path}")
     
     return db_path
@@ -221,6 +268,10 @@ def main():
     parser.add_argument('--language', '-l', choices=['la', 'grc', 'en', 'all'], default='all',
                         help='Language to index (default: all)')
     parser.add_argument('--quiet', '-q', action='store_true', help='Suppress output')
+    parser.add_argument('--force', '-f', action='store_true',
+                        help='Force full rebuild: delete existing index and reprocess all files')
+    parser.add_argument('--use-syntax-db', action='store_true',
+                        help='For Latin: use LatinPipe syntax database for higher-quality lemmatization')
     args = parser.parse_args()
     
     text_processor = TextProcessor()
@@ -231,7 +282,8 @@ def main():
         languages = [args.language]
     
     for lang in languages:
-        build_index(lang, text_processor, verbose=not args.quiet)
+        build_index(lang, text_processor, verbose=not args.quiet,
+                    force=args.force, use_syntax_db=args.use_syntax_db)
         print()
     
     print("Done!")
