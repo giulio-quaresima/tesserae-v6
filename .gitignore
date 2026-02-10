@@ -59,3 +59,15 @@ trans3.csv
 # Private drafts and manuals (stay on Replit only)
 docs/ARTICLE_METHODS_DRAFT.md
 docs/PRIVATE_DEPLOYMENT_MANUAL.md
+
+# Search cache (regenerated at runtime)
+cache/
+
+# UD treebank source data (large, download separately)
+data/treebanks/
+
+# Evaluation benchmark data (large analysis/benchmark JSON files)
+evaluation/
+
+# Pre-computed embeddings (too large for Git)
+backend/embeddings/
