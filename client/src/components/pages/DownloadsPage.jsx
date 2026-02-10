@@ -318,6 +318,98 @@ const DownloadsPage = () => {
         </div>
       </div>
 
+      <div className="bg-white rounded-lg shadow p-6">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Developer Data Files</h3>
+        <p className="text-sm text-gray-600 mb-4">
+          Pre-built search indexes required to run Tesserae V6 locally. These SQLite databases are too large
+          for GitHub and are hosted separately. If you're setting up a development environment, use the
+          automated download script instead of downloading manually.
+        </p>
+
+        <div className="bg-gray-50 rounded p-4 mb-4">
+          <p className="text-sm font-mono text-gray-700 mb-1">
+            <span className="text-gray-500"># After cloning the repository:</span>
+          </p>
+          <p className="text-sm font-mono text-gray-800">python scripts/download_data.py</p>
+        </div>
+
+        <div className="space-y-3">
+          <div className="flex items-center justify-between p-3 bg-gray-50 rounded">
+            <div>
+              <span className="font-medium">Latin Search Index</span>
+              <span className="text-sm text-gray-500 ml-2">(1,429 texts, 2.2 GB)</span>
+            </div>
+            <a
+              href="https://marvin.caset.buffalo.edu/tesserae-data/la_index.db.tar.gz"
+              className="px-4 py-2 bg-red-700 text-white rounded hover:bg-red-800 text-sm"
+            >
+              Download
+            </a>
+          </div>
+          <div className="flex items-center justify-between p-3 bg-gray-50 rounded">
+            <div>
+              <span className="font-medium">Greek Search Index</span>
+              <span className="text-sm text-gray-500 ml-2">(659 texts, 1.4 GB)</span>
+            </div>
+            <a
+              href="https://marvin.caset.buffalo.edu/tesserae-data/grc_index.db.tar.gz"
+              className="px-4 py-2 bg-red-700 text-white rounded hover:bg-red-800 text-sm"
+            >
+              Download
+            </a>
+          </div>
+          <div className="flex items-center justify-between p-3 bg-gray-50 rounded">
+            <div>
+              <span className="font-medium">English Search Index</span>
+              <span className="text-sm text-gray-500 ml-2">(14 texts, 79 MB)</span>
+            </div>
+            <a
+              href="https://marvin.caset.buffalo.edu/tesserae-data/en_index.db.tar.gz"
+              className="px-4 py-2 bg-red-700 text-white rounded hover:bg-red-800 text-sm"
+            >
+              Download
+            </a>
+          </div>
+          <div className="flex items-center justify-between p-3 bg-gray-50 rounded">
+            <div>
+              <span className="font-medium">Latin Syntax Parses</span>
+              <span className="text-sm text-gray-500 ml-2">(LatinPipe UD annotations, 1.6 GB)</span>
+            </div>
+            <a
+              href="https://marvin.caset.buffalo.edu/tesserae-data/syntax_latin.db.tar.gz"
+              className="px-4 py-2 bg-red-700 text-white rounded hover:bg-red-800 text-sm"
+            >
+              Download
+            </a>
+          </div>
+          <div className="flex items-center justify-between p-3 bg-gray-50 rounded">
+            <div>
+              <span className="font-medium">Extended Latin Lemma Table</span>
+              <span className="text-sm text-gray-500 ml-2">(optional, 15 MB)</span>
+            </div>
+            <a
+              href="https://marvin.caset.buffalo.edu/tesserae-data/latin_lemmas_extended.db.tar.gz"
+              className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 text-sm"
+            >
+              Download
+            </a>
+          </div>
+        </div>
+
+        <p className="text-xs text-gray-500 mt-4">
+          Total download: ~5.3 GB uncompressed. See the{' '}
+          <a
+            href="https://github.com/tesserae/tesserae-v6/blob/main/docs/DATA_FILES_REFERENCE.md"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-red-600 hover:underline"
+          >
+            Data Files Reference
+          </a>{' '}
+          for full documentation.
+        </p>
+      </div>
+
       <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
         <h4 className="font-medium text-amber-900 mb-2">License Information</h4>
         <p className="text-sm text-amber-800">

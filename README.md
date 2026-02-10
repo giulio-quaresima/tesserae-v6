@@ -37,7 +37,30 @@ A web-based intertextual analysis tool for classical Latin, Greek, and English t
 4. Click **Run Search** to find parallels
 
 ### For Developers
-See [docs/DEVELOPER.md](docs/DEVELOPER.md) for setup instructions.
+
+```bash
+# 1. Clone the repository (includes texts, embeddings, and lemma tables)
+git clone https://github.com/tesserae/tesserae-v6.git
+cd tesserae-v6
+
+# 2. Install Python dependencies
+pip install -r requirements.txt
+
+# 3. Download search index files (~5.3 GB from marvin.caset.buffalo.edu)
+python scripts/download_data.py
+
+# 4. Start the application
+python main.py
+```
+
+The Git repository contains all source code, texts, embeddings, and lemma tables. The only additional download is the pre-built search indexes (SQLite databases, ~5.3 GB). The download script handles this automatically.
+
+To check which data files are present or missing:
+```bash
+python scripts/download_data.py --check
+```
+
+See [docs/DATA_FILES_REFERENCE.md](docs/DATA_FILES_REFERENCE.md) for full details on data files, rebuilding indexes, and the code-vs-data separation.
 
 ## Technology Stack
 
