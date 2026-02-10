@@ -612,6 +612,10 @@ class TextProcessor:
         pos_tags = []
         
         try:
+            import sys
+            old_limit = sys.getrecursionlimit()
+            if old_limit < 5000:
+                sys.setrecursionlimit(5000)
             if language == 'la' and self.use_latin_pos and self.latin_pos_tagger:
                 text_str = ' '.join(tokens) if isinstance(tokens, list) else tokens
                 tagged = self.latin_pos_tagger.tag_tnt(text_str)
@@ -632,8 +636,12 @@ class TextProcessor:
                 pos_tags = [tag for _, tag in tagged] if tagged else ['UNK'] * len(tokens)
             else:
                 pos_tags = ['UNK'] * len(tokens)
+        except RecursionError:
+            pos_tags = ['UNK'] * len(tokens)
         except Exception as e:
-            print(f"POS tagging error for {language}: {e}")
+            if not getattr(self, '_pos_error_logged', False):
+                print(f"POS tagging error for {language}: {e}")
+                self._pos_error_logged = True
             pos_tags = ['UNK'] * len(tokens)
         
         if len(pos_tags) != len(tokens):
