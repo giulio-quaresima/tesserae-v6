@@ -7,9 +7,10 @@
       "filename": "la_index.db.tar.gz",
       "extract_to": "data/inverted_index/la_index.db",
       "description": "Latin inverted index (1,429 texts, 298,757 lemmas)",
-      "size_bytes": 2203607040,
-      "size_human": "2.2 GB",
-      "sha256": "PENDING",
+      "size_compressed": 663748608,
+      "size_compressed_human": "633 MB",
+      "size_uncompressed_human": "2.2 GB",
+      "sha256": "2ab3b00760ee436864ea76dec56da13d1b24d1ef90860c65870916b0976a6fbf",
       "required": true,
       "rebuild_instructions": "Run: python scripts/build_inverted_index.py --language la --use-syntax-db --force"
     },
@@ -17,49 +18,46 @@
       "filename": "grc_index.db.tar.gz",
       "extract_to": "data/inverted_index/grc_index.db",
       "description": "Greek inverted index (659 texts, 360,429 lemmas)",
-      "size_bytes": 1489494016,
-      "size_human": "1.4 GB",
-      "sha256": "PENDING",
+      "size_compressed": 297795584,
+      "size_compressed_human": "284 MB",
+      "size_uncompressed_human": "1.4 GB",
+      "sha256": "ae768c7831c3b7d480e3ef2ae179ad341f5f60b2f621c9292137965d0e0cf6ba",
+      "required": true,
       "rebuild_instructions": "Run: python scripts/build_inverted_index.py --language grc --fast --force"
     },
     {
       "filename": "en_index.db.tar.gz",
       "extract_to": "data/inverted_index/en_index.db",
       "description": "English inverted index (14 texts, 22,867 lemmas)",
-      "size_bytes": 83283968,
-      "size_human": "79 MB",
-      "sha256": "PENDING",
+      "size_compressed": 25165824,
+      "size_compressed_human": "24 MB",
+      "size_uncompressed_human": "79 MB",
+      "sha256": "4f492c47ec471b4481a9f0b44aab86c06de748b2d0b461244a96c614a4b208ca",
+      "required": true,
       "rebuild_instructions": "Run: python scripts/build_inverted_index.py --language en --force"
     },
     {
       "filename": "syntax_latin.db.tar.gz",
       "extract_to": "data/inverted_index/syntax_latin.db",
       "description": "Latin syntax parses from LatinPipe (1,429 texts, 542,311 lines of UD annotations)",
-      "size_bytes": 1664045056,
-      "size_human": "1.6 GB",
-      "sha256": "PENDING",
-      "rebuild_instructions": "Run build_latinpipe_syntax.py on Marvin with local LatinPipe model (~1-2 hours)"
-    },
-    {
-      "filename": "latin_lemmas_extended.db.tar.gz",
-      "extract_to": "data/lemma_tables/latin_lemmas_extended.db",
-      "description": "Extended Latin lemma lookup table",
-      "size_bytes": 15671296,
-      "size_human": "15 MB",
-      "sha256": "PENDING",
+      "size_compressed": 243269632,
+      "size_compressed_human": "232 MB",
+      "size_uncompressed_human": "1.6 GB",
+      "sha256": "eb5d29a760137eeaa6dcc160a35cc38956976ff82a3808ff1a2dd3f818660477",
       "required": false,
-      "rebuild_instructions": "Rebuilt automatically during index build"
+      "rebuild_instructions": "Run build_latinpipe_syntax.py on Marvin with local LatinPipe model (~1-2 hours)"
     }
   ],
   "notes": {
-    "total_size": "~5.3 GB (uncompressed)",
+    "total_compressed": "~1.2 GB",
+    "total_uncompressed": "~5.3 GB",
     "hosting": "Files are hosted on Marvin (marvin.caset.buffalo.edu) and served via Apache.",
-    "checksums": "SHA256 checksums are populated by running scripts/package_data.sh on Marvin.",
-    "already_on_github": [
-      "texts/ (2,176 .tess files, ~308 MB)",
-      "backend/embeddings/ (pre-computed semantic embeddings, ~2 GB)",
-      "data/lemma_tables/*.json (lemma lookup tables, ~40 MB)",
-      "data/pedecerto/ (metrical scansion XML data)"
+    "checksums": "SHA256 checksums verified by scripts/package_data.sh on Marvin.",
+    "also_needed": [
+      "texts/ (2,176 .tess files, ~308 MB — included in Git repo)",
+      "backend/embeddings/ (pre-computed semantic embeddings, ~2 GB — included in Git repo)",
+      "data/lemma_tables/*.json (lemma lookup tables, ~40 MB — included in Git repo)",
+      "data/pedecerto/ (metrical scansion XML data — included in Git repo)"
     ]
   }
 }

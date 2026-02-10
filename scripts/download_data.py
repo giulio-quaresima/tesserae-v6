@@ -37,12 +37,9 @@ def load_manifest():
         return json.load(f)
 
 
-def file_exists_and_valid(filepath, expected_size=None):
+def file_exists_and_valid(filepath):
     if not os.path.exists(filepath):
         return False, "missing"
-    actual_size = os.path.getsize(filepath)
-    if expected_size and abs(actual_size - expected_size) > 1024:
-        return False, f"wrong size (expected {expected_size}, got {actual_size})"
     return True, "ok"
 
 
@@ -129,7 +126,7 @@ def check_status(manifest):
     all_ok = True
     for entry in manifest["files"]:
         filepath = os.path.join(PROJECT_ROOT, entry["extract_to"])
-        exists, status = file_exists_and_valid(filepath, entry.get("size_bytes"))
+        exists, status = file_exists_and_valid(filepath)
 
         if exists:
             marker = "OK"
@@ -139,15 +136,16 @@ def check_status(manifest):
 
         required = entry.get("required", True)
         req_label = " (required)" if required else " (optional)"
+        size_label = entry.get("size_uncompressed_human", "unknown size")
 
-        print(f"  [{marker:7s}] {entry['extract_to']} — {entry['size_human']}{req_label}")
+        print(f"  [{marker:7s}] {entry['extract_to']} — {size_label}{req_label}")
         print(f"           {entry['description']}")
 
     print()
-    already_on_github = manifest.get("notes", {}).get("already_on_github", [])
-    if already_on_github:
-        print("Already included in Git repository:")
-        for item in already_on_github:
+    also_needed = manifest.get("notes", {}).get("also_needed", [])
+    if also_needed:
+        print("Also included in Git repository:")
+        for item in also_needed:
             print(f"  [  OK   ] {item}")
 
     print()
@@ -177,11 +175,11 @@ def download_files(manifest, file_filter=None):
                 print(f"  {f['filename']} — {f['description']}")
             sys.exit(1)
 
-    total_size = sum(f.get("size_bytes", 0) for f in files_to_download)
+    total_size = sum(f.get("size_compressed", 0) for f in files_to_download)
     print(f"\n=== Tesserae V6 Data Downloader ===\n")
     print(f"Source: {base_url}")
     print(f"Files to download: {len(files_to_download)}")
-    print(f"Total size (uncompressed): {format_size(total_size)}")
+    print(f"Total download size: ~{format_size(total_size)}")
     print()
 
     skipped = 0
@@ -190,10 +188,11 @@ def download_files(manifest, file_filter=None):
 
     for entry in files_to_download:
         filepath = os.path.join(PROJECT_ROOT, entry["extract_to"])
-        exists, status = file_exists_and_valid(filepath, entry.get("size_bytes"))
+        exists, status = file_exists_and_valid(filepath)
 
         if exists:
-            print(f"SKIP: {entry['extract_to']} (already present, {entry['size_human']})")
+            size_label = entry.get("size_uncompressed_human", "")
+            print(f"SKIP: {entry['extract_to']} (already present, {size_label})")
             skipped += 1
             continue
 
@@ -201,7 +200,8 @@ def download_files(manifest, file_filter=None):
         archive_path = os.path.join(PROJECT_ROOT, ".tmp_download", entry["filename"])
         os.makedirs(os.path.dirname(archive_path), exist_ok=True)
 
-        print(f"Downloading: {entry['filename']} ({entry['size_human']} uncompressed)")
+        dl_size = entry.get("size_compressed_human", "unknown size")
+        print(f"Downloading: {entry['filename']} ({dl_size} compressed)")
         print(f"  From: {url}")
 
         ok, msg = download_with_progress(url, archive_path)
