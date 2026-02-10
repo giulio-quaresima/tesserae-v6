@@ -17,10 +17,12 @@ set -euo pipefail
 
 TESSERAE_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 DEFAULT_OUTPUT_DIR="/var/www/html/tesserae-data"
-OUTPUT_DIR="${1:-$DEFAULT_OUTPUT_DIR}"
+OUTPUT_DIR="$DEFAULT_OUTPUT_DIR"
 
-if [[ "$1" == "--output-dir" ]]; then
+if [[ "${1:-}" == "--output-dir" ]] && [[ -n "${2:-}" ]]; then
     OUTPUT_DIR="$2"
+elif [[ -n "${1:-}" ]] && [[ "${1:-}" != "--"* ]]; then
+    OUTPUT_DIR="$1"
 fi
 
 DB_FILES=(
