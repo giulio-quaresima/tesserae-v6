@@ -12,6 +12,7 @@ import sys
 import json
 import sqlite3
 import argparse
+import time
 from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
@@ -176,27 +177,31 @@ def build_index(language, text_processor, verbose=True, resume=True, force=False
     
     if verbose:
         if existing_files:
-            print(f"Building index for {language}: {remaining} remaining of {total_files} files")
+            print(f"Building index for {language}: {remaining} remaining of {total_files} files", flush=True)
         else:
-            print(f"Building index for {language}: {total_files} files")
+            print(f"Building index for {language}: {total_files} files", flush=True)
+    
+    build_start = time.time()
     
     for i, filename in enumerate(files_to_process):
         filepath = os.path.join(TEXTS_DIR, language, filename)
+        file_start = time.time()
         
         try:
             units = text_processor.process_file(filepath, language, unit_type='line')
         except Exception as e:
             if verbose:
-                print(f"  Error processing {filename}: {e}")
+                print(f"  [{i+1}/{remaining}] ERROR {filename}: {e}", flush=True)
             continue
         
+        file_lines = len(units)
         parts = filename.replace('.tess', '').split('.')
         author = parts[0] if parts else ''
         title = '.'.join(parts[1:]) if len(parts) > 1 else ''
         
         cursor.execute(
             'INSERT OR IGNORE INTO texts (filename, author, title, line_count) VALUES (?, ?, ?, ?)',
-            (filename, author, title, len(units))
+            (filename, author, title, file_lines)
         )
         if cursor.rowcount == 0:
             cursor.execute('SELECT text_id FROM texts WHERE filename = ?', (filename,))
@@ -204,6 +209,7 @@ def build_index(language, text_processor, verbose=True, resume=True, force=False
             continue
         text_id = cursor.lastrowid
         
+        file_postings = 0
         for unit in units:
             ref = unit.get('ref', '')
             lemmas = unit.get('lemmas', [])
@@ -234,16 +240,19 @@ def build_index(language, text_processor, verbose=True, resume=True, force=False
                     (lemma, text_id, ref, json.dumps(positions))
                 )
                 total_postings += 1
+                file_postings += 1
             
             cursor.execute(
                 'INSERT OR IGNORE INTO lines (text_id, ref, content, lemmas, tokens) VALUES (?, ?, ?, ?, ?)',
                 (text_id, ref, text_content, json.dumps(lemmas), json.dumps(tokens))
             )
         
-        if (i + 1) % 50 == 0:
-            conn.commit()
-            if verbose:
-                print(f"  Processed {i + 1}/{remaining} files ({total_lines} lines, {total_postings} postings)...")
+        conn.commit()
+        
+        file_elapsed = time.time() - file_start
+        total_elapsed = time.time() - build_start
+        if verbose:
+            print(f"  [{i+1}/{remaining}] {filename} — {file_lines} lines, {file_postings} postings ({file_elapsed:.1f}s) | Total: {total_lines} lines, {total_elapsed:.0f}s elapsed", flush=True)
     
     conn.commit()
     
@@ -254,12 +263,14 @@ def build_index(language, text_processor, verbose=True, resume=True, force=False
     
     file_size = os.path.getsize(db_path) / (1024 * 1024)
     
+    total_elapsed = time.time() - build_start
     if verbose:
-        print(f"  Completed: {total_files} texts, {total_lines} lines, {unique_lemmas} unique lemmas, {total_postings} postings")
-        print(f"  Index size: {file_size:.1f} MB")
+        print(f"\n  Completed: {total_files} texts, {total_lines} lines, {unique_lemmas} unique lemmas, {total_postings} postings", flush=True)
+        print(f"  Index size: {file_size:.1f} MB", flush=True)
+        print(f"  Total time: {total_elapsed/60:.1f} minutes", flush=True)
         if syntax_data is not None:
-            print(f"  LatinPipe syntax hits: {syntax_hits}, fallback to CLTK: {syntax_misses}")
-        print(f"  Saved to: {db_path}")
+            print(f"  LatinPipe syntax hits: {syntax_hits}, fallback to CLTK: {syntax_misses}", flush=True)
+        print(f"  Saved to: {db_path}", flush=True)
     
     return db_path
 
