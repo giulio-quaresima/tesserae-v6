@@ -613,13 +613,15 @@ class TextProcessor:
         
         try:
             if language == 'la' and self.use_latin_pos and self.latin_pos_tagger:
-                tagged = self.latin_pos_tagger.tag_tnt(tokens)
+                text_str = ' '.join(tokens) if isinstance(tokens, list) else tokens
+                tagged = self.latin_pos_tagger.tag_tnt(text_str)
                 if tagged and len(tagged) > 0:
                     pos_tags = [tag if tag else 'UNK' for _, tag in tagged]
                 else:
                     pos_tags = ['UNK'] * len(tokens)
             elif language == 'grc' and self.use_greek_pos and self.greek_pos_tagger:
-                tagged = self.greek_pos_tagger.tag_tnt(tokens)
+                text_str = ' '.join(tokens) if isinstance(tokens, list) else tokens
+                tagged = self.greek_pos_tagger.tag_tnt(text_str)
                 if tagged and len(tagged) > 0:
                     pos_tags = [tag if tag else 'UNK' for _, tag in tagged]
                 else:
