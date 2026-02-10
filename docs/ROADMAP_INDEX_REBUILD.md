@@ -1,7 +1,8 @@
 # Roadmap: Full Index Rebuild for Permanent Lemmatization
 
 **Created:** February 9, 2026
-**Status:** Planning — ready for next work session
+**Last Updated:** February 9, 2026 (evening)
+**Status:** IN PROGRESS — Latin complete, Greek running overnight, English pending
 
 ---
 
@@ -19,17 +20,14 @@ The index was originally built in January 2026 using **CLTK** (Classical Languag
 | uertice        | uertice ❌   | uertex ✓     |
 | crinibus       | crinibus ❌  | crinis ✓     |
 
-### The Workaround (Current State)
+### The Workaround (Still Active as Safety Net)
 
 In February 2026, we built a **query-time fallback system**:
 1. Expanded the lemma lookup table from 39K to 62K entries using 6 UD treebanks + LatinPipe data
 2. Built a reverse lookup table (lemma → all known inflected forms)
 3. At query time, the system expands each query lemma to all its known inflected forms and searches for ALL of them in the index
 
-This works — both reference tests pass (arma virum returns Ovid/Quintilian/Seneca; vertice crinis returns Catullus 64.350). But it's a workaround:
-- Extra query-time computation (expanding forms, larger SQL queries)
-- Can't find forms that aren't in the UD table
-- The index itself still stores incorrect lemmas, making it fragile
+This works — both reference tests pass. It remains in place as a safety net even after the rebuild.
 
 ### The Permanent Fix
 
@@ -40,20 +38,36 @@ Rebuild all three indexes (Latin, Greek, English) from scratch using the improve
 
 ---
 
-## Current Index Status
+## Current Rebuild Status (Feb 9, 2026 evening)
 
-| Language | Text Files | Index Size | Index Complete? | Lemmatizer | Lemma Table |
-|----------|-----------|------------|-----------------|------------|-------------|
-| Latin    | 1,429     | 2.1 GB     | Partial (built Jan 25, OOM crash mid-build) | CLTK + UD table (62K entries) | ✓ Expanded Feb 9 |
-| Greek    | 659       | 1.5 GB     | Partial (~77%) | CLTK + UD table (58K entries) | ✓ Exists |
-| English  | 14        | 80 MB      | Complete        | NLTK WordNet | No separate table needed |
+| Language | Status | Texts | Lines | Unique Lemmas | Postings | Index Size |
+|----------|--------|-------|-------|---------------|----------|------------|
+| Latin    | **COMPLETE** ✓ | 1,429 | 865,842 | 298,757 | 17,681,642 | 2.2 GB |
+| Greek    | **RUNNING** (overnight) | 659 | TBD | TBD | TBD | Growing (~7MB so far) |
+| English  | **PENDING** | 14 | TBD | TBD | TBD | ~5 min build |
 
-### Lemmatization Stack Per Language
+### Latin Build Details
+- Built with `--use-syntax-db --force` on Marvin
+- LatinPipe syntax hits: 553,340 lines (64%) — best quality lemmatization
+- Fallback to CLTK + UD table: 312,502 lines (36%)
+- CLTK installed on Marvin via `pip install --user --break-system-packages cltk`
+- Latin and Greek CLTK model data downloaded to `~/cltk_data/`
+- POS tagging errors (non-fatal, see Known Issues below) present on fallback lines
+
+### Greek Build Details
+- Running overnight with `--force` on Marvin
+- No syntax database for Greek — all lines use CLTK + 58K-entry UD table
+- Slower than Latin because every line goes through CLTK's live lemmatizer
+- Expected completion: several hours
+
+---
+
+## Lemmatization Stack Per Language
 
 **Latin (la):**
 - Primary: CLTK `LatinBackoffLemmatizer` — rule-based with backoff strategies
 - Supplement: UD lemma table (`data/lemma_tables/latin_lemmas.json`, 62K entries from 6 treebanks + LatinPipe)
-- Best available: LatinPipe syntax database (`syntax_latin.db`, 542K lines, ~90-95% accuracy) — can be used during rebuild via `--use-syntax-db` flag
+- Best available: LatinPipe syntax database (`syntax_latin.db`, 542K lines, ~90-95% accuracy) — used during rebuild via `--use-syntax-db` flag
 - Reverse lookup: ✓ Built at runtime from UD table
 
 **Greek (grc):**
@@ -68,82 +82,32 @@ Rebuild all three indexes (Latin, Greek, English) from scratch using the improve
 - Only 14 texts — small corpus, fast to rebuild
 - Reverse lookup: Not applicable (not needed)
 
+**Important:** The improved lemma tables benefit ALL features, not just the inverted index. Any feature that lemmatizes text on the fly (two-text search, line search, stoplists, semantic matching, rare word search) already uses the expanded UD tables at runtime.
+
 ---
 
-## Rebuild Plan
+## What To Do Next (When You Pick Up)
 
-### Prerequisites
+### Step 1: Check Greek Build Results
 
-1. **Push latest code to Git** — The build script, expanded lemma tables, and all fixes must be on `main`
-2. **SSH access to Marvin** — The rebuild must run on Marvin (Replit runs out of memory for the full Latin corpus)
-3. **Back up existing indexes** before starting
+On Marvin, the Greek build should have finished overnight. Check the terminal for the completion summary:
+```
+  Completed: 659 texts, XXXXX lines, XXXXX unique lemmas, XXXXX postings
+  Index size: XXX.X MB
+```
 
-### Step 1: Latin Index Rebuild (Priority — Largest Corpus)
+### Step 2: Run English Build
 
-**On Marvin:**
 ```bash
-ssh marvin
 cd /var/www/tesseraev6_flask/
 git pull origin main
-
-# Back up
-cp data/inverted_index/la_index.db data/inverted_index/la_index.db.bak.$(date +%Y%m%d)
-
-# Option A: Best quality (uses LatinPipe syntax database for lemmatization)
-python scripts/build_inverted_index.py -l la --use-syntax-db --force
-
-# Option B: Standard quality (CLTK + expanded UD table)
-python scripts/build_inverted_index.py -l la --force
+python3 scripts/build_inverted_index.py -l en --force
 ```
+Takes under 5 minutes.
 
-**Estimated time:** 2-4 hours for 1,429 Latin texts
-**Expected output:** ~1,429 texts, ~800K+ lines, ~15M+ postings
+### Step 3: Verify on Marvin
 
-**Note on `--use-syntax-db`:** This flag tells the build script to look up each line in the LatinPipe syntax database first. If LatinPipe has already parsed that line (which it has for most of the corpus), the build uses LatinPipe's lemmas instead of CLTK's. LatinPipe won the EvaLatin 2024 competition with ~90-95% accuracy, so this produces significantly better lemmatization.
-
-**Note on `--force`:** Currently NOT implemented in the build script. Needs to be added before rebuild. The script currently only supports resume mode. See "Code Changes Needed" below.
-
-### Step 2: Greek Index Rebuild
-
-**On Marvin:**
-```bash
-# Back up
-cp data/inverted_index/grc_index.db data/inverted_index/grc_index.db.bak.$(date +%Y%m%d)
-
-# Rebuild (no syntax database for Greek yet)
-python scripts/build_inverted_index.py -l grc --force
-```
-
-**Estimated time:** 1-2 hours for 659 Greek texts
-**Expected output:** ~659 texts, ~400K+ lines
-
-**Greek lemmatization quality:** CLTK's Greek lemmatizer + the 58K-entry UD table should provide good coverage. Greek has more complex morphology than Latin but the UD treebanks are well-curated.
-
-### Step 3: English Index Rebuild
-
-**On Marvin (or Replit — only 14 texts):**
-```bash
-# Back up
-cp data/inverted_index/en_index.db data/inverted_index/en_index.db.bak.$(date +%Y%m%d)
-
-# Rebuild
-python scripts/build_inverted_index.py -l en --force
-```
-
-**Estimated time:** < 5 minutes for 14 English texts
-**Note:** English can be rebuilt on Replit if preferred — the corpus is tiny.
-
-### Step 4: Copy Rebuilt Indexes Back to Replit
-
-```bash
-# From Marvin, SCP to local machine, then upload to Replit:
-scp marvin:/var/www/tesseraev6_flask/data/inverted_index/la_index.db .
-scp marvin:/var/www/tesseraev6_flask/data/inverted_index/grc_index.db .
-# Upload via Replit Files panel (drag into data/inverted_index/)
-```
-
-### Step 5: Verify with Reference Tests
-
+Test the rebuilt indexes directly on Marvin:
 ```bash
 # Test 1: arma virum (must include Ovid, Quintilian, Seneca)
 curl -s -X POST "http://localhost:5000/api/line-search" \
@@ -156,40 +120,78 @@ curl -s -X POST "http://localhost:5000/api/line-search" \
   -d '{"query": "vertice crinis", "language": "la", "search_type": "lemma", "max_results": 100}'
 ```
 
----
+### Step 4: Copy Rebuilt Indexes to Replit
 
-## Code Changes Needed Before Rebuild
+```bash
+# From Marvin, SCP to local machine, then upload to Replit:
+scp marvin:/var/www/tesseraev6_flask/data/inverted_index/la_index.db .
+scp marvin:/var/www/tesseraev6_flask/data/inverted_index/grc_index.db .
+scp marvin:/var/www/tesseraev6_flask/data/inverted_index/en_index.db .
+# Upload via Replit Files panel (drag into data/inverted_index/)
+```
 
-### 1. Add `--force` Flag to Build Script
+### Step 5: Verify on Replit
 
-The build script (`scripts/build_inverted_index.py`) currently only supports resume mode — it skips files already in the index. A `--force` flag needs to be added that:
-- Drops and recreates all tables (texts, lines, postings)
-- Processes every file from scratch
-- Uses the improved lemma table for all texts
+Run the same reference tests on Replit after uploading.
 
-### 2. Verify `--use-syntax-db` Flag Works End-to-End
+### Step 6: Post-Rebuild Cleanup
 
-The syntax database integration was recently added. Before running the full rebuild:
-- Test with 2-3 individual texts to confirm lemma quality
-- Verify the syntax database lookup doesn't crash on edge cases
-- Confirm postings, lines, and texts tables are all populated correctly
-
-### 3. Consider Greek Lemma Table Expansion
-
-The Greek lemma table (58K entries) was built from fewer UD treebanks. Before rebuilding Greek:
-- Check which Greek UD treebanks are available (Perseus, PROIEL, plus any newer ones)
-- Consider downloading additional treebanks to expand coverage (same process used for Latin)
+1. Update `replit.md` to note indexes are rebuilt
+2. Consider re-running evaluation benchmark to measure precision/recall improvement
+3. Delete old backup index files on Marvin when confident
 
 ---
 
-## After the Rebuild: Cleanup
+## Build Commands Reference
 
-Once the rebuilt indexes are verified and working:
+```bash
+# Latin — best quality (LatinPipe + CLTK fallback)
+python3 scripts/build_inverted_index.py -l la --use-syntax-db --force
 
-1. **The query-time fallback system can be kept as a safety net** — it adds negligible overhead and catches any remaining gaps
-2. **Remove the `--use-syntax-db` workaround if Latin quality is good enough** without it
-3. **Update `replit.md`** to note that indexes are rebuilt and the workaround is no longer primary
-4. **Re-run the evaluation benchmark** (`evaluation/run_full_default_evaluation.py`) to measure impact on precision/recall
+# Greek — CLTK + UD table
+python3 scripts/build_inverted_index.py -l grc --force
+
+# English — NLTK WordNet
+python3 scripts/build_inverted_index.py -l en --force
+
+# All languages at once
+python3 scripts/build_inverted_index.py --force
+
+# Resume interrupted build (no --force)
+python3 scripts/build_inverted_index.py -l la
+```
+
+---
+
+## Code Changes Made (Feb 9)
+
+### 1. Added `--force` and `--use-syntax-db` Flags ✓
+- `scripts/build_inverted_index.py` now accepts both flags
+- `--force` deletes existing index file and rebuilds from scratch
+- `--use-syntax-db` loads LatinPipe syntax database for Latin lemmatization
+
+### 2. Fixed Syntax Database Loader ✓
+- Fixed key format: uses `(filename, ref)` matching the syntax DB's `texts` table
+- Fixed column name: `ref` not `locus`
+
+### 3. Fixed POS Tagger Input Format ✓
+- CLTK's `tag_tnt` expects a string, not a list — now joins tokens before passing
+- Added `RecursionError` handling (Greek tagger hits recursion limit on complex sentences)
+- Suppressed repeated error messages to avoid terminal spam
+
+---
+
+## Known Issues
+
+### POS Tagging Errors (Non-Fatal)
+- **Latin:** CLTK's `tag_tnt` occasionally fails with input format issues. Fixed in latest code but the Latin build ran before the fix was deployed.
+- **Greek:** CLTK's Greek TnT tagger hits maximum recursion depth on some sentences. Fixed in latest code (silently caught).
+- **Impact:** Minimal. POS tagging only helps CLTK disambiguate between lemma candidates. When POS tagging fails, CLTK still lemmatizes without POS information. The UD table handles most disambiguation cases anyway.
+
+### CLTK Installation on Marvin
+- Installed via `python3 get-pip.py --user --break-system-packages` then `pip install --user --break-system-packages cltk`
+- CLTK model data in `/home/ncoffee/cltk_data/` (Latin and Greek models)
+- NLTK also installed as a CLTK dependency
 
 ---
 
@@ -201,3 +203,6 @@ Once the rebuilt indexes are verified and working:
 | Feb 9, 2026 | Build query-time reverse lookup as interim fix | Full index rebuild requires Marvin; this gives immediate improvement |
 | Feb 9, 2026 | Fix distance filter to use min pairwise distance | Old span-based calculation falsely rejected prose matches with repeated words |
 | Feb 9, 2026 | Plan full index rebuild on Marvin | Query-time workaround is effective but a proper rebuild is the permanent solution |
+| Feb 9, 2026 | Use LatinPipe for Latin rebuild | 542K lines at ~90-95% accuracy vs CLTK's lower accuracy |
+| Feb 9, 2026 | Install CLTK on Marvin for fallback quality | 312K Latin lines (36%) not in LatinPipe DB need good fallback |
+| Feb 9, 2026 | Keep query-time fallback as safety net | Negligible overhead, catches any remaining gaps after rebuild |
