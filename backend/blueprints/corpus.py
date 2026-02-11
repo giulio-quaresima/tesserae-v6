@@ -176,7 +176,7 @@ def get_provenance():
 @corpus_bp.route('/text-credits')
 def get_text_credits():
     """Get text credits and provenance information from static JSON data file."""
-    text_sources_file = Path(__file__).parent.parent.parent / "data" / "text_sources.json"
+    text_sources_file = Path(__file__).parent.parent / "text_sources.json"
     if text_sources_file.exists():
         with open(text_sources_file, 'r', encoding='utf-8') as f:
             sources = json.load(f)
