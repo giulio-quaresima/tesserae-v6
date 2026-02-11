@@ -305,8 +305,9 @@ export default function LineSearch({ language }) {
   };
 
   const genreFilteredResults = useMemo(() => {
+    if (showPoetry && showProse) return deduplicatedResults;
     return deduplicatedResults.filter(r => {
-      const isPoetry = r.is_poetry !== false;
+      const isPoetry = r.is_poetry === true;
       if (!showPoetry && isPoetry) return false;
       if (!showProse && !isPoetry) return false;
       return true;
@@ -503,7 +504,7 @@ export default function LineSearch({ language }) {
     const filtered = deduplicatedResults.filter(r => {
       if (eraFilter && (r.era || 'Unknown') !== eraFilter) return false;
       if (authorFilter && r.author !== authorFilter) return false;
-      const isPoetry = r.is_poetry !== false;
+      const isPoetry = r.is_poetry === true;
       if (!showPoetry && isPoetry) return false;
       if (!showProse && !isPoetry) return false;
       return true;
