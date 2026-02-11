@@ -38,7 +38,7 @@ Focus: Data distribution system and GitHub repository cleanup.
 ## Pending — For Next Session
 
 ### 1. Apache Config for Data Downloads
-- **Status:** Email sent to Chris (Feb 10) requesting Apache configuration
+- **Status:** Request sent (Feb 10) to configure Apache on Marvin
 - **What's needed:** Serve `/var/www/tesseraev6_flask/public_data/` at `https://marvin.caset.buffalo.edu/tesserae-data/`
 - **Once done:** Test download URLs and update `DATA_MANIFEST.json` with the final base URL
 
@@ -47,7 +47,6 @@ Focus: Data distribution system and GitHub repository cleanup.
 - **What's needed:** Copy to Marvin, then re-run `scripts/package_data.sh` to include it in the data package
 - **Method:** `scp` from a local machine, or download from Replit and upload to Marvin
 
-### 3. Replit Git Sync
-- **Status:** Replit's local Git history is now out of sync with GitHub due to the force-push
-- **What's needed:** Fresh clone or reset on Replit side to match the rewritten history
-- **Impact:** Low — Replit works fine for development; only matters if pushing from Replit to GitHub
+### 3. Replit Git Sync — RESOLVED
+- Resolved by removing `.git/index.lock` and running `git reset --hard origin/main` in the Shell
+- Replit is now fully in sync with GitHub
