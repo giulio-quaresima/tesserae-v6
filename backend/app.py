@@ -1850,7 +1850,8 @@ def line_search_parallel():
                         'match_count': match_count,
                         'score': round(score, 3),
                         'year': author_year,
-                        'era': author_era
+                        'era': author_era,
+                        'is_poetry': not is_prose
                     })
                 
                 text_matches.sort(key=lambda x: x['score'], reverse=True)
@@ -1969,7 +1970,8 @@ def line_search_parallel():
                             'match_count': len(shared),
                             'score': round(score, 3),
                             'year': author_year,
-                            'era': author_era
+                            'era': author_era,
+                            'is_poetry': not is_prose
                         })
                 
                 text_matches.sort(key=lambda x: x['score'], reverse=True)
