@@ -41,7 +41,7 @@ export default function AboutPage({ onNavigate }) {
             >
               Neil Coffee
             </a>{' '}
-            (University at Buffalo) using <strong>Replit Agent</strong>, an AI-assisted development platform.
+            (University at Buffalo).
           </p>
           <p className="text-gray-700 mb-4">
             Tesserae is a collaboration between{' '}
