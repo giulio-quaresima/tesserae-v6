@@ -370,6 +370,56 @@ If this returns any matches, those blueprints need fixing. The `/api` prefix is 
 4. Update Python packages: `pip install -r requirements.txt`
 5. Restart the service: `sudo systemctl restart tesserae`
 
+## Apache + WSGI Deployment (Marvin)
+
+On the Marvin server (tesserae.caset.buffalo.edu), Apache serves static files and Flask handles API requests separately.
+
+### How It Works
+
+- **Static files** (HTML, JS, CSS): Apache serves from `/var/www/tess-new/`
+- **API requests** (`/api/*`): Apache forwards to Flask via `WSGIScriptAlias /api`
+- **Flask app code**: Lives in `/var/www/tesseraev6_flask/`
+- **Vite build output**: Goes to `/var/www/tesseraev6_flask/dist/`
+
+These are **separate directories**. A `git pull` updates `dist/` but Apache serves from `tess-new/`.
+
+### Deploying Frontend Changes
+
+After any `git pull` that includes frontend changes (files in `dist/`):
+
+```bash
+cd /var/www/tesseraev6_flask
+git pull
+cp dist/index.html /var/www/tess-new/index.html
+mkdir -p /var/www/tess-new/assets
+cp dist/assets/* /var/www/tess-new/assets/
+sudo systemctl restart apache2
+```
+
+### Deploying Backend-Only Changes
+
+If only Python files changed (no `dist/` changes), just restart Apache:
+
+```bash
+cd /var/www/tesseraev6_flask
+git pull
+sudo systemctl restart apache2
+```
+
+### Recommended Permanent Fix
+
+To eliminate the manual copy step, replace `/var/www/tess-new` with a symlink:
+
+```bash
+sudo mv /var/www/tess-new /var/www/tess-new-backup
+sudo ln -s /var/www/tesseraev6_flask/dist /var/www/tess-new
+sudo systemctl restart apache2
+```
+
+After this, `git pull` automatically updates what Apache serves. No manual copying needed.
+
+To undo: `sudo rm /var/www/tess-new && sudo mv /var/www/tess-new-backup /var/www/tess-new`
+
 ## Contact
 
 For issues with this deployment, check the application logs:
