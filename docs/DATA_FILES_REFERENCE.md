@@ -33,7 +33,7 @@ python scripts/download_data.py --check
 
 ### NOT in Git — Download Separately
 
-These are SQLite database files (blocked by `*.db` in `.gitignore`). They are hosted at `https://marvin.caset.buffalo.edu/tesserae-data/`.
+These are SQLite database files (blocked by `*.db` in `.gitignore`). They are hosted at `https://tesserae.caset.buffalo.edu/tesserae-data/`.
 
 | File | Size | Required? | Description |
 |------|------|-----------|-------------|

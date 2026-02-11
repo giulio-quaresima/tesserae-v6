@@ -1,7 +1,7 @@
 {
   "version": "1.0",
   "description": "Tesserae V6 data files not included in the Git repository. Run scripts/download_data.py to fetch these automatically.",
-  "base_url": "https://marvin.caset.buffalo.edu/tesserae-data",
+  "base_url": "https://tesserae.caset.buffalo.edu/tesserae-data",
   "files": [
     {
       "filename": "la_index.db.tar.gz",
@@ -53,7 +53,7 @@
   ],
   "notes": {
     "total_size": "~5.3 GB (uncompressed)",
-    "hosting": "Files are hosted on Marvin (marvin.caset.buffalo.edu) and served via Apache.",
+    "hosting": "Files are hosted on the Tesserae server (tesserae.caset.buffalo.edu) and served via Apache.",
     "checksums": "SHA256 checksums are populated by running scripts/package_data.sh on Marvin.",
     "already_on_github": [
       "texts/ (2,176 .tess files, ~308 MB)",

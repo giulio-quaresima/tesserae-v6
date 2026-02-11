@@ -340,7 +340,7 @@ const DownloadsPage = () => {
               <span className="text-sm text-gray-500 ml-2">(1,429 texts, 2.2 GB)</span>
             </div>
             <a
-              href="https://marvin.caset.buffalo.edu/tesserae-data/la_index.db.tar.gz"
+              href="https://tesserae.caset.buffalo.edu/tesserae-data/la_index.db.tar.gz"
               className="px-4 py-2 bg-red-700 text-white rounded hover:bg-red-800 text-sm"
             >
               Download
@@ -352,7 +352,7 @@ const DownloadsPage = () => {
               <span className="text-sm text-gray-500 ml-2">(659 texts, 1.4 GB)</span>
             </div>
             <a
-              href="https://marvin.caset.buffalo.edu/tesserae-data/grc_index.db.tar.gz"
+              href="https://tesserae.caset.buffalo.edu/tesserae-data/grc_index.db.tar.gz"
               className="px-4 py-2 bg-red-700 text-white rounded hover:bg-red-800 text-sm"
             >
               Download
@@ -364,7 +364,7 @@ const DownloadsPage = () => {
               <span className="text-sm text-gray-500 ml-2">(14 texts, 79 MB)</span>
             </div>
             <a
-              href="https://marvin.caset.buffalo.edu/tesserae-data/en_index.db.tar.gz"
+              href="https://tesserae.caset.buffalo.edu/tesserae-data/en_index.db.tar.gz"
               className="px-4 py-2 bg-red-700 text-white rounded hover:bg-red-800 text-sm"
             >
               Download
@@ -376,7 +376,7 @@ const DownloadsPage = () => {
               <span className="text-sm text-gray-500 ml-2">(LatinPipe UD annotations, 1.6 GB)</span>
             </div>
             <a
-              href="https://marvin.caset.buffalo.edu/tesserae-data/syntax_latin.db.tar.gz"
+              href="https://tesserae.caset.buffalo.edu/tesserae-data/syntax_latin.db.tar.gz"
               className="px-4 py-2 bg-red-700 text-white rounded hover:bg-red-800 text-sm"
             >
               Download
@@ -388,7 +388,7 @@ const DownloadsPage = () => {
               <span className="text-sm text-gray-500 ml-2">(optional, 15 MB)</span>
             </div>
             <a
-              href="https://marvin.caset.buffalo.edu/tesserae-data/latin_lemmas_extended.db.tar.gz"
+              href="https://tesserae.caset.buffalo.edu/tesserae-data/latin_lemmas_extended.db.tar.gz"
               className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 text-sm"
             >
               Download

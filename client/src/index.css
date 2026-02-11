@@ -6,6 +6,12 @@ body {
   font-family: 'Inter', 'Noto Sans', system-ui, -apple-system, sans-serif;
 }
 
+:lang(grc),
+[lang="grc"],
+.greek-text {
+  font-family: 'Noto Sans', 'Inter', system-ui, sans-serif;
+}
+
 .tesserae-title {
   font-family: 'Crimson Pro', Georgia, serif;
 }

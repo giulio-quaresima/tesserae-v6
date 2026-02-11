@@ -10,13 +10,13 @@
 # Usage:
 #   bash scripts/package_data.sh [--output-dir /path/to/public/dir]
 #
-# Default output: /var/www/html/tesserae-data/
+# Default output: /var/www/tesseraev6_flask/public_data/
 # The script will create the directory if it doesn't exist.
 
 set -euo pipefail
 
 TESSERAE_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-DEFAULT_OUTPUT_DIR="/var/www/html/tesserae-data"
+DEFAULT_OUTPUT_DIR="/var/www/tesseraev6_flask/public_data"
 OUTPUT_DIR="$DEFAULT_OUTPUT_DIR"
 
 if [[ "${1:-}" == "--output-dir" ]] && [[ -n "${2:-}" ]]; then
@@ -214,4 +214,4 @@ echo ""
 echo "Next steps:"
 echo "  1. Ensure Apache serves $OUTPUT_DIR (check your Apache config)"
 echo "  2. Commit the updated DATA_MANIFEST.json to Git"
-echo "  3. Test: curl -I https://marvin.caset.buffalo.edu/tesserae-data/la_index.db.tar.gz"
+echo "  3. Test: curl -I https://tesserae.caset.buffalo.edu/tesserae-data/la_index.db.tar.gz"
