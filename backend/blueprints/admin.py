@@ -9,7 +9,7 @@ import json
 
 from backend.db_utils import get_db_cursor
 from backend.logging_config import get_logger
-from backend.utils import get_text_metadata, get_override, set_override, load_metadata_overrides
+from backend.utils import get_text_metadata, get_override, set_override, load_metadata_overrides, safe_listdir
 from backend.lemma_cache import (
     rebuild_lemma_cache, get_cache_stats as get_lemma_cache_stats,
     clear_lemma_cache
@@ -412,7 +412,7 @@ def _update_corpus_status(language):
         if _texts_dir:
             lang_dir = os.path.join(_texts_dir, language)
             if os.path.exists(lang_dir):
-                tess_count = len([f for f in os.listdir(lang_dir) if f.endswith('.tess')])
+                tess_count = len([f for f in safe_listdir(lang_dir) if f.endswith('.tess')])
         
         if 'summary' not in status:
             status['summary'] = {}
@@ -1312,7 +1312,7 @@ def get_corpus_texts_for_admin():
             
             author_dates = (_author_dates or {}).get(lang, {})
             
-            for filename in sorted(os.listdir(lang_dir)):
+            for filename in sorted(safe_listdir(lang_dir)):
                 if not filename.endswith('.tess'):
                     continue
                 filepath = os.path.join(lang_dir, filename)
