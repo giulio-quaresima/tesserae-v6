@@ -434,7 +434,7 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gray-100">
-      <Header user={user} setUser={setUser} />
+      <Header user={user} setUser={setUser} onLogoClick={() => setPageType('search')} />
       <Navigation 
         pageType={pageType} 
         setPageType={setPageType}
