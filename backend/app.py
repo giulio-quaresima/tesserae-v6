@@ -861,7 +861,7 @@ def search():
         
         scored_results = scorer.score_matches(matches, source_units, target_units, settings, source_id, target_id)
         
-        scored_results.sort(key=lambda x: x['overall_score'], reverse=True)
+        scored_results.sort(key=lambda x: x.get('overall_score') or 0, reverse=True)
         
         metadata = {
             'source_lines': len(source_units),
@@ -1306,7 +1306,7 @@ def line_search():
                     author_key = filename.split('.')[0].lower()
                     author_info = lang_dates.get(author_key, {})
                     era = author_info.get('era', 'Unknown')
-                    year = author_info.get('year', 9999)
+                    year = author_info.get('year') or 9999
                     
                     # Get line data from index
                     refs_needed = [ref for ref, _, _ in matches]
@@ -1432,7 +1432,7 @@ def line_search():
                     author_key = filename.split('.')[0].lower()
                     author_info = lang_dates.get(author_key, {})
                     era = author_info.get('era', 'Unknown')
-                    year = author_info.get('year', 9999)
+                    year = author_info.get('year') or 9999
                     
                     with open(filepath, 'r', encoding='utf-8') as f:
                         for line in f:
@@ -1704,7 +1704,7 @@ def line_search_parallel():
                     
                 author_key = filename.split('.')[0].lower()
                 author_info = lang_dates.get(author_key, {})
-                author_year = author_info.get('year')
+                author_year = author_info.get('year') or 9999
                 author_era = author_info.get('era', 'Unknown')
                 
                 # Get line data - FAST: from index, SLOW: from file
@@ -1868,7 +1868,7 @@ def line_search_parallel():
                 
                 author_key = filename.split('.')[0].lower()
                 author_info = lang_dates.get(author_key, {})
-                author_year = author_info.get('year')
+                author_year = author_info.get('year') or 9999
                 author_era = author_info.get('era', 'Unknown')
                 
                 units = get_processed_units(filename, language, 'line', text_processor)
@@ -2095,7 +2095,7 @@ def corpus_search():
             metadata = get_text_metadata(filepath)
             author_key = filename.split('.')[0].lower()
             author_info = lang_dates.get(author_key, {})
-            author_year = author_info.get('year')
+            author_year = author_info.get('year') or 9999
             author_era = author_info.get('era', 'Unknown')
             author_note = author_info.get('note', '')
             is_poetry = text_genre_cache.get(filename, False)

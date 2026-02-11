@@ -205,7 +205,7 @@ def search_stream():
             
             yield send_progress("Scoring matches", f"{len(matches)} candidates")
             scored_results = _scorer.score_matches(matches, source_units, target_units, settings, source_id, target_id)
-            scored_results.sort(key=lambda x: x['overall_score'], reverse=True)
+            scored_results.sort(key=lambda x: x.get('overall_score') or 0, reverse=True)
             
             yield send_progress("Saving to cache")
             metadata = {
@@ -443,7 +443,7 @@ def search():
             )
         
         scored_results = _scorer.score_matches(matches, source_units, target_units, settings, source_id, target_id)
-        scored_results.sort(key=lambda x: x['overall_score'], reverse=True)
+        scored_results.sort(key=lambda x: x.get('overall_score') or 0, reverse=True)
         
         metadata = {
             'source_lines': len(source_units),
