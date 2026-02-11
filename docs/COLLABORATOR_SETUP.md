@@ -7,7 +7,7 @@ This guide is for collaborators who have SSH access to Marvin. It walks you thro
 ## Prerequisites
 
 - Python 3.10 or later
-- SSH access to `marvin.caset.buffalo.edu`
+- SSH access to the Tesserae server (`tesserae.caset.buffalo.edu`)
 - Git
 
 ---
@@ -27,15 +27,15 @@ The repository includes text files, embeddings, and lemma tables, but the search
 
 ```bash
 # Required — search indexes
-scp marvin.caset.buffalo.edu:/var/www/tesseraev6_flask/data/inverted_index/la_index.db data/inverted_index/
-scp marvin.caset.buffalo.edu:/var/www/tesseraev6_flask/data/inverted_index/grc_index.db data/inverted_index/
-scp marvin.caset.buffalo.edu:/var/www/tesseraev6_flask/data/inverted_index/en_index.db data/inverted_index/
+scp tesserae.caset.buffalo.edu:/var/www/tesseraev6_flask/data/inverted_index/la_index.db data/inverted_index/
+scp tesserae.caset.buffalo.edu:/var/www/tesseraev6_flask/data/inverted_index/grc_index.db data/inverted_index/
+scp tesserae.caset.buffalo.edu:/var/www/tesseraev6_flask/data/inverted_index/en_index.db data/inverted_index/
 
 # Optional — Latin syntax parses (1.6 GB, needed for syntax-based scoring)
-scp marvin.caset.buffalo.edu:/var/www/tesseraev6_flask/data/inverted_index/syntax_latin.db data/inverted_index/
+scp tesserae.caset.buffalo.edu:/var/www/tesseraev6_flask/data/inverted_index/syntax_latin.db data/inverted_index/
 
 # Optional — extended Latin lemma table (15 MB)
-scp marvin.caset.buffalo.edu:/var/www/tesseraev6_flask/data/lemma_tables/latin_lemmas_extended.db data/lemma_tables/
+scp tesserae.caset.buffalo.edu:/var/www/tesseraev6_flask/data/lemma_tables/latin_lemmas_extended.db data/lemma_tables/
 ```
 
 If you are already on Marvin, you can use `cp` instead of `scp`:
@@ -82,9 +82,9 @@ This reports which files are present and which are missing.
 
 ---
 
-## Alternative: Public Download (Coming Soon)
+## Alternative: Public Download
 
-A public download URL is being set up so that data files can be fetched without Marvin access. Once available, you will be able to run:
+Data files are also available for public download at `https://tesserae.caset.buffalo.edu/tesserae-data/`. You can fetch them automatically:
 
 ```bash
 python scripts/download_data.py

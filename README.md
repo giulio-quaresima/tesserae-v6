@@ -46,7 +46,7 @@ cd tesserae-v6
 # 2. Install Python dependencies
 pip install -r requirements.txt
 
-# 3. Download search index files (~5.3 GB from marvin.caset.buffalo.edu)
+# 3. Download search index files (~5.3 GB from tesserae.caset.buffalo.edu)
 python scripts/download_data.py
 
 # 4. Start the application
