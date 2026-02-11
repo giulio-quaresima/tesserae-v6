@@ -1,6 +1,11 @@
 # Replit agent memory and project planning (private)
 replit.md
 ROADMAP.md
+docs/WORK_SESSION_*.md
+docs/ARTICLE_METHODS_DRAFT.md
+docs/Tesserae_V6_Development_Workflow_Model.md
+deployment/tesserae.service
+scripts/marvin_latinpipe/MARVIN_SETUP_GUIDE.md
 
 # Python
 __pycache__/
