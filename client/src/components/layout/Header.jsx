@@ -3,7 +3,7 @@ import { fetchAuthStatus } from '../../utils/api';
 
 const API_BASE = '/api';
 
-const Header = ({ user, setUser }) => {
+const Header = ({ user, setUser, onLogoClick }) => {
   const [showDropdown, setShowDropdown] = useState(false);
   const [showOrcidModal, setShowOrcidModal] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
@@ -158,9 +158,12 @@ const Header = ({ user, setUser }) => {
     <>
       <header className="bg-gradient-to-r from-red-800 via-red-700 to-orange-600 shadow-lg">
         <div className="max-w-7xl mx-auto px-3 sm:px-6 py-3 sm:py-5 flex justify-between items-center">
-          <div className="flex items-center gap-2 sm:gap-4">
+          <button 
+            onClick={onLogoClick}
+            className="flex items-center gap-2 sm:gap-4 cursor-pointer hover:opacity-90 transition-opacity"
+          >
             <img src="/tesserae-icon.jpg" alt="Tesserae" className="h-10 w-10 sm:h-14 sm:w-14 rounded-full" />
-            <div>
+            <div className="text-left">
               <h1 className="tesserae-title text-2xl sm:text-4xl font-semibold text-white tracking-wide">
                 TESSERAE
               </h1>
@@ -168,7 +171,7 @@ const Header = ({ user, setUser }) => {
                 Intertextual and Literary Discovery
               </p>
             </div>
-          </div>
+          </button>
           <div className="flex items-center gap-2">
             {user ? (
               <div className="relative" ref={dropdownRef}>
