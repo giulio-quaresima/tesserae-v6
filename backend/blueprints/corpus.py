@@ -175,14 +175,48 @@ def get_provenance():
 
 @corpus_bp.route('/text-credits')
 def get_text_credits():
-    """Get text credits and provenance information from static JSON data file."""
-    text_sources_file = Path(__file__).parent.parent.parent / "data" / "text_sources.json"
-    if text_sources_file.exists():
-        with open(text_sources_file, 'r', encoding='utf-8') as f:
-            sources = json.load(f)
-    else:
-        sources = []
-    return jsonify(sources)
+    """Get text credits and provenance information from provenance file + corpus scan."""
+    credits = []
+    seen_keys = set()
+
+    if PROVENANCE_FILE.exists():
+        with open(PROVENANCE_FILE, 'r', encoding='utf-8') as f:
+            prov = json.load(f)
+        source_defs = prov.get('sources', {})
+        for text_id, info in sorted(prov.get('texts', {}).items()):
+            source_key = info.get('source', '')
+            source_info = source_defs.get(source_key, {})
+            credits.append({
+                'author': info.get('author', ''),
+                'work': info.get('title', ''),
+                'e_source': source_info.get('name', source_key),
+                'e_source_url': source_info.get('url', ''),
+                'print_source': '',
+                'added_by': 'Tesserae Project'
+            })
+            seen_keys.add(text_id)
+
+    texts_dir = Path(__file__).parent.parent.parent / "texts"
+    for lang_dir in sorted(texts_dir.iterdir()) if texts_dir.exists() else []:
+        if not lang_dir.is_dir():
+            continue
+        for tess_file in sorted(lang_dir.glob('*.tess')):
+            text_key = tess_file.stem
+            if text_key in seen_keys:
+                continue
+            seen_keys.add(text_key)
+            metadata = get_text_metadata(str(tess_file))
+            credits.append({
+                'author': metadata.get('author', text_key),
+                'work': metadata.get('title', ''),
+                'e_source': 'Tesserae Project',
+                'e_source_url': '',
+                'print_source': '',
+                'added_by': 'Tesserae Project'
+            })
+
+    credits.sort(key=lambda c: (c['author'].lower(), c['work'].lower()))
+    return jsonify(credits)
 
 
 @corpus_bp.route('/texts/hierarchy')
