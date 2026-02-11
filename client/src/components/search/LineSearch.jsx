@@ -317,7 +317,8 @@ export default function LineSearch({ language }) {
   const poetryCount = useMemo(() => deduplicatedResults.filter(r => r.is_poetry === true).length, [deduplicatedResults]);
   const proseCount = useMemo(() => deduplicatedResults.filter(r => r.is_poetry !== true).length, [deduplicatedResults]);
 
-  const buildTimelineData = (data) => {
+  const timelineData = useMemo(() => {
+    const data = genreFilteredResults;
     if (!data || data.length === 0) return { labels: [], datasets: [{ label: 'Matches', data: [], backgroundColor: [], borderColor: [], borderWidth: 1 }] };
     const eraCounts = {};
     data.forEach(r => {
@@ -335,9 +336,10 @@ export default function LineSearch({ language }) {
         borderWidth: 1
       }]
     };
-  };
+  }, [genreFilteredResults]);
 
-  const buildAuthorTimelineData = (data) => {
+  const authorTimelineData = useMemo(() => {
+    const data = genreFilteredResults;
     if (!data || data.length === 0) return { labels: [], datasets: [{ label: 'Matches', data: [], backgroundColor: 'rgba(120, 81, 169, 0.7)', borderColor: 'rgba(120, 81, 169, 1)', borderWidth: 1 }] };
     const authorCounts = {};
     data.forEach(r => {
@@ -362,19 +364,6 @@ export default function LineSearch({ language }) {
         borderWidth: 1
       }]
     };
-  };
-
-  useEffect(() => {
-    if (chartRef.current) {
-      const newData = buildTimelineData(genreFilteredResults);
-      chartRef.current.data = newData;
-      chartRef.current.update('none');
-    }
-    if (authorChartRef.current) {
-      const newData = buildAuthorTimelineData(genreFilteredResults);
-      authorChartRef.current.data = newData;
-      authorChartRef.current.update('none');
-    }
   }, [genreFilteredResults]);
 
   const chartOptions = {
@@ -744,13 +733,13 @@ export default function LineSearch({ language }) {
                   <div>
                     <h4 className="text-sm font-medium text-gray-700 mb-2">Period Timeline</h4>
                     <div style={{ height: '180px' }}>
-                      <Bar ref={chartRef} data={buildTimelineData(genreFilteredResults)} options={chartOptions} />
+                      <Bar ref={chartRef} data={timelineData} options={chartOptions} />
                     </div>
                   </div>
                   <div>
                     <h4 className="text-sm font-medium text-gray-700 mb-2">Author Timeline</h4>
                     <div style={{ height: '180px' }}>
-                      <Bar ref={authorChartRef} data={buildAuthorTimelineData(genreFilteredResults)} options={authorChartOptions} />
+                      <Bar ref={authorChartRef} data={authorTimelineData} options={authorChartOptions} />
                     </div>
                   </div>
                   <div className="flex justify-end">
