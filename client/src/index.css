@@ -2,6 +2,10 @@
 @tailwind components;
 @tailwind utilities;
 
+body {
+  font-family: 'Inter', 'Noto Sans', system-ui, -apple-system, sans-serif;
+}
+
 .tesserae-title {
   font-family: 'Crimson Pro', Georgia, serif;
 }
