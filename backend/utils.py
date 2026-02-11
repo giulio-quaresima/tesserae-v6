@@ -229,9 +229,28 @@ def parse_part_number(part_str):
     except ValueError:
         return part_str.title()
 
+def fix_surrogate_escapes(s):
+    """Fix Python surrogate escapes from non-UTF-8 locale filesystems.
+    When Apache/WSGI runs with a non-UTF-8 locale, Python's os.listdir()
+    uses surrogateescape for non-ASCII bytes, producing invalid surrogates
+    in strings. This re-encodes and properly decodes them as UTF-8."""
+    try:
+        return s.encode('utf-8', 'surrogateescape').decode('utf-8')
+    except (UnicodeDecodeError, UnicodeEncodeError):
+        return s
+
+def safe_listdir(directory):
+    """List directory contents with proper UTF-8 filename handling.
+    Fixes surrogate escapes from non-UTF-8 locale environments (e.g. Apache/WSGI)."""
+    try:
+        entries = os.listdir(directory)
+    except OSError:
+        return []
+    return [fix_surrogate_escapes(e) for e in entries]
+
 def get_text_metadata(filepath):
     """Extract metadata from a .tess filename with hierarchical structure"""
-    filename = os.path.basename(filepath)
+    filename = fix_surrogate_escapes(os.path.basename(filepath))
     name = filename.replace('.tess', '')
     
     parts = name.split('.')
