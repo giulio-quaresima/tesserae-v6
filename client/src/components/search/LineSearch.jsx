@@ -35,6 +35,7 @@ export default function LineSearch({ language }) {
   const [sortOrder, setSortOrder] = useState('chronological');
   const chartRef = useRef(null);
   const authorChartRef = useRef(null);
+  const [chartKey, setChartKey] = useState(0);
   
   const [texts, setTexts] = useState([]);
   const [authors, setAuthors] = useState([]);
@@ -313,6 +314,13 @@ export default function LineSearch({ language }) {
       return true;
     });
   }, [deduplicatedResults, showPoetry, showProse]);
+
+  useEffect(() => {
+    setChartKey(k => k + 1);
+  }, [showPoetry, showProse]);
+
+  const poetryCount = useMemo(() => deduplicatedResults.filter(r => r.is_poetry === true).length, [deduplicatedResults]);
+  const proseCount = useMemo(() => deduplicatedResults.filter(r => r.is_poetry !== true).length, [deduplicatedResults]);
 
   const timelineData = useMemo(() => {
     if (!genreFilteredResults || genreFilteredResults.length === 0) return null;
@@ -695,7 +703,7 @@ export default function LineSearch({ language }) {
                       onChange={e => setShowPoetry(e.target.checked)}
                       className="rounded"
                     />
-                    Poetry
+                    Poetry ({poetryCount})
                   </label>
                   <label className="flex items-center gap-1 text-sm text-gray-600">
                     <input
@@ -704,7 +712,7 @@ export default function LineSearch({ language }) {
                       onChange={e => setShowProse(e.target.checked)}
                       className="rounded"
                     />
-                    Prose
+                    Prose ({proseCount})
                   </label>
                   <select
                     value={sortOrder}
@@ -734,13 +742,13 @@ export default function LineSearch({ language }) {
                   <div>
                     <h4 className="text-sm font-medium text-gray-700 mb-2">Period Timeline</h4>
                     <div style={{ height: '180px' }}>
-                      <Bar key={`period-${showPoetry}-${showProse}`} ref={chartRef} data={timelineData || { labels: [], datasets: [] }} options={chartOptions} />
+                      <Bar key={`period-${chartKey}`} ref={chartRef} data={timelineData || { labels: [], datasets: [] }} options={chartOptions} />
                     </div>
                   </div>
                   <div>
                     <h4 className="text-sm font-medium text-gray-700 mb-2">Author Timeline</h4>
                     <div style={{ height: '180px' }}>
-                      <Bar key={`author-${showPoetry}-${showProse}`} ref={authorChartRef} data={authorTimelineData || { labels: [], datasets: [] }} options={authorChartOptions} />
+                      <Bar key={`author-${chartKey}`} ref={authorChartRef} data={authorTimelineData || { labels: [], datasets: [] }} options={authorChartOptions} />
                     </div>
                   </div>
                   <div className="flex justify-end">
