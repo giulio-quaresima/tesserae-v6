@@ -49,7 +49,6 @@ node_modules/
 # See docs/DATA_FILES_REFERENCE.md for complete list and instructions
 texts/
 data/
-!data/text_sources.json
 cache/
 backend/embeddings/
 
