@@ -60,7 +60,7 @@ def natural_sort_key(s):
 from backend.text_processor import TextProcessor
 from backend.matcher import Matcher
 from backend.scorer import Scorer
-from backend.utils import get_text_metadata, build_text_hierarchy, clean_cts_reference
+from backend.utils import get_text_metadata, build_text_hierarchy, clean_cts_reference, safe_listdir
 from backend.cache import (
     get_cached_results, save_cached_results, 
     get_cache_stats, clear_cache
@@ -94,6 +94,7 @@ CORS(app, supports_credentials=True)  # Enable cross-origin requests
 app.secret_key = os.environ.get("SESSION_SECRET")
 app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)  # Handle proxy headers
 app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0  # Disable caching for development
+app.json.ensure_ascii = False
 app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL")
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {'pool_pre_ping': True, "pool_recycle": 300}
@@ -680,7 +681,7 @@ def get_texts():
         return jsonify([])
     
     texts = []
-    for filename in sorted(os.listdir(lang_dir)):
+    for filename in sorted(safe_listdir(lang_dir)):
         if filename.endswith('.tess'):
             metadata = get_text_metadata(os.path.join(lang_dir, filename))
             texts.append(metadata)
@@ -698,7 +699,7 @@ def get_authors():
         return jsonify([])
     
     authors = {}
-    for filename in os.listdir(lang_dir):
+    for filename in safe_listdir(lang_dir):
         if filename.endswith('.tess'):
             metadata = get_text_metadata(os.path.join(lang_dir, filename))
             author = metadata['author']
@@ -730,7 +731,7 @@ def get_texts_hierarchy():
         return jsonify({'authors': []})
     
     texts = []
-    for filename in os.listdir(lang_dir):
+    for filename in safe_listdir(lang_dir):
         if filename.endswith('.tess'):
             metadata = get_text_metadata(os.path.join(lang_dir, filename))
             texts.append(metadata)
@@ -957,7 +958,7 @@ def get_stats():
     for lang in ['la', 'grc', 'en']:
         lang_dir = os.path.join(TEXTS_DIR, lang)
         if os.path.exists(lang_dir):
-            count = len([f for f in os.listdir(lang_dir) if f.endswith('.tess')])
+            count = len([f for f in safe_listdir(lang_dir) if f.endswith('.tess')])
             stats['languages'][lang] = count
             stats['total_texts'] += count
     
@@ -1426,7 +1427,7 @@ def line_search():
             
             else:
                 # SLOW PATH: Fallback to file scanning (for exact/regex search)
-                text_files = [f for f in os.listdir(lang_dir) if f.endswith('.tess')]
+                text_files = [f for f in safe_listdir(lang_dir) if f.endswith('.tess')]
                 
                 for filename in text_files:
                     filepath = os.path.join(lang_dir, filename)
@@ -1866,7 +1867,7 @@ def line_search_parallel():
                 all_results.extend(text_matches[:max_per_text])
         else:
             # FALLBACK: Scan all texts (original behavior)
-            text_files = [f for f in os.listdir(lang_dir) if f.endswith('.tess')]
+            text_files = [f for f in safe_listdir(lang_dir) if f.endswith('.tess')]
             if exclude_source and source_text_id:
                 text_files = [f for f in text_files if f != source_text_id]
             
