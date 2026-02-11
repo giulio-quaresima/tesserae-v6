@@ -314,7 +314,7 @@ export default function LineSearch({ language }) {
     });
   }, [deduplicatedResults, showPoetry, showProse]);
 
-  const getTimelineData = useCallback(() => {
+  const timelineData = useMemo(() => {
     if (!genreFilteredResults || genreFilteredResults.length === 0) return null;
     
     const eraCounts = {};
@@ -337,7 +337,7 @@ export default function LineSearch({ language }) {
     };
   }, [genreFilteredResults]);
 
-  const getAuthorTimelineData = useCallback(() => {
+  const authorTimelineData = useMemo(() => {
     if (!genreFilteredResults || genreFilteredResults.length === 0) return null;
     
     const authorCounts = {};
@@ -388,7 +388,7 @@ export default function LineSearch({ language }) {
     onClick: (event, elements) => {
       if (elements.length > 0) {
         const idx = elements[0].index;
-        const chartData = getTimelineData();
+        const chartData = timelineData;
         if (chartData) {
           const clickedEra = chartData.labels[idx];
           setEraFilter(eraFilter === clickedEra ? null : clickedEra);
@@ -420,7 +420,7 @@ export default function LineSearch({ language }) {
     onClick: (event, elements) => {
       if (elements.length > 0) {
         const idx = elements[0].index;
-        const chartData = getAuthorTimelineData();
+        const chartData = authorTimelineData;
         if (chartData) {
           const clickedAuthor = chartData.labels[idx];
           setAuthorFilter(authorFilter === clickedAuthor ? null : clickedAuthor);
@@ -734,13 +734,13 @@ export default function LineSearch({ language }) {
                   <div>
                     <h4 className="text-sm font-medium text-gray-700 mb-2">Period Timeline</h4>
                     <div style={{ height: '180px' }}>
-                      <Bar key={`period-${showPoetry}-${showProse}`} ref={chartRef} data={getTimelineData() || { labels: [], datasets: [] }} options={chartOptions} />
+                      <Bar key={`period-${showPoetry}-${showProse}`} ref={chartRef} data={timelineData || { labels: [], datasets: [] }} options={chartOptions} />
                     </div>
                   </div>
                   <div>
                     <h4 className="text-sm font-medium text-gray-700 mb-2">Author Timeline</h4>
                     <div style={{ height: '180px' }}>
-                      <Bar key={`author-${showPoetry}-${showProse}`} ref={authorChartRef} data={getAuthorTimelineData() || { labels: [], datasets: [] }} options={authorChartOptions} />
+                      <Bar key={`author-${showPoetry}-${showProse}`} ref={authorChartRef} data={authorTimelineData || { labels: [], datasets: [] }} options={authorChartOptions} />
                     </div>
                   </div>
                   <div className="flex justify-end">
