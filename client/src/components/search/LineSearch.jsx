@@ -35,7 +35,6 @@ export default function LineSearch({ language }) {
   const [sortOrder, setSortOrder] = useState('chronological');
   const chartRef = useRef(null);
   const authorChartRef = useRef(null);
-  const [chartKey, setChartKey] = useState(0);
   
   const [texts, setTexts] = useState([]);
   const [authors, setAuthors] = useState([]);
@@ -315,24 +314,17 @@ export default function LineSearch({ language }) {
     });
   }, [deduplicatedResults, showPoetry, showProse]);
 
-  useEffect(() => {
-    setChartKey(k => k + 1);
-  }, [showPoetry, showProse]);
-
   const poetryCount = useMemo(() => deduplicatedResults.filter(r => r.is_poetry === true).length, [deduplicatedResults]);
   const proseCount = useMemo(() => deduplicatedResults.filter(r => r.is_poetry !== true).length, [deduplicatedResults]);
 
-  const timelineData = useMemo(() => {
-    if (!genreFilteredResults || genreFilteredResults.length === 0) return null;
-    
+  const buildTimelineData = (data) => {
+    if (!data || data.length === 0) return { labels: [], datasets: [{ label: 'Matches', data: [], backgroundColor: [], borderColor: [], borderWidth: 1 }] };
     const eraCounts = {};
-    genreFilteredResults.forEach(r => {
+    data.forEach(r => {
       const era = r.era || 'Unknown';
       eraCounts[era] = (eraCounts[era] || 0) + 1;
     });
-    
     const sortedEras = ERA_ORDER.filter(era => eraCounts[era] > 0);
-    
     return {
       labels: sortedEras,
       datasets: [{
@@ -343,26 +335,23 @@ export default function LineSearch({ language }) {
         borderWidth: 1
       }]
     };
-  }, [genreFilteredResults]);
+  };
 
-  const authorTimelineData = useMemo(() => {
-    if (!genreFilteredResults || genreFilteredResults.length === 0) return null;
-    
+  const buildAuthorTimelineData = (data) => {
+    if (!data || data.length === 0) return { labels: [], datasets: [{ label: 'Matches', data: [], backgroundColor: 'rgba(120, 81, 169, 0.7)', borderColor: 'rgba(120, 81, 169, 1)', borderWidth: 1 }] };
     const authorCounts = {};
-    genreFilteredResults.forEach(r => {
+    data.forEach(r => {
       const author = r.author || 'Unknown';
       authorCounts[author] = (authorCounts[author] || 0) + 1;
     });
-    
     const sortedAuthors = Object.keys(authorCounts).sort((a, b) => {
-      const aResult = genreFilteredResults.find(r => r.author === a);
-      const bResult = genreFilteredResults.find(r => r.author === b);
+      const aResult = data.find(r => r.author === a);
+      const bResult = data.find(r => r.author === b);
       const aYear = aResult?.year || 9999;
       const bYear = bResult?.year || 9999;
       if (aYear !== bYear) return aYear - bYear;
       return a.localeCompare(b);
     });
-    
     return {
       labels: sortedAuthors,
       datasets: [{
@@ -373,6 +362,19 @@ export default function LineSearch({ language }) {
         borderWidth: 1
       }]
     };
+  };
+
+  useEffect(() => {
+    if (chartRef.current) {
+      const newData = buildTimelineData(genreFilteredResults);
+      chartRef.current.data = newData;
+      chartRef.current.update('none');
+    }
+    if (authorChartRef.current) {
+      const newData = buildAuthorTimelineData(genreFilteredResults);
+      authorChartRef.current.data = newData;
+      authorChartRef.current.update('none');
+    }
   }, [genreFilteredResults]);
 
   const chartOptions = {
@@ -396,7 +398,7 @@ export default function LineSearch({ language }) {
     onClick: (event, elements) => {
       if (elements.length > 0) {
         const idx = elements[0].index;
-        const chartData = timelineData;
+        const chartData = buildTimelineData(genreFilteredResults);
         if (chartData) {
           const clickedEra = chartData.labels[idx];
           setEraFilter(eraFilter === clickedEra ? null : clickedEra);
@@ -428,7 +430,7 @@ export default function LineSearch({ language }) {
     onClick: (event, elements) => {
       if (elements.length > 0) {
         const idx = elements[0].index;
-        const chartData = authorTimelineData;
+        const chartData = buildAuthorTimelineData(genreFilteredResults);
         if (chartData) {
           const clickedAuthor = chartData.labels[idx];
           setAuthorFilter(authorFilter === clickedAuthor ? null : clickedAuthor);
@@ -742,13 +744,13 @@ export default function LineSearch({ language }) {
                   <div>
                     <h4 className="text-sm font-medium text-gray-700 mb-2">Period Timeline</h4>
                     <div style={{ height: '180px' }}>
-                      <Bar key={`period-${chartKey}`} ref={chartRef} data={timelineData || { labels: [], datasets: [] }} options={chartOptions} />
+                      <Bar ref={chartRef} data={buildTimelineData(genreFilteredResults)} options={chartOptions} />
                     </div>
                   </div>
                   <div>
                     <h4 className="text-sm font-medium text-gray-700 mb-2">Author Timeline</h4>
                     <div style={{ height: '180px' }}>
-                      <Bar key={`author-${chartKey}`} ref={authorChartRef} data={authorTimelineData || { labels: [], datasets: [] }} options={authorChartOptions} />
+                      <Bar ref={authorChartRef} data={buildAuthorTimelineData(genreFilteredResults)} options={authorChartOptions} />
                     </div>
                   </div>
                   <div className="flex justify-end">
