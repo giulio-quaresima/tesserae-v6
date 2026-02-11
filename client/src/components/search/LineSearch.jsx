@@ -733,13 +733,13 @@ export default function LineSearch({ language }) {
                   <div>
                     <h4 className="text-sm font-medium text-gray-700 mb-2">Period Timeline</h4>
                     <div style={{ height: '180px' }}>
-                      <Bar ref={chartRef} data={getTimelineData() || { labels: [], datasets: [] }} options={chartOptions} />
+                      <Bar key={`period-${showPoetry}-${showProse}`} ref={chartRef} data={getTimelineData() || { labels: [], datasets: [] }} options={chartOptions} />
                     </div>
                   </div>
                   <div>
                     <h4 className="text-sm font-medium text-gray-700 mb-2">Author Timeline</h4>
                     <div style={{ height: '180px' }}>
-                      <Bar ref={authorChartRef} data={getAuthorTimelineData() || { labels: [], datasets: [] }} options={authorChartOptions} />
+                      <Bar key={`author-${showPoetry}-${showProse}`} ref={authorChartRef} data={getAuthorTimelineData() || { labels: [], datasets: [] }} options={authorChartOptions} />
                     </div>
                   </div>
                   <div className="flex justify-end">
