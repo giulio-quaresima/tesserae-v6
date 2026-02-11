@@ -9,7 +9,7 @@ import json
 from pathlib import Path
 
 from backend.logging_config import get_logger
-from backend.utils import get_text_metadata, build_text_hierarchy
+from backend.utils import get_text_metadata, build_text_hierarchy, safe_listdir
 from backend.frequency_cache import get_corpus_frequencies, recalculate_language_frequencies
 
 logger = get_logger('corpus')
@@ -70,7 +70,7 @@ def get_texts():
     author_dates = get_author_dates().get(language, {})
     
     texts = []
-    for filename in sorted(os.listdir(lang_dir)):
+    for filename in sorted(safe_listdir(lang_dir)):
         if filename.endswith('.tess'):
             metadata = get_text_metadata(os.path.join(lang_dir, filename))
             metadata['language'] = language
@@ -104,7 +104,7 @@ def get_authors():
     author_dates = get_author_dates().get(language, {})
     
     authors = {}
-    for filename in os.listdir(lang_dir):
+    for filename in safe_listdir(lang_dir):
         if filename.endswith('.tess'):
             metadata = get_text_metadata(os.path.join(lang_dir, filename))
             metadata['language'] = language
@@ -199,7 +199,7 @@ def get_texts_hierarchy():
     author_dates = get_author_dates().get(language, {})
     
     texts = []
-    for filename in os.listdir(lang_dir):
+    for filename in safe_listdir(lang_dir):
         if filename.endswith('.tess'):
             metadata = get_text_metadata(os.path.join(lang_dir, filename))
             author_key = metadata.get('author_key', '').lower()
