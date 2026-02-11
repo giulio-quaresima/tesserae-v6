@@ -26,7 +26,7 @@ See docs/DEVELOPER.md for setup and architecture details.
 # IMPORTS
 # =============================================================================
 # Flask and web framework dependencies
-from flask import Flask, send_from_directory, jsonify, request, session
+from flask import Flask, send_from_directory, jsonify, request, session, make_response
 from flask_cors import CORS
 from flask_login import current_user
 from werkzeug.middleware.proxy_fix import ProxyFix
@@ -445,7 +445,11 @@ def add_header(response):
 @app.route('/')
 def index():
     static_folder = app.static_folder or '../frontend'
-    return send_from_directory(static_folder, 'index.html')
+    response = make_response(send_from_directory(static_folder, 'index.html'))
+    response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+    return response
 
 @app.route('/legacy')
 def legacy_frontend():
@@ -465,7 +469,11 @@ def page_not_found(e):
     if request.path.startswith('/api/'):
         return jsonify({'error': 'Not found'}), 404
     static_folder = app.static_folder or '../frontend'
-    return send_from_directory(static_folder, 'index.html')
+    response = make_response(send_from_directory(static_folder, 'index.html'))
+    response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+    return response
 
 
 # =============================================================================
