@@ -50,3 +50,31 @@ Focus: Data distribution system and GitHub repository cleanup.
 ### 3. Replit Git Sync — RESOLVED
 - Resolved by removing `.git/index.lock` and running `git reset --hard origin/main` in the Shell
 - Replit is now fully in sync with GitHub
+
+### 4. Implement Syntax Matching for Lemma Search (Latin)
+
+The full Latin corpus has been parsed with LatinPipe and stored in `syntax_latin.db` (1,429 texts, 542,311 lines). The next step is to wire this data into the scoring pipeline.
+
+#### Phase 1: Syntax Boost for Lemma Search (priority)
+
+When a lemma search finds matching lines, apply a syntax-based score boost at the **whole-line level**:
+
+1. After the lemma matcher identifies a result pair (source line + target line sharing lemmas), look up both lines in `syntax_latin.db` by text_id and line reference.
+2. Compare the **full syntactic structure** of both lines — dependency relations, grammatical roles, word order — not just the syntax around the matched lemma tokens.
+3. The rationale: if two lines share vocabulary *and* have similar grammatical structure overall, that is a much stronger signal of genuine allusion. For example, a line where "arma" is the subject and "virum" is the object should score higher against another line with the same structure than against one where those words fill different roles.
+4. Apply this as a **score boost** (multiplier) to the existing V3 distance+IDF score. Syntax similarity should elevate strong matches, not filter out results that lack syntax data.
+5. Latin only — Greek and English do not have full-corpus parses yet.
+
+**Technical steps:**
+- Replace the current `SyntaxMatcher.load_treebanks()` (which reads small CoNLL-U treebank files from `data/treebanks/`) with direct lookups into `syntax_latin.db` by (text_id, ref).
+- The search pipeline already has text_id and line reference for each result — pass these through to the syntax scorer.
+- Adjust `feature_extractor.py` so the syntax boost applies to the full line comparison, not just the matched-term pair.
+- The UI toggle ("Syntax matching") already exists in search settings.
+
+#### Phase 2: Standalone Syntax Search (deferred)
+
+A separate search mode where users search by syntactic pattern — e.g., "find all lines with the same dependency structure as Aeneid 1.1." This is a different, more complex feature to be built later.
+
+### 5. Work Session Files Lost in Git Purge
+
+The Feb 8 and Feb 9 work session documents were unintentionally destroyed during the `git filter-repo` purge. The tool rewrites entire Git history to remove files from every commit; when Replit was then reset to match the rewritten remote, the local copies were also lost. The files should have been backed up outside the Git tree before the purge. Future private files should be added to `.gitignore` before committing, rather than purged after the fact.
