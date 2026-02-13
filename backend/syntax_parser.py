@@ -526,6 +526,23 @@ class SyntaxMatcher:
             self.stanza_parser = StanzaParser()
         return self.stanza_parser
         
+    def get_syntax_score_by_ref(self, filename1, ref1, filename2, ref2, language, matched_lemmas=None):
+        """
+        Get syntax similarity from syntax_latin.db by (filename, ref).
+        Latin-only. Returns (score, sent1, sent2, from_db).
+        """
+        if language != 'la':
+            return 0.0, None, None, False
+        row1 = SyntaxLatinDB.get_syntax_for_line(filename1, ref1)
+        row2 = SyntaxLatinDB.get_syntax_for_line(filename2, ref2)
+        if not row1 or not row2:
+            return 0.0, None, None, False
+        sent1 = SyntaxLatinDB._row_to_syntax_sentence(row1, f"{filename1}:{ref1}")
+        sent2 = SyntaxLatinDB._row_to_syntax_sentence(row2, f"{filename2}:{ref2}")
+        score = compute_syntax_similarity(sent1, sent2, matched_lemmas)
+        return score, sent1, sent2, True
+
+
     def get_syntax_score(self, source_text, target_text, language, matched_lemmas=None, treebank_only=True):
         """
         Get syntax similarity score between two texts.
@@ -601,11 +618,99 @@ def get_syntax_matcher():
 
 
 # =============================================================================
-# SYNTAX INDEX TABLE MANAGEMENT (for pre-computed parses in SQLite)
+# SYNTAX_LATIN.DB - Full Latin corpus parses (542K lines, LatinPipe)
 # =============================================================================
+# Separate from la_index.db. Used for syntax boost in pairwise phrase search.
 
 INDEX_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data', 'inverted_index')
+SYNTAX_LATIN_DB = os.path.join(INDEX_DIR, 'syntax_latin.db')
 
+
+class SyntaxLatinDB:
+    """
+    Read-only access to syntax_latin.db (1.6GB, 542K lines, LatinPipe parses).
+    Lookup by (filename, ref) to get UD annotations for scoring.
+    """
+    _conn = None
+
+    @classmethod
+    def _get_conn(cls):
+        if cls._conn is None:
+            if not os.path.exists(SYNTAX_LATIN_DB):
+                return None
+            cls._conn = __import__('sqlite3').connect(SYNTAX_LATIN_DB, check_same_thread=False)
+        return cls._conn
+
+    @classmethod
+    def get_syntax_for_line(cls, filename, ref):
+        """
+        Get syntax data for a line from syntax_latin.db.
+        Returns dict with tokens, lemmas, upos, heads, deprels, feats (as lists),
+        or None if not found.
+        """
+        conn = cls._get_conn()
+        if not conn:
+            return None
+        try:
+            cursor = conn.cursor()
+            cursor.execute('''
+                SELECT s.tokens, s.lemmas, s.upos, s.heads, s.deprels, s.feats
+                FROM syntax s
+                JOIN texts t ON s.text_id = t.text_id
+                WHERE t.filename = ? AND s.ref = ?
+            ''', (filename, ref))
+            row = cursor.fetchone()
+            if not row:
+                return None
+            return {
+                'tokens': json.loads(row[0]) if row[0] else [],
+                'lemmas': json.loads(row[1]) if row[1] else [],
+                'upos': json.loads(row[2]) if row[2] else [],
+                'heads': json.loads(row[3]) if row[3] else [],
+                'deprels': json.loads(row[4]) if row[4] else [],
+                'feats': json.loads(row[5]) if row[5] else [],
+            }
+        except Exception as e:
+            return None
+
+    @classmethod
+    def _row_to_syntax_sentence(cls, row_data, sent_id):
+        """Convert DB row dict to SyntaxSentence for compute_syntax_similarity."""
+        tokens = row_data['tokens']
+        lemmas = row_data['lemmas']
+        upos = row_data['upos']
+        heads = row_data['heads']
+        deprels = row_data['deprels']
+        feats = row_data['feats']
+
+        syntax_tokens = []
+        for i in range(len(tokens)):
+            head_val = heads[i] if i < len(heads) else 0
+            if isinstance(head_val, str) and head_val.isdigit():
+                head_val = int(head_val)
+            elif not isinstance(head_val, int):
+                head_val = 0
+            feat_str = feats[i] if i < len(feats) else '_'
+            tok = SyntaxToken(
+                id=i + 1,
+                form=tokens[i] if i < len(tokens) else '',
+                lemma=(lemmas[i] if i < len(lemmas) else '').lower(),
+                upos=upos[i] if i < len(upos) else 'X',
+                xpos='_',
+                feats=feat_str,
+                head=head_val,
+                deprel=deprels[i] if i < len(deprels) else 'dep',
+                deps='_',
+                misc='_'
+            )
+            syntax_tokens.append(tok)
+        text = ' '.join(tokens)
+        return SyntaxSentence(sent_id, text, syntax_tokens)
+
+
+# =============================================================================
+# SYNTAX INDEX TABLE MANAGEMENT (for pre-computed parses in SQLite)
+# =============================================================================
 
 def ensure_syntax_table(language):
     """

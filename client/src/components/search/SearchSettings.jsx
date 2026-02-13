@@ -222,9 +222,9 @@ const SearchSettings = ({ settings, setSettings, showAdvanced, setShowAdvanced, 
                 <input type="checkbox" checked={settings.use_syntax || false}
                   onChange={(e) => handleChange('use_syntax', e.target.checked)}
                   className="rounded border-gray-300" />
-                <span>Syntax matching <span className="text-gray-400 text-xs">(limited texts)</span></span>
+                <span>Syntax matching <span className="text-gray-400 text-xs">(Latin corpus)</span></span>
                 <span className="invisible group-hover:visible absolute left-0 top-6 z-10 bg-gray-800 text-white text-xs rounded px-2 py-1 whitespace-nowrap">
-                  See User Guide for list of texts with syntax data
+                  Boosts scores when shared vocabulary has similar grammatical structure (2+ lemma matches)
                 </span>
               </label>
             </div>
