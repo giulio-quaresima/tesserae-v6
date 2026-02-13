@@ -496,6 +496,11 @@ const SearchResults = ({
                   Metrical: {(r.features.meter_score * 100).toFixed(0)}%
                 </span>
               )}
+              {r.features?.syntax_score > 0 && (
+                <span className="text-xs bg-teal-100 text-teal-700 px-2 py-0.5 rounded">
+                  Syntax: {(r.features.syntax_score * 100).toFixed(0)}%
+                </span>
+              )}
               {r.matched_words && r.matched_words.length > 0 && (
                 <span className="text-sm text-gray-600">
                   Matches: <span className="font-medium">
