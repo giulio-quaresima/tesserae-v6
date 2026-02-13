@@ -394,7 +394,7 @@ const SearchResults = ({
             </button>
             <button
               onClick={exportCSV}
-              className="text-xs bg-green-600 text-white px-3 py-1.5 rounded hover:bg-green-700 whitespace-nowrap"
+              className="text-xs bg-amber-600 text-white px-3 py-1.5 rounded hover:bg-amber-700 whitespace-nowrap"
             >
               Export CSV
             </button>
