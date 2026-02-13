@@ -106,8 +106,11 @@ app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {'pool_pre_ping': True, "pool_recycle"
 # so Flask routes should NOT include /api. On Replit, Flask handles everything
 # directly, so routes need the /api prefix.
 # Set DEPLOYMENT_ENV=marvin in .env on Marvin server to use empty prefix.
+# Set API_PREFIX=/api in env to force /api prefix (e.g. for dev server without Apache).
 DEPLOYMENT_ENV = os.environ.get("DEPLOYMENT_ENV", "replit")
-API_PREFIX = "" if DEPLOYMENT_ENV == "marvin" else "/api"
+API_PREFIX = os.environ.get("API_PREFIX")
+if API_PREFIX is None:
+    API_PREFIX = "" if DEPLOYMENT_ENV == "marvin" else "/api"
 
 def api_route(path, **kwargs):
     """Decorator factory for API routes that handles environment-based prefixes.
