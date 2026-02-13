@@ -642,11 +642,31 @@ class SyntaxLatinDB:
         return cls._conn
 
     @classmethod
+    def _get_part_filename(cls, base_filename, ref):
+        """
+        When base file (e.g. vergil.aeneid.tess) has no match, try part file
+        (e.g. vergil.aeneid.part.7.tess) by extracting book/section from ref.
+        Ref formats: "verg. aen. 7.703" -> book 7, "luc. 2.470" -> book 2.
+        """
+        import re
+        if '.part.' in base_filename:
+            return None  # Already a part file
+        base = base_filename.replace('.tess', '')
+        # Extract book number: last "N.M" pattern before end (book.line)
+        match = re.search(r'\b(\d+)\.\d+\s*$', ref.strip())
+        if not match:
+            return None
+        book = match.group(1)
+        return f"{base}.part.{book}.tess"
+
+    @classmethod
     def get_syntax_for_line(cls, filename, ref):
         """
         Get syntax data for a line from syntax_latin.db.
         Returns dict with tokens, lemmas, upos, heads, deprels, feats (as lists),
         or None if not found.
+        Falls back to part file (e.g. vergil.aeneid.part.7.tess) when full file
+        (vergil.aeneid.tess) has no match - handles corpus split by book.
         """
         conn = cls._get_conn()
         if not conn:
@@ -660,6 +680,16 @@ class SyntaxLatinDB:
                 WHERE t.filename = ? AND s.ref = ?
             ''', (filename, ref))
             row = cursor.fetchone()
+            if not row:
+                part_filename = cls._get_part_filename(filename, ref)
+                if part_filename:
+                    cursor.execute('''
+                        SELECT s.tokens, s.lemmas, s.upos, s.heads, s.deprels, s.feats
+                        FROM syntax s
+                        JOIN texts t ON s.text_id = t.text_id
+                        WHERE t.filename = ? AND s.ref = ?
+                    ''', (part_filename, ref))
+                    row = cursor.fetchone()
             if not row:
                 return None
             return {
