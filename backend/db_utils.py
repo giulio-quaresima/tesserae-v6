@@ -3,13 +3,33 @@ Database Utilities
 Consolidated database access patterns with proper error handling
 """
 import os
-import psycopg2
 from contextlib import contextmanager
 import logging
 
+try:
+    import psycopg
+    from psycopg import Error as PsycopgError
+except ImportError:  # Fallback for environments still using psycopg2
+    import psycopg2 as psycopg  # type: ignore
+    from psycopg2 import Error as PsycopgError  # type: ignore
+
 logger = logging.getLogger(__name__)
 
-DATABASE_URL = os.environ.get('DATABASE_URL')
+def _normalize_database_url(url):
+    if not url:
+        return url
+    if url.startswith("postgres://"):
+        url = "postgresql://" + url[len("postgres://"):]
+    if url.startswith("postgresql+"):
+        # SQLAlchemy-style URI, strip driver spec
+        url = "postgresql://" + url.split("://", 1)[1]
+    if url.startswith("sqlite"):
+        return None  # psycopg cannot connect to sqlite; signal missing config
+    return url
+
+
+DATABASE_URL = os.environ.get('DATABASE_URL') or os.environ.get('SQLALCHEMY_DATABASE_URI')
+DATABASE_URL = _normalize_database_url(DATABASE_URL)
 
 class DatabaseError(Exception):
     """Custom exception for database operations"""
@@ -22,9 +42,9 @@ def get_db_connection():
     try:
         if not DATABASE_URL:
             raise DatabaseError("DATABASE_URL not configured")
-        conn = psycopg2.connect(DATABASE_URL)
+        conn = psycopg.connect(DATABASE_URL)
         yield conn
-    except psycopg2.Error as e:
+    except PsycopgError as e:
         logger.error(f"Database connection error: {e}")
         raise DatabaseError(f"Database connection failed: {e}")
     finally:

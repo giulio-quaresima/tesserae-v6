@@ -78,6 +78,22 @@ from backend.lemma_cache import (
 )
 from backend.feature_extractor import feature_extractor
 
+
+def _normalize_sqlalchemy_uri(uri):
+    """Ensure SQLAlchemy uses psycopg driver for Postgres URLs."""
+    if not uri:
+        return uri
+    if uri.startswith("postgres://"):
+        uri = "postgresql://" + uri[len("postgres://"):]
+    if "://" not in uri:
+        return uri
+    scheme, rest = uri.split("://", 1)
+    if scheme == "postgresql":
+        return f"postgresql+psycopg://{rest}"
+    if scheme == "postgresql+psycopg2":
+        return f"postgresql+psycopg://{rest}"
+    return uri
+
 # =============================================================================
 # FLASK APPLICATION INITIALIZATION
 # =============================================================================
@@ -95,7 +111,20 @@ app.secret_key = os.environ.get("SESSION_SECRET")
 app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)  # Handle proxy headers
 app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0  # Disable caching for development
 app.json.ensure_ascii = False
-app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL")
+# Prefer explicit SQLALCHEMY_DATABASE_URI, then DATABASE_URL, then fall back to local sqlite
+PROJECT_ROOT = os.path.dirname(os.path.dirname(__file__))
+DEFAULT_SQLITE_PATH = os.path.join(PROJECT_ROOT, 'data', 'app.db')
+explicit_uri = os.environ.get("SQLALCHEMY_DATABASE_URI")
+raw_database_url = os.environ.get("DATABASE_URL")
+SQLALCHEMY_DATABASE_URI = explicit_uri or raw_database_url
+SQLALCHEMY_DATABASE_URI = _normalize_sqlalchemy_uri(SQLALCHEMY_DATABASE_URI)
+
+if not SQLALCHEMY_DATABASE_URI:
+    os.makedirs(os.path.dirname(DEFAULT_SQLITE_PATH), exist_ok=True)
+    SQLALCHEMY_DATABASE_URI = f"sqlite:///{DEFAULT_SQLITE_PATH}"
+    print(f"Warning: DATABASE_URL not set. Using local sqlite database at {DEFAULT_SQLITE_PATH}")
+
+app.config["SQLALCHEMY_DATABASE_URI"] = SQLALCHEMY_DATABASE_URI
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {'pool_pre_ping': True, "pool_recycle": 300}
 
