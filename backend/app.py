@@ -119,10 +119,22 @@ raw_database_url = os.environ.get("DATABASE_URL")
 SQLALCHEMY_DATABASE_URI = explicit_uri or raw_database_url
 SQLALCHEMY_DATABASE_URI = _normalize_sqlalchemy_uri(SQLALCHEMY_DATABASE_URI)
 
+def _ensure_sqlite_path(uri):
+    if not uri or not uri.startswith("sqlite:///"):
+        return uri
+    path = uri[len("sqlite:///"):]
+    if path == ":memory:" or not path:
+        return uri
+    absolute_path = path if os.path.isabs(path) else os.path.join(PROJECT_ROOT, path)
+    os.makedirs(os.path.dirname(absolute_path), exist_ok=True)
+    return f"sqlite:///{absolute_path}"
+
 if not SQLALCHEMY_DATABASE_URI:
     os.makedirs(os.path.dirname(DEFAULT_SQLITE_PATH), exist_ok=True)
     SQLALCHEMY_DATABASE_URI = f"sqlite:///{DEFAULT_SQLITE_PATH}"
     print(f"Warning: DATABASE_URL not set. Using local sqlite database at {DEFAULT_SQLITE_PATH}")
+
+SQLALCHEMY_DATABASE_URI = _ensure_sqlite_path(SQLALCHEMY_DATABASE_URI)
 
 app.config["SQLALCHEMY_DATABASE_URI"] = SQLALCHEMY_DATABASE_URI
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
@@ -165,20 +177,27 @@ except Exception as e:
 # =============================================================================
 # AUTHENTICATION SETUP
 # =============================================================================
-DEPLOYMENT_ENV = os.environ.get('DEPLOYMENT_ENV', 'replit')
-AUTH_TYPE = 'replit' if DEPLOYMENT_ENV == 'replit' else 'password'
+DEPLOYMENT_ENV = os.environ.get('DEPLOYMENT_ENV', 'local')
+AUTH_TYPE = 'password'
 
-if DEPLOYMENT_ENV == 'replit' and os.environ.get('REPL_ID'):
-    from backend.replit_auth import init_auth, get_current_user_info
-    init_auth(app)
-    print("Replit authentication initialized")
-elif DEPLOYMENT_ENV == 'marvin':
+if DEPLOYMENT_ENV == 'replit':
+    if os.environ.get('REPL_ID'):
+        from backend.replit_auth import init_auth, get_current_user_info
+        init_auth(app)
+        AUTH_TYPE = 'replit'
+        print("Replit authentication initialized")
+    else:
+        from backend.marvin_auth import init_marvin_auth, get_current_user_info
+        init_marvin_auth(app)
+        print("Replit mode without REPL_ID - falling back to password authentication")
+elif DEPLOYMENT_ENV in ('marvin', 'local'):
     from backend.marvin_auth import init_marvin_auth, get_current_user_info
     init_marvin_auth(app)
-    print("Marvin password authentication initialized")
+    print("Password authentication initialized")
 else:
-    from backend.replit_auth import get_current_user_info
-    print("Auth disabled - no REPL_ID in Replit mode")
+    from backend.marvin_auth import init_marvin_auth, get_current_user_info
+    init_marvin_auth(app)
+    print(f"Password authentication initialized for {DEPLOYMENT_ENV}")
 
 # =============================================================================
 # CORE PROCESSING COMPONENTS
@@ -247,6 +266,10 @@ if os.path.exists(author_dates_path):
 # =============================================================================
 def init_db():
     """Initialize the database tables"""
+    from backend.db_utils import DATABASE_URL as LEGACY_DATABASE_URL
+    if not LEGACY_DATABASE_URL:
+        app_logger.warning("DATABASE_URL not configured; skipping legacy analytics table initialization")
+        return
     try:
         with get_db_cursor() as cur:
             cur.execute('''
@@ -514,9 +537,9 @@ def page_not_found(e):
 def get_auth_user():
     """Get current logged-in user info"""
     user_info = get_current_user_info()
-    deployment_env = os.environ.get('DEPLOYMENT_ENV', 'replit')
-    if deployment_env == 'replit':
-        auth_enabled = bool(os.environ.get('REPL_ID'))
+    deployment_env = os.environ.get('DEPLOYMENT_ENV', 'local')
+    if deployment_env == 'replit' and os.environ.get('REPL_ID'):
+        auth_enabled = True
         auth_type = 'replit'
     else:
         auth_enabled = True

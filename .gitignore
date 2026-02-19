@@ -51,6 +51,8 @@ texts/
 data/
 cache/
 backend/embeddings/
+/frequencies/
+/cache/frequencies/
 
 # Private/local files
 .private/
