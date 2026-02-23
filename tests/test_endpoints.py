@@ -66,6 +66,7 @@ test("GET /api/texts?language=en", lambda: (
 ))
 
 test("GET /api/text/<id> (Aeneid)", lambda: (
+    'units' in check_json(requests.get(f"{BASE}/api/text/vergil.aeneid.tess")) or
     'lines' in check_json(requests.get(f"{BASE}/api/text/vergil.aeneid.tess"))
 ))
 
@@ -372,6 +373,19 @@ print("\n=== Auth ===")
 
 test("GET /api/auth/user", lambda: (
     requests.get(f"{BASE}/api/auth/user").status_code == 200
+))
+
+
+# ── Repository (Intertexts) ───────────────────────────────────────
+
+print("\n=== Repository ===")
+
+test("GET /api/intertexts", lambda: (
+    'intertexts' in check_json(requests.get(f"{BASE}/api/intertexts"))
+))
+
+test("GET /api/intertexts/stats", lambda: (
+    'total' in check_json(requests.get(f"{BASE}/api/intertexts/stats"))
 ))
 
 
