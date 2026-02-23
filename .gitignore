@@ -78,6 +78,10 @@ evaluation/
 # Pre-computed embeddings (too large for Git)
 backend/embeddings/
 
-# Research directory (evaluation output, large)
-research/studies/
-research/sessions/
+# Research directory (private plans, writing, evaluation output)
+research/
+docs/FUSION_ARCHITECTURE.md
+docs/HOW_TESSERAE_SEARCHES.md
+
+# Claude Code project instructions (private)
+CLAUDE.md
