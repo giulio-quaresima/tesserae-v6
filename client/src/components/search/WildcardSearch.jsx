@@ -366,14 +366,14 @@ const WildcardSearch = ({ language }) => {
               </button>
               <button
                 onClick={exportCSV}
-                className="text-sm bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700"
+                className="text-sm bg-amber-600 text-white px-3 py-1 rounded hover:bg-amber-700"
               >
                 Export CSV
               </button>
             </div>
           </div>
 
-          {showTimeline && allResults.some(r => r.era) && (
+          {showTimeline && genreFilteredResults.length > 0 && genreFilteredResults.some(r => r.era) && (
             <div className="p-4 border-b bg-gray-50 space-y-6">
               <div>
                 <h4 className="text-sm font-medium text-gray-700 mb-2">Period Timeline</h4>
@@ -401,6 +401,13 @@ const WildcardSearch = ({ language }) => {
               >
                 Clear Filter
               </button>
+            </div>
+          )}
+
+          {filteredResults.length === 0 && allResults.length > 0 && (
+            <div className="p-8 text-center text-gray-500">
+              <p className="text-sm">No {!showPoetry && showProse ? 'prose' : !showProse && showPoetry ? 'poetry' : ''} results found for this search.</p>
+              <p className="text-xs mt-1">Try enabling {!showPoetry ? 'Poetry' : ''}{!showPoetry && !showProse ? ' and ' : ''}{!showProse ? 'Prose' : ''} above to see results.</p>
             </div>
           )}
 

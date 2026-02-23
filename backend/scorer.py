@@ -132,11 +132,27 @@ class Scorer:
                         if lemma in matched_lemmas:
                             tgt_highlight_indices.append(i)
                 
+                # Build lemma-to-token maps for source_word/target_word
+                src_tokens_list = src_unit.get('tokens', [])
+                tgt_tokens_list = tgt_unit.get('tokens', [])
+                src_lemmas = src_unit.get('lemmas', [])
+                tgt_lemmas = tgt_unit.get('lemmas', [])
+                # For exact match, compare against tokens; for lemma, compare against lemmas
+                src_match_list = src_tokens_list if match_type == 'exact' else src_lemmas
+                tgt_match_list = tgt_tokens_list if match_type == 'exact' else tgt_lemmas
+
                 for lemma in matched_lemmas:
                     lemma_freq = freq.get(lemma, 1)
                     idf = math.log((total_words + 1) / (lemma_freq + 1)) + 1
+                    # Find corresponding surface tokens for this lemma
+                    src_word = next((src_tokens_list[i] for i in src_highlight_indices
+                                     if i < len(src_match_list) and src_match_list[i] == lemma), lemma)
+                    tgt_word = next((tgt_tokens_list[i] for i in tgt_highlight_indices
+                                     if i < len(tgt_match_list) and tgt_match_list[i] == lemma), lemma)
                     word_scores.append({
                         'lemma': lemma,
+                        'source_word': src_word,
+                        'target_word': tgt_word,
                         'frequency': lemma_freq,
                         'idf': idf
                     })
@@ -151,7 +167,10 @@ class Scorer:
                 raw_score = total_freq_score * distance_factor
                 
                 max_score = len(matched_lemmas) * math.log(total_words + 1) if total_words > 0 else 1
-                normalized_score = min(raw_score / max_score, 1.0) if max_score > 0 else 0
+                unbounded = settings.get('unbounded_scoring', False)
+                normalized_score = (raw_score / max_score) if max_score > 0 else 0
+                if not unbounded:
+                    normalized_score = min(normalized_score, 1.0)
                 
                 features = feature_extractor.extract_features(
                     src_unit, tgt_unit, matched_lemmas, settings,

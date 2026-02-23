@@ -328,7 +328,7 @@ export default function CorpusSearchResults({
                   {(() => {
                     const citation = formatFullCitation(null, query.source?.ref);
                     return (
-                      <div className="text-xs font-bold text-green-700 mb-1">
+                      <div className="text-xs font-bold text-amber-700 mb-1">
                         Source: {citation.author}, <span className="italic">{citation.work}</span> {citation.reference}
                       </div>
                     );
@@ -405,7 +405,7 @@ export default function CorpusSearchResults({
               </button>
               <button
                 onClick={exportCSV}
-                className="text-sm text-green-600 hover:text-green-800"
+                className="text-sm text-amber-600 hover:text-amber-800"
               >
                 Export CSV
               </button>

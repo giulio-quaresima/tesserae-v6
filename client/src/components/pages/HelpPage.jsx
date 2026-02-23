@@ -109,6 +109,7 @@ export default function HelpPage() {
 
   const sections = [
     { id: 'getting-started', label: 'Getting Started' },
+    { id: 'fusion-search', label: 'How Fusion Search Works' },
     { id: 'search-modes', label: 'Search Modes' },
     { id: 'match-types', label: 'Match Types' },
     { id: 'settings', label: 'Search Settings' },
@@ -223,18 +224,96 @@ export default function HelpPage() {
               <h3 className="text-xl font-semibold text-gray-900 mb-4">Getting Started</h3>
               <ol className="list-decimal list-inside space-y-4 text-gray-700">
                 <li><strong>Select a Language:</strong> Choose Latin, Greek, or English from the language tabs.</li>
-                <li><strong>Choose Source Text:</strong> Select the "source" text - typically the earlier text.</li>
-                <li><strong>Choose Target Text:</strong> Select the "target" text - the later text that may contain the allusion.</li>
-                <li><strong>Adjust Settings (Optional):</strong> Configure match type, minimum matches, and other parameters.</li>
-                <li><strong>Run Search:</strong> Click "Find Parallels" to discover textual connections.</li>
+                <li><strong>Choose Source Text:</strong> Select the "source" text — typically the earlier text.</li>
+                <li><strong>Choose Target Text:</strong> Select the "target" text — the later text that may contain the allusion.</li>
+                <li><strong>Run Search:</strong> Click "Find Parallels." The default search mode is <strong>Fusion — All Channels</strong>, which runs nine independent detection methods and combines their results for the best recall.</li>
+                <li><strong>Browse Results:</strong> Results are ranked by confidence. The top results are overwhelmingly genuine parallels. Matched words are highlighted and channel badges show which methods detected each pair.</li>
               </ol>
               <div className="mt-6 bg-amber-50 p-4 rounded-lg">
                 <h4 className="font-medium text-amber-800 mb-2">Tip</h4>
-                <p className="text-amber-700 text-sm">Start with a smaller section (e.g., Book 1) rather than complete works for faster results.</p>
+                <p className="text-amber-700 text-sm">Start with a smaller section (e.g., Book 1) rather than complete works for faster results. Large comparisons like the full Aeneid vs. Metamorphoses can take up to 15 minutes on first run; subsequent searches are cached.</p>
               </div>
               <div className="mt-4 bg-gray-50 p-4 rounded-lg">
                 <p className="text-gray-700 text-sm">
                   <strong>Example:</strong> Compare Vergil's Aeneid Book 1 (source) with Lucan's Civil War Book 1 (target) to find how Lucan echoes Vergil.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {activeSection === 'fusion-search' && (
+            <div className="prose max-w-none">
+              <h3 className="text-xl font-semibold text-gray-900 mb-4">How Fusion Search Works</h3>
+              <p className="text-gray-700 mb-4">
+                Tesserae V6's default search mode runs <strong>nine independent detection channels</strong> and combines their results.
+                Each channel looks for a different kind of textual similarity — shared vocabulary, phonetic echo, semantic meaning,
+                grammatical structure, and more. By fusing these signals, the system finds parallels that no single method could detect alone.
+              </p>
+
+              <h4 className="text-lg font-medium text-gray-900 mt-6 mb-3">The Nine Channels</h4>
+              <div className="space-y-3">
+                <div className="border-l-4 border-red-400 pl-3">
+                  <p className="text-sm text-gray-700"><strong>Lemma (2-word):</strong> The classic Tesserae approach — finds lines sharing two or more content-word dictionary forms. The workhorse channel for direct verbal echo.</p>
+                </div>
+                <div className="border-l-4 border-red-400 pl-3">
+                  <p className="text-sm text-gray-700"><strong>Lemma (1-word):</strong> Same method, but requires only one shared word. Catches allusions built around a single pivotal term, like Lucan's <em>canimus</em> echoing Vergil's <em>cano</em>.</p>
+                </div>
+                <div className="border-l-4 border-red-400 pl-3">
+                  <p className="text-sm text-gray-700"><strong>Exact:</strong> Matches identical surface forms (not lemmatized). Catches verbatim quotation and formulaic borrowing.</p>
+                </div>
+                <div className="border-l-4 border-blue-400 pl-3">
+                  <p className="text-sm text-gray-700"><strong>Semantic (AI):</strong> Uses SPhilBERTa neural embeddings to detect lines with similar meaning, even with completely different vocabulary.</p>
+                </div>
+                <div className="border-l-4 border-blue-400 pl-3">
+                  <p className="text-sm text-gray-700"><strong>Dictionary:</strong> Detects synonym substitution (<em>uariatio</em>) using 23,833 curated Latin word pairs — e.g., <em>gladius/ensis</em>, <em>mare/pontus</em>.</p>
+                </div>
+                <div className="border-l-4 border-amber-400 pl-3">
+                  <p className="text-sm text-gray-700"><strong>Sound:</strong> Measures phonetic similarity via character trigram patterns. Detects alliteration, assonance, and phonetic echo.</p>
+                </div>
+                <div className="border-l-4 border-amber-400 pl-3">
+                  <p className="text-sm text-gray-700"><strong>Edit Distance:</strong> Fuzzy character-level matching for morphological variants — <em>ferrea</em> matching <em>ferratos</em>, <em>belligeri</em> matching <em>belli</em>.</p>
+                </div>
+                <div className="border-l-4 border-purple-400 pl-3">
+                  <p className="text-sm text-gray-700"><strong>Syntax:</strong> Compares grammatical dependency structures (parsed by LatinPipe) to detect parallel sentence construction without shared vocabulary.</p>
+                </div>
+                <div className="border-l-4 border-purple-400 pl-3">
+                  <p className="text-sm text-gray-700"><strong>Rare Vocabulary:</strong> Flags shared words that appear in fewer than 50 texts corpus-wide. A rare shared word is unlikely to be coincidence.</p>
+                </div>
+              </div>
+
+              <h4 className="text-lg font-medium text-gray-900 mt-6 mb-3">How Results Are Combined</h4>
+              <p className="text-gray-700 mb-3">
+                Each channel produces its own candidate list with scores. The fusion step combines them using <strong>weighted score fusion</strong>:
+                each channel's score is multiplied by a weight reflecting its precision, and the weighted scores are summed. Channels that produce
+                fewer but more reliable results (like sound and edit distance) receive higher weights. The single-word lemma channel, which
+                casts a wider net, receives a lower weight.
+              </p>
+              <p className="text-gray-700 mb-3">
+                A <strong>convergence bonus</strong> rewards pairs found independently by multiple channels. If six out of nine channels all
+                flag the same pair of lines, that agreement is strong evidence of a real connection — stronger than any single channel's
+                score alone.
+              </p>
+
+              <h4 className="text-lg font-medium text-gray-900 mt-6 mb-3">Sliding Windows</h4>
+              <p className="text-gray-700 mb-3">
+                Poets don't always confine allusions to a single line. To catch vocabulary split across line breaks (enjambment),
+                the system also searches <strong>two-line sliding windows</strong> — each consecutive pair of lines merged into one unit.
+                Window results that are genuinely new are appended after line-mode results, adding recall without diluting precision.
+              </p>
+
+              <div className="mt-6 bg-gray-50 p-4 rounded-lg">
+                <h4 className="font-medium text-gray-900 mb-2">Performance</h4>
+                <p className="text-gray-700 text-sm">
+                  Evaluated against five benchmark datasets (862 parallels from published commentaries), fusion search finds <strong>91% of known parallels</strong> —
+                  up from ~27% in Tesserae V3. On the Valerius Flaccus benchmark, 9 of the top 10 results are attested in scholarly commentary.
+                </p>
+              </div>
+
+              <div className="mt-4 bg-amber-50 p-4 rounded-lg">
+                <h4 className="font-medium text-amber-800 mb-2">Individual Channels</h4>
+                <p className="text-amber-700 text-sm">
+                  You can also run individual channels (Lemma, Exact, Semantic, etc.) by changing the Match Type dropdown.
+                  This is useful when you want to isolate a specific kind of similarity, but fusion is recommended for general use.
                 </p>
               </div>
             </div>
@@ -296,7 +375,7 @@ export default function HelpPage() {
                   </p>
                 </div>
 
-                <div className="border-l-4 border-green-500 pl-4">
+                <div className="border-l-4 border-amber-500 pl-4">
                   <h4 className="font-medium text-gray-900">String Search</h4>
                   <p className="text-gray-600 text-sm mt-1">
                     Wildcard and boolean search across the entire corpus. Perfect for finding 
@@ -583,9 +662,9 @@ export default function HelpPage() {
                     similar passages. Best for discovering thematic connections and paraphrased ideas.
                   </p>
                 </div>
-                <div className="bg-green-50 p-4 rounded-lg border border-green-200">
-                  <h4 className="font-medium text-green-800 mb-2">Dictionary Mode</h4>
-                  <p className="text-green-700 text-sm">
+                <div className="bg-amber-50 p-4 rounded-lg border border-amber-200">
+                  <h4 className="font-medium text-amber-900 mb-2">Dictionary Mode</h4>
+                  <p className="text-amber-700 text-sm">
                     Uses a curated vocabulary of 50,000+ Greek-Latin word pairs from V3 scholars. 
                     Scores matches by word rarity (IDF). Shows exact word correspondences with highlighting.
                   </p>
@@ -775,39 +854,39 @@ export default function HelpPage() {
               </div>
               
               {/* Text Formatter Utility */}
-              <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
-                <h4 className="font-semibold text-green-900 mb-3">Text Formatter Utility</h4>
-                <p className="text-green-800 text-sm mb-4">
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
+                <h4 className="font-semibold text-amber-900 mb-3">Text Formatter Utility</h4>
+                <p className="text-amber-900 text-sm mb-4">
                   Paste your plain text below and we'll convert it to .tess format automatically.
                 </p>
                 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
                   <div>
-                    <label className="block text-xs font-medium text-green-800 mb-1">Author</label>
+                    <label className="block text-xs font-medium text-amber-900 mb-1">Author</label>
                     <input 
                       type="text" 
                       value={formatterAuthor} 
                       onChange={e => setFormatterAuthor(e.target.value)}
                       placeholder="e.g., Vergil"
-                      className="w-full border border-green-300 rounded px-2 py-1 text-sm"
+                      className="w-full border border-amber-300 rounded px-2 py-1 text-sm"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-green-800 mb-1">Work</label>
+                    <label className="block text-xs font-medium text-amber-900 mb-1">Work</label>
                     <input 
                       type="text" 
                       value={formatterWork} 
                       onChange={e => setFormatterWork(e.target.value)}
                       placeholder="e.g., Aeneid"
-                      className="w-full border border-green-300 rounded px-2 py-1 text-sm"
+                      className="w-full border border-amber-300 rounded px-2 py-1 text-sm"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-green-800 mb-1">Text Type</label>
+                    <label className="block text-xs font-medium text-amber-900 mb-1">Text Type</label>
                     <select 
                       value={formatterTextType} 
                       onChange={e => setFormatterTextType(e.target.value)}
-                      className="w-full border border-green-300 rounded px-2 py-1 text-sm"
+                      className="w-full border border-amber-300 rounded px-2 py-1 text-sm"
                     >
                       <option value="poetry">Poetry (book.line)</option>
                       <option value="prose">Prose (section.para)</option>
@@ -816,23 +895,23 @@ export default function HelpPage() {
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <label className="block text-xs font-medium text-green-800 mb-1">Start Book</label>
+                      <label className="block text-xs font-medium text-amber-900 mb-1">Start Book</label>
                       <input 
                         type="number" 
                         min="1"
                         value={formatterStartBook} 
                         onChange={e => setFormatterStartBook(e.target.value)}
-                        className="w-full border border-green-300 rounded px-2 py-1 text-sm"
+                        className="w-full border border-amber-300 rounded px-2 py-1 text-sm"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-green-800 mb-1">Start Line</label>
+                      <label className="block text-xs font-medium text-amber-900 mb-1">Start Line</label>
                       <input 
                         type="number" 
                         min="1"
                         value={formatterStartLine} 
                         onChange={e => setFormatterStartLine(e.target.value)}
-                        className="w-full border border-green-300 rounded px-2 py-1 text-sm"
+                        className="w-full border border-amber-300 rounded px-2 py-1 text-sm"
                       />
                     </div>
                   </div>
@@ -840,25 +919,25 @@ export default function HelpPage() {
                 
                 <div className="grid md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-medium text-green-800 mb-1">Paste Raw Text (one line per row)</label>
+                    <label className="block text-xs font-medium text-amber-900 mb-1">Paste Raw Text (one line per row)</label>
                     <textarea 
                       value={formatterRawText}
                       onChange={e => setFormatterRawText(e.target.value)}
                       placeholder="Arma virumque cano, Troiae qui primus ab oris&#10;Italiam, fato profugus, Laviniaque venit&#10;litora, multum ille et terris iactatus et alto"
                       rows={8}
-                      className="w-full border border-green-300 rounded px-2 py-2 text-sm font-mono"
+                      className="w-full border border-amber-300 rounded px-2 py-2 text-sm font-mono"
                     />
-                    <p className="text-xs text-green-700 mt-1">
+                    <p className="text-xs text-amber-700 mt-1">
                       Tip: Lines starting with "Book", "Liber", "Chapter", or "Act" followed by a number will start a new section.
                     </p>
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-green-800 mb-1">Formatted .tess Output</label>
+                    <label className="block text-xs font-medium text-amber-900 mb-1">Formatted .tess Output</label>
                     <textarea 
                       value={formatterOutput}
                       readOnly
                       rows={8}
-                      className="w-full border border-green-300 rounded px-2 py-2 text-sm font-mono bg-white"
+                      className="w-full border border-amber-300 rounded px-2 py-2 text-sm font-mono bg-white"
                       placeholder="Formatted output will appear here..."
                     />
                     {formatterOutput && (
@@ -866,14 +945,14 @@ export default function HelpPage() {
                         <button 
                           type="button"
                           onClick={copyFormatterOutput}
-                          className="px-3 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700"
+                          className="px-3 py-1 text-xs bg-amber-600 text-white rounded hover:bg-amber-700"
                         >
                           {formatterCopied ? 'Copied!' : 'Copy to Clipboard'}
                         </button>
                         <button 
                           type="button"
                           onClick={downloadFormatterOutput}
-                          className="px-3 py-1 text-xs bg-green-700 text-white rounded hover:bg-green-800"
+                          className="px-3 py-1 text-xs bg-amber-700 text-white rounded hover:bg-amber-800"
                         >
                           Download .tess File
                         </button>
@@ -886,7 +965,7 @@ export default function HelpPage() {
                   type="button"
                   onClick={formatToTess}
                   disabled={!formatterAuthor.trim() || !formatterWork.trim() || !formatterRawText.trim()}
-                  className="mt-3 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="mt-3 px-4 py-2 bg-amber-600 text-white rounded hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Format Text
                 </button>
@@ -946,7 +1025,7 @@ export default function HelpPage() {
                     rows={3} className="w-full border rounded px-3 py-2 text-sm" />
                 </div>
                 {requestMessage && (
-                  <div className={`p-3 rounded text-sm ${requestMessage.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+                  <div className={`p-3 rounded text-sm ${requestMessage.type === 'success' ? 'bg-amber-50 text-amber-700' : 'bg-red-50 text-red-700'}`}>
                     {requestMessage.text}
                   </div>
                 )}
@@ -994,7 +1073,7 @@ export default function HelpPage() {
                     rows={5} required className="w-full border rounded px-3 py-2 text-sm" />
                 </div>
                 {feedbackStatus && (
-                  <div className={`p-3 rounded text-sm ${feedbackStatus.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+                  <div className={`p-3 rounded text-sm ${feedbackStatus.type === 'success' ? 'bg-amber-50 text-amber-700' : 'bg-red-50 text-red-700'}`}>
                     {feedbackStatus.text}
                   </div>
                 )}

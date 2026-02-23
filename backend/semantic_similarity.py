@@ -30,6 +30,7 @@ Citation:
 
 import os
 import numpy as np
+from collections import defaultdict
 from typing import List, Dict, Tuple, Optional
 import json
 
@@ -239,6 +240,105 @@ def find_semantic_matches(source_units: List[Dict], target_units: List[Dict],
     mode = "pre-computed" if used_precomputed else "real-time"
     print(f"Found {len(matches)} semantic matches ({mode})")
     return matches, 0
+
+
+def find_dictionary_matches(source_units: List[Dict], target_units: List[Dict],
+                             settings: Optional[Dict] = None) -> Tuple[List[Dict], int]:
+    """
+    Find intra-language dictionary-based matches using V3 synonym data.
+
+    Uses an inverted-index approach: builds a target lemma index, then for
+    each source lemma looks up which target lines contain a synonym of that
+    lemma. This is O(S * L * avg_synonyms) instead of the brute-force
+    O(S * T * L^2) pairwise comparison.
+
+    Args:
+        source_units: List of source text units with 'lemmas' field
+        target_units: List of target text units with 'lemmas' field
+        settings: Optional settings dict with:
+            - language: Language code ('la', 'grc', or 'en')
+            - min_matches: Minimum synonym pairs per unit pair (default: 2)
+            - max_results: Maximum number of results (default: 0 = no limit)
+            - include_lemma_matches: If True, count same-lemma pairs (default: False)
+
+    Returns:
+        Tuple of (matches list, stoplist_size)
+    """
+    from backend.synonym_dict import get_latin_lookup, get_greek_lookup
+    from backend.matcher import DEFAULT_LATIN_STOP_WORDS, DEFAULT_GREEK_STOP_WORDS
+
+    settings = settings or {}
+    language = settings.get('language', 'la')
+    min_matches = settings.get('min_matches', 2)
+    max_results = settings.get('max_results', 0)
+    include_lemma_matches = settings.get('include_lemma_matches', False)
+
+    if language == 'en':
+        print("Dictionary matching not available for English (no synonym data in V3)")
+        return [], 0
+
+    stopwords = DEFAULT_LATIN_STOP_WORDS if language == 'la' else DEFAULT_GREEK_STOP_WORDS
+
+    if language == 'la':
+        lookup = get_latin_lookup()
+    elif language == 'grc':
+        lookup = get_greek_lookup()
+    else:
+        return [], 0
+
+    def is_content(lemma):
+        return lemma not in stopwords and len(lemma) > 2
+
+    # Phase 1: Build target lemma index — maps each lemma to the set of
+    # target line indices where it appears.
+    target_lemma_lines = defaultdict(set)
+    for tgt_idx, tgt_unit in enumerate(target_units):
+        for lemma in tgt_unit.get('lemmas', []):
+            low = lemma.lower()
+            if is_content(low):
+                target_lemma_lines[low].add(tgt_idx)
+
+    # Phase 2: For each source line, find target lines that share synonym
+    # pairs via the index.  A "synonym pair" is (src_lemma, tgt_lemma) where
+    # tgt_lemma is in the synonym set of src_lemma (and they differ, unless
+    # include_lemma_matches is True).
+    matches = []
+    for src_idx, src_unit in enumerate(source_units):
+        # tgt_idx → set of (src_lemma, tgt_lemma) synonym pairs found
+        pair_counts = defaultdict(set)
+        for src_lemma in src_unit.get('lemmas', []):
+            src_low = src_lemma.lower()
+            if not is_content(src_low):
+                continue
+            synonyms = lookup.get(src_low, set())
+            if not synonyms:
+                continue
+            for syn in synonyms:
+                if not include_lemma_matches and syn == src_low:
+                    continue
+                if not is_content(syn):
+                    continue
+                if syn in target_lemma_lines:
+                    for tgt_idx in target_lemma_lines[syn]:
+                        pair_counts[tgt_idx].add((src_low, syn))
+
+        for tgt_idx, pairs in pair_counts.items():
+            if len(pairs) >= min_matches:
+                matched = {p[0] for p in pairs} | {p[1] for p in pairs}
+                matches.append({
+                    'source_idx': src_idx,
+                    'target_idx': tgt_idx,
+                    'matched_lemmas': list(matched),
+                    'match_basis': 'dictionary',
+                })
+
+    if max_results > 0:
+        matches = matches[:max_results]
+
+    mode = "include_lemma" if include_lemma_matches else "synonym_only"
+    print(f"Found {len(matches)} dictionary matches (min_matches={min_matches}, {mode})")
+    return matches, len(stopwords)
+
 
 def find_crosslingual_matches(source_units: List[Dict], target_units: List[Dict],
                                source_language: str, target_language: str,

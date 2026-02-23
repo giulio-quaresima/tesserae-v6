@@ -360,8 +360,12 @@ def are_synonyms(lemma1: str, lemma2: str, language: str) -> bool:
     return lemma2.lower() in synonyms1 if synonyms1 else False
 
 def find_synonym_pairs_in_passages(source_lemmas: list, target_lemmas: list, 
-                                    language: str) -> list:
-    """Find synonym pairs between source and target lemma lists."""
+                                    language: str, include_lemma_matches: bool = False) -> list:
+    """Find synonym pairs between source and target lemma lists.
+    
+    When include_lemma_matches=False (default): only synonym pairs (different words, same meaning).
+    When include_lemma_matches=True: also count same-lemma pairs (e.g. hasta/hastam) for full recall.
+    """
     pairs = []
     seen = set()
     
@@ -385,7 +389,7 @@ def find_synonym_pairs_in_passages(source_lemmas: list, target_lemmas: list,
         matching_targets = src_synonyms.intersection(target_lower_set)
         
         for tgt_lower in matching_targets:
-            if src_lower == tgt_lower:
+            if not include_lemma_matches and src_lower == tgt_lower:
                 continue
             
             pair_key = tuple(sorted([src_lower, tgt_lower]))

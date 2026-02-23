@@ -103,7 +103,7 @@ function App() {
   const [targetText, setTargetText] = useState(() => getSessionValue('targetText', ''));
   
   const [settings, setSettings] = useState({
-    match_type: 'lemma',
+    match_type: 'fusion',
     min_matches: 2,
     stoplist_basis: 'source_target',
     stoplist_size: 0,
@@ -133,19 +133,27 @@ function App() {
   const [showCorpusSearch, setShowCorpusSearch] = useState(false);
   
   const { corpus, authors, hierarchy, loading: corpusLoading, getTextsForAuthor } = useCorpus(activeTab);
-  const { 
-    results, 
-    loading: searchLoading, 
-    error: searchError, 
+  const {
+    results,
+    loading: searchLoading,
+    error: searchError,
     searchStats,
     progressText: searchProgressText,
     elapsedTime: searchElapsedTime,
-    search, 
+    fusionProgress,
+    search,
     searchRareWords,
     searchWordPairs,
     cancel: cancelSearch,
-    clearResults 
+    clearResults
   } = useSearch();
+
+  const sortedResults = Array.isArray(results) ? [...results].sort((a, b) => {
+    if (sortBy === 'score') return (b.fused_score ?? b.score ?? b.overall_score ?? 0) - (a.fused_score ?? a.score ?? a.overall_score ?? 0);
+    if (sortBy === 'source_locus') return (a.source_locus || a.source?.ref || '').localeCompare(b.source_locus || b.source?.ref || '', undefined, { numeric: true });
+    if (sortBy === 'target_locus') return (a.target_locus || a.target?.ref || '').localeCompare(b.target_locus || b.target?.ref || '', undefined, { numeric: true });
+    return 0;
+  }) : [];
 
   useEffect(() => {
     fetch('/api/auth/user')
@@ -434,7 +442,18 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gray-100">
-      <Header user={user} setUser={setUser} onLogoClick={() => setPageType('search')} />
+      <Header user={user} setUser={setUser} onLogoClick={() => {
+        setPageType('search');
+        setActiveTab('la');
+        setSourceAuthor('');
+        setSourceText('');
+        setTargetAuthor('');
+        setTargetText('');
+        setSearchMode('parallel');
+        clearResults();
+        setShowCorpusSearch(false);
+        window.history.pushState({}, '', '/');
+      }} />
       <Navigation 
         pageType={pageType} 
         setPageType={setPageType}
@@ -446,6 +465,8 @@ function App() {
           setTargetAuthor('');
           setTargetText('');
           setSearchMode('parallel');
+          clearResults();
+          setShowCorpusSearch(false);
         }}
       />
       
@@ -544,7 +565,7 @@ function App() {
                     />
                   )}
 
-                  <div className="flex justify-center mt-6">
+                  <div className="flex flex-col items-center mt-6 gap-1">
                     {searchLoading ? (
                       <button
                         onClick={cancelSearch}
@@ -558,10 +579,13 @@ function App() {
                         disabled={!sourceText || !targetText}
                         className="px-6 py-2 bg-red-700 text-white rounded-lg hover:bg-red-800 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        {searchMode === 'parallel' ? 'Find Parallels' : 
-                         searchMode === 'hapax' ? 'Find Rare Words' : 
+                        {searchMode === 'parallel' ? 'Find Parallels' :
+                         searchMode === 'hapax' ? 'Find Rare Words' :
                          'Find Rare Pairs'}
                       </button>
+                    )}
+                    {!searchLoading && (!sourceText || !targetText) && (
+                      <p className="text-sm text-amber-700">Please select both source and target texts</p>
                     )}
                   </div>
                 </>
@@ -587,7 +611,7 @@ function App() {
                   />
                 ) : (
                   <SearchResults
-                    results={results}
+                    results={sortedResults}
                     loading={searchLoading}
                     error={searchError}
                     displayLimit={displayLimit}
@@ -597,11 +621,13 @@ function App() {
                     sortBy={sortBy}
                     setSortBy={setSortBy}
                     searchStats={searchStats}
+                    language={activeTab}
                     sourceTextInfo={corpus.find(t => t.id === sourceText)}
                     targetTextInfo={corpus.find(t => t.id === targetText)}
                     elapsedTime={searchElapsedTime}
                     progressText={searchProgressText}
                     matchType={settings.match_type}
+                    fusionProgress={fusionProgress}
                   />
                 )}
               </div>

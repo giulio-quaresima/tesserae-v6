@@ -42,7 +42,7 @@ logger = get_logger('search')
 # =============================================================================
 # BLUEPRINT SETUP
 # =============================================================================
-search_bp = Blueprint('search', __name__)
+search_bp = Blueprint('search', __name__, url_prefix='/api')
 
 # Module-level references to shared components (injected via init_search_blueprint)
 _matcher = None       # Matcher: Finds parallel passages between texts
@@ -184,6 +184,9 @@ def search_stream():
             elif match_type == 'semantic':
                 from backend.semantic_similarity import find_semantic_matches
                 matches, stoplist_size = find_semantic_matches(source_units, target_units, settings)
+            elif match_type == 'dictionary':
+                from backend.semantic_similarity import find_dictionary_matches
+                matches, stoplist_size = find_dictionary_matches(source_units, target_units, settings)
             elif match_type in ('semantic_cross', 'dictionary_cross'):
                 yield f"data: {json.dumps({'type': 'error', 'message': 'Use regular search endpoint for cross-lingual'})}\n\n"
                 return
@@ -205,7 +208,7 @@ def search_stream():
             
             yield send_progress("Scoring matches", f"{len(matches)} candidates")
             scored_results = _scorer.score_matches(matches, source_units, target_units, settings, source_id, target_id)
-            scored_results.sort(key=lambda x: x.get('overall_score') or 0, reverse=True)
+            scored_results.sort(key=lambda x: x['overall_score'], reverse=True)
             
             yield send_progress("Saving to cache")
             metadata = {
@@ -347,6 +350,11 @@ def search():
             matches, stoplist_size = find_semantic_matches(
                 source_units, target_units, settings
             )
+        elif match_type == 'dictionary':
+            from backend.semantic_similarity import find_dictionary_matches
+            matches, stoplist_size = find_dictionary_matches(
+                source_units, target_units, settings
+            )
         elif match_type == 'semantic_cross':
             from backend.semantic_similarity import find_crosslingual_matches
             matches, stoplist_size = find_crosslingual_matches(
@@ -443,7 +451,7 @@ def search():
             )
         
         scored_results = _scorer.score_matches(matches, source_units, target_units, settings, source_id, target_id)
-        scored_results.sort(key=lambda x: x.get('overall_score') or 0, reverse=True)
+        scored_results.sort(key=lambda x: x['overall_score'], reverse=True)
         
         metadata = {
             'source_lines': len(source_units),
