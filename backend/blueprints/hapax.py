@@ -151,7 +151,7 @@ def get_dictionary_form(lemma_key, language):
     
     return lemma_key
 
-hapax_bp = Blueprint('hapax', __name__)
+hapax_bp = Blueprint('hapax', __name__, url_prefix='/api')
 
 _texts_dir = None
 _text_processor = None
@@ -707,17 +707,92 @@ def get_line_text_from_file(text_id, language, ref):
 
 
 def get_rare_words_from_cache(language, max_occurrences=10):
-    """Get lemmas with corpus frequency between 1 and max_occurrences"""
+    """Get lemmas with corpus frequency between 1 and max_occurrences.
+    NOTE: This uses token frequency. For hapax search, prefer
+    get_document_frequency() which counts how many TEXTS contain a lemma."""
     cached = load_frequency_cache(language)
     if not cached or 'frequencies' not in cached:
         return {}
-    
+
     rare_words = {}
     for lemma, count in cached['frequencies'].items():
         if 1 <= count <= max_occurrences:
             rare_words[lemma] = count
-    
+
     return rare_words
+
+
+def get_document_frequency(lemma, language):
+    """Get the number of distinct texts that contain this lemma (document frequency).
+    Uses the inverted index for accurate corpus-wide rarity measurement."""
+    conn = get_connection(language)
+    if not conn:
+        return 0
+
+    try:
+        cursor = conn.cursor()
+        # Expand to u/v and i/j variants for Latin
+        expanded = {lemma}
+        if language == 'la':
+            expanded.add(lemma.replace('u', 'v'))
+            expanded.add(lemma.replace('v', 'u'))
+            expanded.add(lemma.replace('i', 'j'))
+            expanded.add(lemma.replace('j', 'i'))
+
+        placeholders = ','.join(['?' for _ in expanded])
+        cursor.execute(
+            f'SELECT COUNT(DISTINCT text_id) FROM postings WHERE lemma IN ({placeholders})',
+            list(expanded)
+        )
+        return cursor.fetchone()[0]
+    except Exception as e:
+        logger.error(f"Document frequency lookup error for '{lemma}': {e}")
+        return 0
+
+
+def get_document_frequencies_batch(lemmas, language):
+    """Get document frequencies for a batch of lemmas efficiently.
+    Returns dict mapping lemma -> number of texts containing it."""
+    conn = get_connection(language)
+    if not conn:
+        return {}
+
+    try:
+        cursor = conn.cursor()
+        result = {}
+
+        # Process in batches to avoid huge SQL queries
+        lemma_list = list(lemmas)
+        batch_size = 500
+        for i in range(0, len(lemma_list), batch_size):
+            batch = lemma_list[i:i + batch_size]
+
+            # Build expanded set with u/v variants
+            expanded_map = {}  # expanded_form -> original_lemma
+            for lemma in batch:
+                variants = {lemma}
+                if language == 'la':
+                    variants.add(lemma.replace('u', 'v'))
+                    variants.add(lemma.replace('v', 'u'))
+                for v in variants:
+                    expanded_map[v] = lemma
+
+            all_variants = list(expanded_map.keys())
+            placeholders = ','.join(['?' for _ in all_variants])
+            cursor.execute(
+                f'SELECT lemma, COUNT(DISTINCT text_id) FROM postings WHERE lemma IN ({placeholders}) GROUP BY lemma',
+                all_variants
+            )
+
+            # Aggregate counts back to original lemma
+            for row_lemma, count in cursor.fetchall():
+                original = expanded_map.get(row_lemma, row_lemma)
+                result[original] = result.get(original, 0) + count
+
+        return result
+    except Exception as e:
+        logger.error(f"Batch document frequency error: {e}")
+        return {}
 
 
 def lookup_lemma_locations(lemma, language):
@@ -1149,17 +1224,17 @@ def hapax_search():
             return jsonify({'error': f'Could not process target text: {target_id}'}), 400
         
         shared_lemmas = source_lemmas & target_lemmas
-        
-        source_rare = get_rare_words_from_cache(source_language, max_occ)
-        target_rare = get_rare_words_from_cache(target_language, max_occ)
-        
-        all_rare = set(source_rare.keys()) | set(target_rare.keys())
-        
-        shared_rare = shared_lemmas & all_rare
-        
+
+        # Use document frequency (how many texts contain the lemma) for rarity,
+        # not token frequency. A word in 3 texts is rare; a word in 500 is not.
+        doc_freqs = get_document_frequencies_batch(shared_lemmas, source_language)
+
+        shared_rare = {l for l in shared_lemmas
+                       if 1 <= doc_freqs.get(l, 0) <= max_occ}
+
         results = []
         for lemma in shared_rare:
-            corpus_count = source_rare.get(lemma, target_rare.get(lemma, 0))
+            corpus_count = doc_freqs.get(lemma, 0)
             
             source_locations = []
             target_locations = []

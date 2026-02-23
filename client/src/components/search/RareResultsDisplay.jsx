@@ -18,27 +18,52 @@ const getDictionaryUrl = (word, language) => {
   return `https://logeion.uchicago.edu/${encodeURIComponent(word)}`;
 };
 
-const highlightMatchedWords = (text, matchedWords, lemma1, lemma2) => {
-  if (!text || (!matchedWords?.length && !lemma1 && !lemma2)) return text;
-  
-  // Build list of lemma stems to match against
+const highlightMatchedWords = (text, matchedWords, lemma1, lemma2, positions) => {
+  if (!text) return text;
+
+  // Split text into tokens while preserving whitespace
+  const parts = text.split(/(\s+)/);
+
+  // Count actual word tokens to validate positions
+  const wordCount = parts.filter(p => /\w/.test(p)).length;
+
+  // Build set of token positions to highlight (from backend positions array)
+  // Only use positions if they're within the valid range for this text
+  const positionSet = new Set();
+  let positionsValid = false;
+  if (positions && positions.length > 0) {
+    const allInRange = positions.every(p => p < wordCount);
+    if (allInRange) {
+      positions.forEach(p => positionSet.add(p));
+      positionsValid = true;
+    }
+  }
+
+  // Build list of lemma stems for fallback matching
+  // Include truncated stems (drop last 1-2 chars) to handle Latin inflection
+  // e.g., lemma "aspero" → stems "aspero", "asper", "aspe" to match "asperat"
   const lemmaStems = new Set();
-  
-  // Add lemma variants (these are the dictionary stems we're matching)
-  if (lemma1) {
-    const l1 = lemma1.toLowerCase();
-    lemmaStems.add(l1);
-    lemmaStems.add(l1.replace(/u/g, 'v'));
-    lemmaStems.add(l1.replace(/v/g, 'u'));
-  }
-  if (lemma2) {
-    const l2 = lemma2.toLowerCase();
-    lemmaStems.add(l2);
-    lemmaStems.add(l2.replace(/u/g, 'v'));
-    lemmaStems.add(l2.replace(/v/g, 'u'));
-  }
-  
-  // Add surface forms from matched words
+  const addWithVariants = (lemma) => {
+    const l = lemma.toLowerCase();
+    lemmaStems.add(l);
+    lemmaStems.add(l.replace(/u/g, 'v'));
+    lemmaStems.add(l.replace(/v/g, 'u'));
+    // Add truncated stems for inflection matching (min 4 chars)
+    if (l.length >= 5) {
+      const t1 = l.slice(0, -1);
+      lemmaStems.add(t1);
+      lemmaStems.add(t1.replace(/u/g, 'v'));
+      lemmaStems.add(t1.replace(/v/g, 'u'));
+    }
+    if (l.length >= 6) {
+      const t2 = l.slice(0, -2);
+      lemmaStems.add(t2);
+      lemmaStems.add(t2.replace(/u/g, 'v'));
+      lemmaStems.add(t2.replace(/v/g, 'u'));
+    }
+  };
+  if (lemma1) addWithVariants(lemma1);
+  if (lemma2) addWithVariants(lemma2);
   if (matchedWords) {
     matchedWords.forEach(w => {
       if (w) {
@@ -49,47 +74,51 @@ const highlightMatchedWords = (text, matchedWords, lemma1, lemma2) => {
       }
     });
   }
-  
-  if (lemmaStems.size === 0) return text;
-  
-  // Split text into tokens while preserving whitespace and punctuation
-  const parts = text.split(/(\s+)/);
-  
+
+  if (!positionsValid && lemmaStems.size === 0) return text;
+
+  // Track which word index we're on (skip whitespace-only parts)
+  let wordIdx = 0;
+
   return parts.map((part, i) => {
-    // Extract word without punctuation for matching
     const wordMatch = part.match(/^([^\w]*)(\w+)([^\w]*)$/);
     if (!wordMatch) return part;
-    
+
     const [, before, word, after] = wordMatch;
-    const wordLower = word.toLowerCase();
-    const wordNormU = wordLower.replace(/v/g, 'u');
-    const wordNormV = wordLower.replace(/u/g, 'v');
-    
-    // Check if this word matches any of our lemma stems
+    const currentWordIdx = wordIdx;
+    wordIdx++;
+
     let isMatch = false;
-    for (const stem of lemmaStems) {
-      const stemNormU = stem.replace(/v/g, 'u');
-      
-      // For short stems (2-3 chars), require exact match or word starts with stem exactly
-      // For longer stems, allow prefix matching
-      if (stem.length <= 3) {
-        // Short stem: word must equal stem OR word must start with stem + have Latin ending
-        if (wordNormU === stemNormU || 
-            (wordNormU.startsWith(stemNormU) && wordNormU.length <= stemNormU.length + 4)) {
-          isMatch = true;
-          break;
-        }
-      } else {
-        // Longer stem: prefix match is OK
-        if (wordNormU === stemNormU || 
-            wordNormU.startsWith(stemNormU) ||
-            stemNormU.startsWith(wordNormU)) {
-          isMatch = true;
-          break;
+
+    // Primary: match by token position from backend (when positions are valid)
+    if (positionsValid && positionSet.has(currentWordIdx)) {
+      isMatch = true;
+    }
+
+    // Fallback: match by lemma stem (when positions invalid or unavailable)
+    if (!isMatch && lemmaStems.size > 0 && !positionsValid) {
+      const wordLower = word.toLowerCase();
+      const wordNormU = wordLower.replace(/v/g, 'u');
+
+      for (const stem of lemmaStems) {
+        const stemNormU = stem.replace(/v/g, 'u');
+        if (stem.length <= 3) {
+          if (wordNormU === stemNormU ||
+              (wordNormU.startsWith(stemNormU) && wordNormU.length <= stemNormU.length + 4)) {
+            isMatch = true;
+            break;
+          }
+        } else {
+          if (wordNormU === stemNormU ||
+              wordNormU.startsWith(stemNormU) ||
+              stemNormU.startsWith(wordNormU)) {
+            isMatch = true;
+            break;
+          }
         }
       }
     }
-    
+
     if (isMatch) {
       return (
         <span key={i}>
@@ -461,8 +490,8 @@ const RareResultsDisplay = ({
 
       <div className="space-y-3">
         {sortedResults.slice(0, displayLimit).map((r, i) => {
-          // Prefer bigram with display forms, otherwise use surface forms from text when available
-          let displayName = r.display_form || r.lemma || r.bigram;
+          // For hapax (rare words), show the lemma (dictionary form); for bigrams, use display forms
+          let displayName = isHapax ? (r.lemma || r.display_form) : (r.display_form || r.lemma || r.bigram);
           if (!displayName && r.word1 && r.word2) {
             // Try to get actual words from location text that match the lemmas
             const srcText = r.source_locations?.[0]?.text || '';
@@ -555,7 +584,7 @@ const RareResultsDisplay = ({
                         <div key={j} className="text-sm">
                           <div className="font-medium text-red-700">{formatLocationRef(loc.ref, formatTextName(sourceText))}</div>
                           {loc.text && <div className="text-gray-700">
-                            {highlightMatchedWords(displayGreekWithFinalSigma(loc.text), r.matched_words, r.word1, r.word2)}
+                            {highlightMatchedWords(displayGreekWithFinalSigma(loc.text), r.matched_words, r.word1 || r.lemma, r.word2, loc.positions)}
                           </div>}
                         </div>
                       ))}
@@ -575,7 +604,7 @@ const RareResultsDisplay = ({
                         <div key={j} className="text-sm">
                           <div className="font-medium text-amber-700">{formatLocationRef(loc.ref, formatTextName(targetText))}</div>
                           {loc.text && <div className="text-gray-700">
-                            {highlightMatchedWords(displayGreekWithFinalSigma(loc.text), r.matched_words, r.word1, r.word2)}
+                            {highlightMatchedWords(displayGreekWithFinalSigma(loc.text), r.matched_words, r.word1 || r.lemma, r.word2, loc.positions)}
                           </div>}
                         </div>
                       ))}

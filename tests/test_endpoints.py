@@ -195,12 +195,12 @@ test("POST /api/corpus-search (single lemma, la)", lambda: (
 
 print("\n=== Rare Words & Bigrams ===")
 
-test("GET /rare-lemmata?language=la", lambda: (
-    'total_rare_words' in check_json(requests.get(f"{BASE}/rare-lemmata?language=la&max_occurrences=3"))
+test("GET /api/rare-lemmata?language=la", lambda: (
+    'total_rare_words' in check_json(requests.get(f"{BASE}/api/rare-lemmata?language=la&max_occurrences=3"))
 ))
 
-test("GET /rare-bigrams?language=la", lambda: (
-    requests.get(f"{BASE}/rare-bigrams?language=la&max_occurrences=10").status_code == 200
+test("GET /api/rare-bigrams?language=la", lambda: (
+    requests.get(f"{BASE}/api/rare-bigrams?language=la&max_occurrences=10").status_code == 200
 ))
 
 
@@ -213,6 +213,140 @@ test("POST /api/wildcard-search (arma vir*)", lambda: (
         "query": "arma vir*", "language": "la", "max_results": 10
     })).get('total_matches', 0) > 0
 ))
+
+
+# ── Result Quality Checks ─────────────────────────────────────────
+
+print("\n=== Result Quality Checks ===")
+
+def check_hapax_quality():
+    """Hapax search must find truly rare words (by document frequency), not common ones."""
+    data = requests.post(f"{BASE}/api/hapax-search", json={
+        "source": "vergil.aeneid.tess",
+        "target": "lucan.bellum_civile.tess",
+        "language": "la",
+        "max_occurrences": 5
+    }, timeout=120).json()
+    results = data.get('results', [])
+    assert len(results) > 0, "No hapax results returned"
+    lemmas = {r['lemma'] for r in results}
+    # hadriacas appears in only 3 texts — must be found
+    assert 'hadriacas' in lemmas, f"Missing known rare word 'hadriacas'; got: {sorted(lemmas)[:10]}"
+    # Common words must NOT appear (aspero = 77 texts, foedo = 216 texts)
+    for bad in ['aspero', 'foedo', 'foederis']:
+        assert bad not in lemmas, f"Common word '{bad}' should not appear in hapax results"
+    # corpus_count should reflect document frequency, not token frequency
+    for r in results:
+        assert r['corpus_count'] <= 5, f"Lemma '{r['lemma']}' has corpus_count={r['corpus_count']} > max_occurrences=5"
+    return True
+
+test("Hapax quality: Aen × BC has hadriacas, no common words", check_hapax_quality)
+
+def check_lemma_search_reference():
+    """Lemma search results must have scores, matched words, and source/target text."""
+    last = test_sse_search("/api/search-stream", {
+        "source": "vergil.aeneid.part.1.tess",
+        "target": "lucan.bellum_civile.part.1.tess",
+        "language": "la",
+        "match_type": "lemma",
+        "min_matches": 2,
+        "stoplist_size": 10,
+        "stoplist_basis": "corpus",
+        "source_unit_type": "line",
+        "target_unit_type": "line",
+        "max_distance": 999,
+        "max_results": 500
+    })
+    results = last.get('results', [])
+    assert len(results) >= 10, f"Too few results: {len(results)}"
+    r0 = results[0]
+    for key in ['source', 'target', 'matched_words', 'overall_score']:
+        assert key in r0, f"Missing key '{key}' in search result"
+    assert r0['overall_score'] > 0, "Score should be positive"
+    assert len(r0['matched_words']) > 0, "No matched words in top result"
+    return True
+
+test("Lemma search quality: results have scores and matched words", check_lemma_search_reference)
+
+def check_line_search_quality():
+    """Line search for 'arma virumque cano' must find Aeneid somewhere in results."""
+    data = requests.post(f"{BASE}/api/line-search", json={
+        "query": "arma virumque cano", "language": "la"
+    }, timeout=30).json()
+    results = data.get('results', [])
+    assert len(results) > 0, "No line search results"
+    # Aeneid must appear somewhere in the results (not necessarily top 3,
+    # since prose lines with more word matches may rank higher)
+    texts = [r.get('text_id', '') for r in results]
+    found_aeneid = any('aeneid' in t.lower() for t in texts)
+    assert found_aeneid, f"Aeneid not found in any of {len(results)} results"
+    return True
+
+test("Line search quality: 'arma virumque cano' finds Aeneid", check_line_search_quality)
+
+def check_corpus_search_quality():
+    """Corpus search for arma+uir must return multiple texts."""
+    data = requests.post(f"{BASE}/api/corpus-search", json={
+        "lemmas": ["arma", "uir"], "language": "la"
+    }, timeout=30).json()
+    total = data.get('total', 0)
+    assert total >= 5, f"Expected 5+ texts with arma+uir, got {total}"
+    results = data.get('results', [])
+    if results:
+        r0 = results[0]
+        assert 'text_id' in r0, "Missing text_id in corpus search result"
+    return True
+
+test("Corpus search quality: arma+uir finds 5+ texts", check_corpus_search_quality)
+
+def check_wildcard_quality():
+    """Wildcard search for 'arma vir*' must find Aeneid."""
+    data = requests.post(f"{BASE}/api/wildcard-search", json={
+        "query": "arma vir*", "language": "la", "max_results": 50
+    }, timeout=30).json()
+    total = data.get('total_matches', 0)
+    assert total > 0, "No wildcard matches"
+    results = data.get('results', [])
+    texts = [r.get('text_id', '') for r in results]
+    found_aeneid = any('aeneid' in t.lower() for t in texts)
+    assert found_aeneid, f"Aeneid not in wildcard results for 'arma vir*'"
+    return True
+
+test("Wildcard quality: 'arma vir*' finds Aeneid", check_wildcard_quality)
+
+def check_rare_bigrams_loaded():
+    """Rare bigrams endpoint must return actual bigrams, not an index-missing error."""
+    data = requests.get(f"{BASE}/api/rare-bigrams?language=la&max_occurrences=10", timeout=30).json()
+    bigrams = data.get('bigrams', [])
+    assert len(bigrams) > 0, f"No bigrams returned; message: {data.get('message', '')}"
+    # Verify bigram structure
+    b0 = bigrams[0]
+    assert 'bigram' in b0 or 'word1' in b0, f"Bigram missing expected keys: {list(b0.keys())}"
+    return True
+
+test("Rare bigrams: Latin index loaded with actual data", check_rare_bigrams_loaded)
+
+def check_fusion_result_quality():
+    """Fusion results must include scores and matched words."""
+    last = test_sse_search("/api/search-fusion", {
+        "source": "lucan.bellum_civile.part.1.tess",
+        "target": "vergil.aeneid.part.1.tess",
+        "language": "la",
+        "mode": "merged",
+        "max_results": 50,
+        "source_unit_type": "line",
+        "target_unit_type": "line",
+        "use_meter": False
+    })
+    results = last.get('results', [])
+    assert len(results) >= 10, f"Too few fusion results: {len(results)}"
+    r0 = results[0]
+    assert r0.get('overall_score', 0) > 0, "Top fusion result has no score"
+    assert 'matched_words' in r0, "Fusion result missing matched_words"
+    assert 'channels' in r0 or 'match_basis' in r0, "Fusion result missing channel info"
+    return True
+
+test("Fusion quality: results have scores, words, channels", check_fusion_result_quality)
 
 
 # ── Static Pages (HTML served) ────────────────────────────────────
