@@ -203,29 +203,106 @@ const WORK_NAMES = {
   'consolatio': 'Consolation of Philosophy',
 };
 
+// Author-specific work overrides for ambiguous abbreviations.
+// Maps (author_abbrev, work_part(s)) → work title.
+const AUTHOR_WORK_OVERRIDES = {
+  'sen': {
+    'her.o': 'Hercules Oetaeus',
+    'her.f': 'Hercules Furens',
+    'herc.o': 'Hercules Oetaeus',
+    'herc.f': 'Hercules Furens',
+  },
+  'seneca': {
+    'her.o': 'Hercules Oetaeus',
+    'her.f': 'Hercules Furens',
+    'herc.o': 'Hercules Oetaeus',
+    'herc.f': 'Hercules Furens',
+  },
+  'alcuin': {
+    'carm': 'Carmina',
+  },
+  'hildeb': {
+    'carm': 'Carmina',
+  },
+};
+
 export function expandLocus(locus) {
   if (!locus) return { work: '', reference: locus || '' };
-  
+
   const parts = locus.toLowerCase().split(/[\s.]+/);
   let author = null;
+  let authorKey = null;
   let work = null;
   let reference = '';
-  
+
   for (let i = 0; i < parts.length; i++) {
     const part = parts[i].replace(/[.,]/g, '');
-    
+
     if (ABBREVIATION_MAP[part]) {
       const mapped = ABBREVIATION_MAP[part];
-      if (mapped.author && !author) author = mapped.author;
-      if (mapped.work && !work) work = mapped.work;
+      if (mapped.author && !author) {
+        author = mapped.author;
+        authorKey = part;
+      }
+      if (mapped.work && !work) {
+        // Before applying a global work mapping, check author-specific overrides
+        const overrides = authorKey ? AUTHOR_WORK_OVERRIDES[authorKey] : null;
+        if (overrides) {
+          // Try two-part key (e.g., "her.o")
+          const nextPart = parts[i + 1]?.replace(/[.,]/g, '');
+          const twoPartKey = nextPart ? `${part}.${nextPart}` : null;
+          if (twoPartKey && overrides[twoPartKey]) {
+            work = overrides[twoPartKey];
+            i++; // skip the next part since we consumed it
+            continue;
+          }
+          // Try single-part override
+          if (overrides[part]) {
+            work = overrides[part];
+            continue;
+          }
+        }
+        work = mapped.work;
+      }
     } else if (WORK_NAMES[part] && !work) {
+      // Check author override before global lookup
+      const overrides = authorKey ? AUTHOR_WORK_OVERRIDES[authorKey] : null;
+      if (overrides) {
+        const nextPart = parts[i + 1]?.replace(/[.,]/g, '');
+        const twoPartKey = nextPart ? `${part}.${nextPart}` : null;
+        if (twoPartKey && overrides[twoPartKey]) {
+          work = overrides[twoPartKey];
+          i++;
+          continue;
+        }
+        if (overrides[part]) {
+          work = overrides[part];
+          continue;
+        }
+      }
       work = WORK_NAMES[part];
     } else if (/^\d/.test(part)) {
       reference = parts.slice(i).join('.');
       break;
+    } else if (!work && authorKey) {
+      // Check if this unknown part + next form a known override
+      const overrides = AUTHOR_WORK_OVERRIDES[authorKey];
+      if (overrides) {
+        const nextPart = parts[i + 1]?.replace(/[.,]/g, '');
+        const twoPartKey = nextPart ? `${part}.${nextPart}` : null;
+        if (twoPartKey && overrides[twoPartKey]) {
+          work = overrides[twoPartKey];
+          i++;
+          continue;
+        }
+        if (overrides[part]) {
+          work = overrides[part];
+          continue;
+        }
+      }
     }
   }
-  
+
   return { author, work, reference };
 }
 

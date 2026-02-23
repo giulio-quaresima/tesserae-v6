@@ -36,6 +36,7 @@ def get_cache_key(source_id, target_id, language, settings):
         'target_unit_type': settings.get('target_unit_type', 'line'),
         'stoplist_basis': settings.get('stoplist_basis', 'source_target'),
         'bigram_boost': settings.get('bigram_boost', False),
+        'unbounded_scoring': settings.get('unbounded_scoring', False),
         'custom_stopwords': settings.get('custom_stopwords', ''),
     }
     key_str = json.dumps(key_parts, sort_keys=True)

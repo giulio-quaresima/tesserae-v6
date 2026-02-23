@@ -41,14 +41,23 @@ const SearchSettings = ({ settings, setSettings, showAdvanced, setShowAdvanced, 
             onChange={(e) => handleChange('match_type', e.target.value)}
             className="w-full border rounded px-2 py-2 text-sm"
           >
+            <option value="fusion">Fusion — All Channels (best recall)</option>
             <option value="lemma">Dictionary Form (Lemma)</option>
             <option value="exact">Exact Match</option>
             <option value="semantic">AI Semantic</option>
+            <option value="dictionary">Dictionary (V3 Synonyms)</option>
             <option value="sound">Sound Matching (slower)</option>
             <option value="edit_distance">Edit Distance (slower)</option>
           </select>
+          {settings.match_type === 'fusion' && (
+            <p className="text-xs text-gray-500 mt-1">
+              Runs 9 channels with weighted scoring. Best recall but slower.
+              Large text comparisons (e.g., full Aeneid vs. Metamorphoses) may take up to 15 minutes on first run; subsequent searches are cached.
+            </p>
+          )}
         </div>
 
+        {settings.match_type !== 'fusion' && (
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Minimum Matches
@@ -70,10 +79,12 @@ const SearchSettings = ({ settings, setSettings, showAdvanced, setShowAdvanced, 
             className="w-full border rounded px-2 py-2 text-sm"
           />
         </div>
+        )}
       </div>
 
       {showAdvanced && (
         <div className="mt-4 pt-4 border-t grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {settings.match_type !== 'fusion' && (
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Stoplist Basis
@@ -89,7 +100,9 @@ const SearchSettings = ({ settings, setSettings, showAdvanced, setShowAdvanced, 
               <option value="corpus">Full Corpus</option>
             </select>
           </div>
+          )}
 
+          {settings.match_type !== 'fusion' && (
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Stoplist Size
@@ -121,6 +134,7 @@ const SearchSettings = ({ settings, setSettings, showAdvanced, setShowAdvanced, 
             />
             <p className="text-xs text-gray-400 mt-1">Default = curated list + high-frequency words</p>
           </div>
+          )}
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -150,6 +164,7 @@ const SearchSettings = ({ settings, setSettings, showAdvanced, setShowAdvanced, 
             </select>
           </div>
 
+          {settings.match_type !== 'fusion' && (
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Max Distance (words)
@@ -169,6 +184,7 @@ const SearchSettings = ({ settings, setSettings, showAdvanced, setShowAdvanced, 
               className="w-full border rounded px-2 py-2 text-sm"
             />
           </div>
+          )}
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -183,6 +199,7 @@ const SearchSettings = ({ settings, setSettings, showAdvanced, setShowAdvanced, 
             />
           </div>
 
+          {settings.match_type !== 'fusion' && (
           <div className="sm:col-span-2">
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Custom Stopwords (comma-separated)
@@ -195,10 +212,12 @@ const SearchSettings = ({ settings, setSettings, showAdvanced, setShowAdvanced, 
             />
             <p className="text-xs text-gray-400 mt-1">Use dictionary forms (lemmata): {stopwordExamples[language] || stopwordExamples.la}</p>
           </div>
+          )}
 
           <div className="sm:col-span-2 pt-2 border-t">
-            <p className="text-xs text-gray-500 mb-2">Score boosting and matching features:</p>
+            <p className="text-xs text-gray-500 mb-2">{settings.match_type === 'fusion' ? 'Fusion score boosting:' : 'Score boosting and matching features:'}</p>
             <div className="flex flex-wrap gap-4">
+              {settings.match_type !== 'fusion' && (
               <label className="flex items-center gap-2 text-sm text-gray-700">
                 <input type="checkbox" checked={settings.bigram_boost || false}
                   onChange={(e) => handleChange('bigram_boost', e.target.checked)}
@@ -206,29 +225,36 @@ const SearchSettings = ({ settings, setSettings, showAdvanced, setShowAdvanced, 
                 <span>Bigram frequency boost</span>
                 <span className="text-xs text-gray-400">(rare word pairs)</span>
               </label>
+              )}
+              {settings.match_type !== 'fusion' && (
               <label className="flex items-center gap-2 text-sm text-gray-700">
                 <input type="checkbox" checked={settings.use_pos || false}
                   onChange={(e) => handleChange('use_pos', e.target.checked)}
                   className="rounded border-gray-300" />
                 Part-of-speech filtering
               </label>
+              )}
               <label className="flex items-center gap-2 text-sm text-gray-700">
                 <input type="checkbox" checked={settings.use_meter || false}
                   onChange={(e) => handleChange('use_meter', e.target.checked)}
                   className="rounded border-gray-300" />
                 Metrical patterns
               </label>
+              {settings.match_type !== 'fusion' && (
               <label className="flex items-center gap-2 text-sm text-gray-700 group relative">
                 <input type="checkbox" checked={settings.use_syntax || false}
                   onChange={(e) => handleChange('use_syntax', e.target.checked)}
                   className="rounded border-gray-300" />
-                <span>Syntax matching <span className="text-gray-400 text-xs">(Latin corpus)</span></span>
+                <span>Syntax matching <span className="text-gray-400 text-xs">(limited texts)</span></span>
                 <span className="invisible group-hover:visible absolute left-0 top-6 z-10 bg-gray-800 text-white text-xs rounded px-2 py-1 whitespace-nowrap">
-                  Boosts scores when shared vocabulary has similar grammatical structure (2+ lemma matches)
+                  See User Guide for list of texts with syntax data
                 </span>
               </label>
+              )}
             </div>
+            {settings.match_type !== 'fusion' && (
             <p className="text-xs text-gray-400 mt-1">Note: Some features require pre-computed linguistic annotations for selected texts.</p>
+            )}
           </div>
         </div>
       )}

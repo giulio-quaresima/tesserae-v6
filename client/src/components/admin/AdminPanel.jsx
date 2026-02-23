@@ -749,7 +749,7 @@ export default function AdminPanel() {
                       <tr key={request.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => openRequestDetails(request)}>
                         <td className="px-3 py-2 whitespace-nowrap">
                           <span className={`px-2 py-0.5 text-xs rounded ${
-                            request.status === 'approved' ? 'bg-green-100 text-green-700' :
+                            request.status === 'approved' ? 'bg-amber-100 text-amber-700' :
                             request.status === 'rejected' ? 'bg-red-100 text-red-700' :
                             'bg-amber-100 text-amber-700'
                           }`}>
@@ -801,7 +801,7 @@ export default function AdminPanel() {
                               {item.type || 'suggestion'}
                             </span>
                             <span className={`px-2 py-0.5 text-xs rounded ${
-                              item.status === 'resolved' ? 'bg-green-100 text-green-700' :
+                              item.status === 'resolved' ? 'bg-amber-100 text-amber-700' :
                               item.status === 'in_progress' ? 'bg-amber-100 text-amber-700' :
                               'bg-gray-100 text-gray-600'
                             }`}>
@@ -840,7 +840,7 @@ export default function AdminPanel() {
               </div>
 
               {sourcesMessage && (
-                <div className={`text-sm p-2 rounded ${sourcesMessage.type === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                <div className={`text-sm p-2 rounded ${sourcesMessage.type === 'success' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'}`}>
                   {sourcesMessage.text}
                 </div>
               )}
@@ -985,7 +985,7 @@ export default function AdminPanel() {
               </p>
 
               {metadataMessage && (
-                <div className={`text-sm p-2 rounded ${metadataMessage.type === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                <div className={`text-sm p-2 rounded ${metadataMessage.type === 'success' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'}`}>
                   {metadataMessage.text}
                 </div>
               )}
@@ -1212,10 +1212,10 @@ export default function AdminPanel() {
                 Click "Clear" to see what will be affected before confirming.
               </p>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="bg-green-50 border border-green-200 p-4 rounded">
+                <div className="bg-amber-50 border border-amber-200 p-4 rounded">
                   <div className="flex items-center gap-2 mb-1">
                     <span className="text-sm text-gray-600">Search Cache</span>
-                    <span className="text-xs px-1.5 py-0.5 bg-green-100 text-green-700 rounded">Low Risk</span>
+                    <span className="text-xs px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded">Low Risk</span>
                   </div>
                   <div className="text-2xl font-bold text-gray-900">
                     {cacheInfo?.search_cache_size || 0} entries
@@ -1281,17 +1281,17 @@ export default function AdminPanel() {
                   </div>
                 )}
                 {bigramSuccess && (
-                  <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded text-green-700 text-sm">
+                  <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded text-amber-700 text-sm">
                     {bigramSuccess}
                   </div>
                 )}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {['la', 'grc', 'en'].map(lang => (
-                    <div key={lang} className={`p-4 rounded border ${bigramStats[lang] ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'}`}>
+                    <div key={lang} className={`p-4 rounded border ${bigramStats[lang] ? 'bg-amber-50 border-amber-200' : 'bg-gray-50 border-gray-200'}`}>
                       <div className="flex items-center justify-between mb-2">
                         <span className="font-medium text-gray-900">{LANG_NAMES[lang]}</span>
                         {bigramStats[lang] && (
-                          <span className="text-xs px-1.5 py-0.5 bg-green-100 text-green-700 rounded">Built</span>
+                          <span className="text-xs px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded">Built</span>
                         )}
                       </div>
                       {bigramStats[lang] ? (
@@ -1308,7 +1308,7 @@ export default function AdminPanel() {
                           buildingBigram === lang 
                             ? 'bg-blue-100 text-blue-700 cursor-wait' 
                             : bigramStats[lang]
-                              ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                              ? 'bg-amber-100 text-amber-700 hover:bg-amber-200'
                               : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
                         } ${buildingBigram !== null && buildingBigram !== lang ? 'opacity-50 cursor-not-allowed' : ''}`}
                       >
@@ -1356,7 +1356,7 @@ export default function AdminPanel() {
                       <div className="text-sm text-gray-600">Total Searches</div>
                       <div className="text-2xl font-bold text-gray-900">{(analytics.total_searches || 0).toLocaleString()}</div>
                     </div>
-                    <div className="bg-green-50 p-4 rounded">
+                    <div className="bg-amber-50 p-4 rounded">
                       <div className="text-sm text-gray-600">Searches Today</div>
                       <div className="text-2xl font-bold text-gray-900">
                         {analytics.per_day?.find(d => d.date === new Date().toISOString().split('T')[0])?.count || 0}
@@ -1566,7 +1566,7 @@ export default function AdminPanel() {
                               <div className="flex items-center gap-3">
                                 <span className={`text-xs font-medium px-2 py-0.5 rounded ${
                                   entry.action === 'login' ? 'bg-blue-100 text-blue-700' :
-                                  entry.action === 'approve' ? 'bg-green-100 text-green-700' :
+                                  entry.action === 'approve' ? 'bg-amber-100 text-amber-700' :
                                   entry.action === 'delete' ? 'bg-red-100 text-red-700' :
                                   entry.action === 'update' ? 'bg-amber-100 text-amber-700' :
                                   'bg-gray-100 text-gray-700'
@@ -1609,7 +1609,7 @@ export default function AdminPanel() {
                         <div className="text-2xl font-bold text-gray-800">{count}</div>
                         <div className={`text-sm font-medium ${
                           action === 'login' ? 'text-blue-600' :
-                          action === 'approve' ? 'text-green-600' :
+                          action === 'approve' ? 'text-amber-700' :
                           action === 'delete' ? 'text-red-600' :
                           action === 'update' ? 'text-amber-600' :
                           'text-gray-600'
@@ -1647,7 +1647,7 @@ export default function AdminPanel() {
                   {settingsMessage && (
                     <div className={`text-sm p-2 rounded ${
                       settingsMessage.type === 'success' 
-                        ? 'bg-green-100 text-green-700' 
+                        ? 'bg-amber-100 text-amber-700' 
                         : 'bg-red-100 text-red-700'
                     }`}>
                       {settingsMessage.text}
@@ -1684,7 +1684,7 @@ export default function AdminPanel() {
                 ? 'bg-red-50 border-red-200' 
                 : confirmModal.severity === 'medium' 
                   ? 'bg-amber-50 border-amber-200' 
-                  : 'bg-green-50 border-green-200'
+                  : 'bg-amber-50 border-amber-200'
             }`}>
               <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
                 {confirmModal.severity === 'high' && <span className="text-red-600">⚠️</span>}
@@ -1994,7 +1994,7 @@ export default function AdminPanel() {
                   <span className="text-xs font-medium text-gray-400 uppercase">.tess Preview</span>
                   <span className="text-xs text-gray-500">First 10 lines</span>
                 </div>
-                <pre className="text-green-400 text-sm font-mono whitespace-pre-wrap overflow-x-auto">
+                <pre className="text-amber-400 text-sm font-mono whitespace-pre-wrap overflow-x-auto">
                   {tessPreview || 'Enter author, work, and content to see preview...'}
                 </pre>
               </div>

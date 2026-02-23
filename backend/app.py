@@ -26,7 +26,7 @@ See docs/DEVELOPER.md for setup and architecture details.
 # IMPORTS
 # =============================================================================
 # Flask and web framework dependencies
-from flask import Flask, send_from_directory, jsonify, request, session, make_response
+from flask import Flask, send_from_directory, jsonify, request, session
 from flask_cors import CORS
 from flask_login import current_user
 from werkzeug.middleware.proxy_fix import ProxyFix
@@ -60,7 +60,7 @@ def natural_sort_key(s):
 from backend.text_processor import TextProcessor
 from backend.matcher import Matcher
 from backend.scorer import Scorer
-from backend.utils import get_text_metadata, build_text_hierarchy, clean_cts_reference, safe_listdir
+from backend.utils import get_text_metadata, build_text_hierarchy, clean_cts_reference
 from backend.cache import (
     get_cached_results, save_cached_results, 
     get_cache_stats, clear_cache
@@ -94,31 +94,9 @@ CORS(app, supports_credentials=True)  # Enable cross-origin requests
 app.secret_key = os.environ.get("SESSION_SECRET")
 app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)  # Handle proxy headers
 app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0  # Disable caching for development
-app.json.ensure_ascii = False
 app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL")
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {'pool_pre_ping': True, "pool_recycle": 300}
-
-# =============================================================================
-# ENVIRONMENT-BASED ROUTE PREFIX
-# =============================================================================
-# On Marvin (Apache+WSGI), the /api prefix is handled by Apache's WSGIScriptAlias,
-# so Flask routes should NOT include /api. On Replit, Flask handles everything
-# directly, so routes need the /api prefix.
-# Set DEPLOYMENT_ENV=marvin in .env on Marvin server to use empty prefix.
-# Set API_PREFIX=/api in env to force /api prefix (e.g. for dev server without Apache).
-DEPLOYMENT_ENV = os.environ.get("DEPLOYMENT_ENV", "replit")
-API_PREFIX = os.environ.get("API_PREFIX")
-if API_PREFIX is None:
-    API_PREFIX = "" if DEPLOYMENT_ENV == "marvin" else "/api"
-
-def api_route(path, **kwargs):
-    """Decorator factory for API routes that handles environment-based prefixes.
-    
-    Usage: @api_route('/health') instead of @api_route('/health')
-    """
-    full_path = f"{API_PREFIX}{path}" if path != "/" else API_PREFIX or "/"
-    return app.route(full_path, **kwargs)
 
 # =============================================================================
 # DATABASE INITIALIZATION
@@ -139,20 +117,12 @@ except Exception as e:
 # =============================================================================
 # AUTHENTICATION SETUP
 # =============================================================================
-DEPLOYMENT_ENV = os.environ.get('DEPLOYMENT_ENV', 'replit')
-AUTH_TYPE = 'replit' if DEPLOYMENT_ENV == 'replit' else 'password'
-
-if DEPLOYMENT_ENV == 'replit' and os.environ.get('REPL_ID'):
-    from backend.replit_auth import init_auth, get_current_user_info
-    init_auth(app)
-    print("Replit authentication initialized")
-elif DEPLOYMENT_ENV == 'marvin':
+if os.environ.get('DEPLOYMENT_ENV') == 'marvin':
     from backend.marvin_auth import init_marvin_auth, get_current_user_info
     init_marvin_auth(app)
-    print("Marvin password authentication initialized")
 else:
-    from backend.replit_auth import get_current_user_info
-    print("Auth disabled - no REPL_ID in Replit mode")
+    from backend.replit_auth import init_auth, get_current_user_info
+    init_auth(app)
 
 # =============================================================================
 # CORE PROCESSING COMPONENTS
@@ -212,7 +182,7 @@ ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', '')
 AUTHOR_DATES = {}
 author_dates_path = os.path.join(os.path.dirname(__file__), 'author_dates.json')
 if os.path.exists(author_dates_path):
-    with open(author_dates_path, 'r', encoding='utf-8') as f:
+    with open(author_dates_path, 'r') as f:
         AUTHOR_DATES = json.load(f)
 
 
@@ -360,6 +330,7 @@ from backend.blueprints.downloads import downloads_bp
 from backend.blueprints.hapax import hapax_bp, init_hapax_blueprint
 from backend.blueprints.batch import batch_bp, init_batch_blueprint
 from backend.blueprints.api_docs import api_docs_bp
+from backend.blueprints.fusion import fusion_bp, init_fusion_blueprint
 from backend.email_notifications import notify_text_request, notify_feedback
 
 author_dates_path = os.path.join(os.path.dirname(__file__), 'author_dates.json')
@@ -405,19 +376,23 @@ init_batch_blueprint(
     author_dates=AUTHOR_DATES
 )
 
-# Register blueprints with environment-based URL prefix
-# On Marvin: no prefix (Apache handles /api)
-# On Replit: /api prefix added here
-# Note: admin_bp has its own /admin prefix, so we combine them
-admin_prefix = f"{API_PREFIX}/admin" if API_PREFIX else "/admin"
-app.register_blueprint(admin_bp, url_prefix=admin_prefix)
-app.register_blueprint(search_bp, url_prefix=API_PREFIX or None)
-app.register_blueprint(corpus_bp, url_prefix=API_PREFIX or None)
-app.register_blueprint(intertext_bp, url_prefix=API_PREFIX or None)
-app.register_blueprint(downloads_bp, url_prefix=API_PREFIX or None)
-app.register_blueprint(hapax_bp, url_prefix=API_PREFIX or None)
-app.register_blueprint(batch_bp, url_prefix=API_PREFIX or None)
-app.register_blueprint(api_docs_bp, url_prefix=API_PREFIX or None)
+init_fusion_blueprint(
+    matcher=matcher,
+    scorer=scorer,
+    text_processor=text_processor,
+    texts_dir=TEXTS_DIR,
+    get_processed_units_fn=get_processed_units,
+)
+
+app.register_blueprint(admin_bp)
+app.register_blueprint(search_bp)
+app.register_blueprint(corpus_bp)
+app.register_blueprint(intertext_bp)
+app.register_blueprint(downloads_bp)
+app.register_blueprint(hapax_bp)
+app.register_blueprint(batch_bp)
+app.register_blueprint(api_docs_bp)
+app.register_blueprint(fusion_bp)
 
 app_logger.info("Blueprints registered.")
 
@@ -449,11 +424,7 @@ def add_header(response):
 @app.route('/')
 def index():
     static_folder = app.static_folder or '../frontend'
-    response = make_response(send_from_directory(static_folder, 'index.html'))
-    response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
-    response.headers['Pragma'] = 'no-cache'
-    response.headers['Expires'] = '0'
-    return response
+    return send_from_directory(static_folder, 'index.html')
 
 @app.route('/legacy')
 def legacy_frontend():
@@ -461,43 +432,26 @@ def legacy_frontend():
     legacy_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'frontend')
     return send_from_directory(legacy_path, 'index.html')
 
-@app.route('/static/downloads/<path:filename>')
-def serve_downloads(filename):
-    """Serve downloadable files from static/downloads/"""
-    downloads_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'static', 'downloads')
-    return send_from_directory(downloads_path, filename)
-
 @app.errorhandler(404)
 def page_not_found(e):
     """Handle 404 errors by serving the SPA for client-side routing"""
     if request.path.startswith('/api/'):
         return jsonify({'error': 'Not found'}), 404
     static_folder = app.static_folder or '../frontend'
-    response = make_response(send_from_directory(static_folder, 'index.html'))
-    response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
-    response.headers['Pragma'] = 'no-cache'
-    response.headers['Expires'] = '0'
-    return response
+    return send_from_directory(static_folder, 'index.html')
 
 
 # =============================================================================
 # AUTHENTICATION API ROUTES
 # =============================================================================
 
-@api_route('/auth/user')
+@app.route('/api/auth/user')
 def get_auth_user():
     """Get current logged-in user info"""
     user_info = get_current_user_info()
-    deployment_env = os.environ.get('DEPLOYMENT_ENV', 'replit')
-    if deployment_env == 'replit':
-        auth_enabled = bool(os.environ.get('REPL_ID'))
-        auth_type = 'replit'
-    else:
-        auth_enabled = True
-        auth_type = 'password'
-    return jsonify({'user': user_info, 'auth_enabled': auth_enabled, 'auth_type': auth_type})
+    return jsonify({'user': user_info})
 
-@api_route('/auth/saved-searches')
+@app.route('/api/auth/saved-searches')
 def get_saved_searches():
     """Get saved searches for current user"""
     if not current_user.is_authenticated:
@@ -523,7 +477,7 @@ def get_saved_searches():
         'target_unit_type': s.target_unit_type,
     } for s in searches])
 
-@api_route('/auth/saved-searches', methods=['POST'])
+@app.route('/api/auth/saved-searches', methods=['POST'])
 def save_search():
     """Save a search configuration for current user"""
     if not current_user.is_authenticated:
@@ -552,7 +506,7 @@ def save_search():
     db.session.commit()
     return jsonify({'success': True, 'id': search.id})
 
-@api_route('/auth/saved-searches/<int:search_id>', methods=['DELETE'])
+@app.route('/api/auth/saved-searches/<int:search_id>', methods=['DELETE'])
 def delete_saved_search(search_id):
     """Delete a saved search"""
     if not current_user.is_authenticated:
@@ -565,7 +519,7 @@ def delete_saved_search(search_id):
     db.session.commit()
     return jsonify({'success': True})
 
-@api_route('/auth/profile', methods=['PUT'])
+@app.route('/api/auth/profile', methods=['PUT'])
 def update_profile():
     """Update user profile (institution)"""
     if not current_user.is_authenticated:
@@ -575,7 +529,7 @@ def update_profile():
     db.session.commit()
     return jsonify({'success': True, 'user': get_current_user_info()})
 
-@api_route('/auth/orcid/link', methods=['POST'])
+@app.route('/api/auth/orcid/link', methods=['POST'])
 def link_orcid():
     """Link an ORCID to user account (manual entry for now)"""
     if not current_user.is_authenticated:
@@ -593,7 +547,7 @@ def link_orcid():
         return jsonify({'success': True, 'user': get_current_user_info()})
     return jsonify({'error': 'Failed to update ORCID'}), 500
 
-@api_route('/auth/orcid/unlink', methods=['POST'])
+@app.route('/api/auth/orcid/unlink', methods=['POST'])
 def unlink_orcid():
     """Remove ORCID from user account"""
     if not current_user.is_authenticated:
@@ -613,13 +567,13 @@ def health():
     return jsonify({"status": "ok", "message": "Tesserae V6 is running"})
 
 
-@api_route('/health')
+@app.route('/api/health')
 def api_health():
     """API health check endpoint"""
     return jsonify({"status": "ok", "message": "Tesserae V6 is running"})
 
 
-@api_route('/version')
+@app.route('/api/version')
 def api_version():
     """Get version and last updated info from git"""
     import subprocess
@@ -653,7 +607,7 @@ def api_version():
 # TEXT AND CORPUS API ROUTES
 # =============================================================================
 
-@api_route('/check-meter')
+@app.route('/api/check-meter')
 def check_meter():
     """Check if source and target texts are suitable for metrical analysis (both poetry)"""
     source = request.args.get('source', '')
@@ -675,7 +629,7 @@ def check_meter():
     
     return jsonify({'available': True})
 
-@api_route('/texts')
+@app.route('/api/texts')
 def get_texts():
     language = request.args.get('language', 'la')
     lang_dir = os.path.join(TEXTS_DIR, language)
@@ -684,7 +638,7 @@ def get_texts():
         return jsonify([])
     
     texts = []
-    for filename in sorted(safe_listdir(lang_dir)):
+    for filename in sorted(os.listdir(lang_dir)):
         if filename.endswith('.tess'):
             metadata = get_text_metadata(os.path.join(lang_dir, filename))
             texts.append(metadata)
@@ -693,7 +647,7 @@ def get_texts():
     
     return jsonify(texts)
 
-@api_route('/authors')
+@app.route('/api/authors')
 def get_authors():
     language = request.args.get('language', 'la')
     lang_dir = os.path.join(TEXTS_DIR, language)
@@ -702,7 +656,7 @@ def get_authors():
         return jsonify([])
     
     authors = {}
-    for filename in safe_listdir(lang_dir):
+    for filename in os.listdir(lang_dir):
         if filename.endswith('.tess'):
             metadata = get_text_metadata(os.path.join(lang_dir, filename))
             author = metadata['author']
@@ -719,12 +673,12 @@ def get_authors():
     
     return jsonify(result)
 
-@api_route('/author-dates')
+@app.route('/api/author-dates')
 def get_public_author_dates():
     """Get author dates for timeline visualization (public endpoint)"""
     return jsonify(AUTHOR_DATES)
 
-@api_route('/texts/hierarchy')
+@app.route('/api/texts/hierarchy')
 def get_texts_hierarchy():
     """Get hierarchical text structure: Author -> Work -> Parts"""
     language = request.args.get('language', 'la')
@@ -734,7 +688,7 @@ def get_texts_hierarchy():
         return jsonify({'authors': []})
     
     texts = []
-    for filename in safe_listdir(lang_dir):
+    for filename in os.listdir(lang_dir):
         if filename.endswith('.tess'):
             metadata = get_text_metadata(os.path.join(lang_dir, filename))
             texts.append(metadata)
@@ -768,7 +722,7 @@ def get_texts_hierarchy():
 # These routes handle the core search functionality for finding parallel
 # passages between source and target texts using various matching algorithms.
 
-@api_route('/search', methods=['POST'])
+@app.route('/api/search', methods=['POST'])
 def search():
     try:
         data = request.get_json()
@@ -873,7 +827,7 @@ def search():
         
         scored_results = scorer.score_matches(matches, source_units, target_units, settings, source_id, target_id)
         
-        scored_results.sort(key=lambda x: x.get('overall_score') or 0, reverse=True)
+        scored_results.sort(key=lambda x: x['overall_score'], reverse=True)
         
         metadata = {
             'source_lines': len(source_units),
@@ -907,16 +861,16 @@ def search():
         traceback.print_exc()
         return jsonify({"error": str(e)})
 
-@api_route('/cache/stats')
+@app.route('/api/cache/stats')
 def cache_stats():
     return jsonify(get_cache_stats())
 
-@api_route('/cache/clear', methods=['POST'])
+@app.route('/api/cache/clear', methods=['POST'])
 def cache_clear():
     count = clear_cache()
     return jsonify({"cleared": count})
 
-@api_route('/stoplist', methods=['POST'])
+@app.route('/api/stoplist', methods=['POST'])
 def get_stoplist():
     """Get the computed stoplist for given texts and settings"""
     data = request.get_json() or {}
@@ -951,7 +905,7 @@ def get_stoplist():
     except Exception as e:
         return jsonify({'error': str(e), 'stopwords': []})
 
-@api_route('/stats')
+@app.route('/api/stats')
 def get_stats():
     stats = {
         'languages': {},
@@ -961,7 +915,7 @@ def get_stats():
     for lang in ['la', 'grc', 'en']:
         lang_dir = os.path.join(TEXTS_DIR, lang)
         if os.path.exists(lang_dir):
-            count = len([f for f in safe_listdir(lang_dir) if f.endswith('.tess')])
+            count = len([f for f in os.listdir(lang_dir) if f.endswith('.tess')])
             stats['languages'][lang] = count
             stats['total_texts'] += count
     
@@ -970,7 +924,7 @@ def get_stats():
     
     return jsonify(stats)
 
-@api_route('/text/<path:text_id>')
+@app.route('/api/text/<path:text_id>')
 def get_text_content(text_id):
     """Get the full content of a text file"""
     language = request.args.get('language', 'la')
@@ -1011,7 +965,7 @@ def get_text_content(text_id):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@api_route('/text/<path:text_id>/lines')
+@app.route('/api/text/<path:text_id>/lines')
 def get_text_lines(text_id):
     """Get lines from a text file for browsing"""
     language = request.args.get('language', '')
@@ -1054,7 +1008,7 @@ def get_text_lines(text_id):
         return jsonify({'error': str(e), 'lines': []}), 500
 
 
-@api_route('/frequencies/<language>')
+@app.route('/api/frequencies/<language>')
 def get_frequencies(language):
     """Get cached corpus frequencies for a language"""
     freq_data = get_corpus_frequencies(language, text_processor)
@@ -1069,7 +1023,7 @@ def get_frequencies(language):
         })
     return jsonify({'error': 'No frequency data available'}), 404
 
-@api_route('/frequencies/recalculate', methods=['POST'])
+@app.route('/api/frequencies/recalculate', methods=['POST'])
 def recalculate_frequencies():
     """Recalculate corpus frequencies for a language"""
     data = request.get_json() or {}
@@ -1085,7 +1039,7 @@ def recalculate_frequencies():
         })
     return jsonify({'error': 'Failed to recalculate frequencies'}), 500
 
-@api_route('/texts/preview', methods=['POST'])
+@app.route('/api/texts/preview', methods=['POST'])
 def preview_text():
     """Preview how text will be chunked into units"""
     data = request.get_json() or {}
@@ -1129,7 +1083,7 @@ def preview_text():
         'errors': errors
     })
 
-@api_route('/texts/add', methods=['POST'])
+@app.route('/api/texts/add', methods=['POST'])
 def add_text():
     """Add a new text to the corpus"""
     data = request.get_json() or {}
@@ -1190,7 +1144,7 @@ def add_text():
 # These routes enable searching for words/phrases across the entire corpus
 # using the pre-built inverted index for fast lookups.
 
-@api_route('/line-search', methods=['POST'])
+@app.route('/api/line-search', methods=['POST'])
 def line_search():
     """
     Search for words/phrases across the corpus with optional filters.
@@ -1259,26 +1213,11 @@ def line_search():
                 return lemma
             
             query_lemmas = set()
-            token_to_lemma_fallbacks = {}
             if search_type == 'lemma':
-                from backend.text_processor import get_reverse_lemma_table
-                reverse_table = get_reverse_lemma_table(language)
                 query_tokens = query.lower().split()
                 for token in query_tokens:
                     lemmas = text_processor.lemmatize_word(token, language)
-                    normalized_lemmas = [normalize_latin_lemma(l) for l in lemmas]
-                    normalized_token = normalize_latin_lemma(token)
-                    query_lemmas.update(normalized_lemmas)
-                    if not normalized_lemmas:
-                        query_lemmas.add(normalized_token)
-                    for nl in normalized_lemmas:
-                        fallbacks = set()
-                        if nl != normalized_token:
-                            fallbacks.add(normalized_token)
-                        if nl in reverse_table:
-                            fallbacks.update(reverse_table[nl])
-                        if fallbacks:
-                            token_to_lemma_fallbacks[nl] = fallbacks
+                    query_lemmas.update(normalize_latin_lemma(l) for l in lemmas)
                 if not query_lemmas:
                     query_lemmas = set(normalize_latin_lemma(t) for t in query_tokens)
             else:
@@ -1294,7 +1233,7 @@ def line_search():
             
             # FAST PATH: Use inverted index if available (O(1) lookup vs O(n) scan)
             if search_type == 'lemma' and is_index_available(language) and len(filtered_query_lemmas) >= 2:
-                candidates = find_co_occurring_lemmas(list(filtered_query_lemmas), language, min_matches=2, fallback_forms=token_to_lemma_fallbacks if token_to_lemma_fallbacks else None)
+                candidates = find_co_occurring_lemmas(list(filtered_query_lemmas), language, min_matches=2)
                 use_indexed_lines = has_lines_data(language)
                 
                 # Group candidates by text
@@ -1318,7 +1257,7 @@ def line_search():
                     author_key = filename.split('.')[0].lower()
                     author_info = lang_dates.get(author_key, {})
                     era = author_info.get('era', 'Unknown')
-                    year = author_info.get('year') or 9999
+                    year = author_info.get('year', 9999)
                     
                     # Get line data from index
                     refs_needed = [ref for ref, _, _ in matches]
@@ -1361,37 +1300,28 @@ def line_search():
                         locus = locus_parts[-1] if locus_parts else ref
                         locus = clean_cts_reference(locus)
                         
+                        # Find matched words in text using pre-indexed lemmas
                         matched_words = []
-                        matched_indexed_lemmas = []
-                        indexed_lemmas_list = line_info.get('lemmas', []) if line_info else []
+                        indexed_lemmas = set(line_info.get('lemmas', [])) if line_info else set()
                         indexed_tokens = line_info.get('tokens', []) if line_info else []
                         
-                        all_fallback_forms = set()
-                        for ql in filtered_query_lemmas:
-                            all_fallback_forms.add(ql)
-                            if token_to_lemma_fallbacks and ql in token_to_lemma_fallbacks:
-                                all_fallback_forms.update(token_to_lemma_fallbacks[ql])
-                        
-                        if indexed_lemmas_list and indexed_tokens:
-                            for i, lemma in enumerate(indexed_lemmas_list):
-                                if lemma in all_fallback_forms and i < len(indexed_tokens):
-                                    matched_words.append(indexed_tokens[i])
-                                    matched_indexed_lemmas.append(lemma)
+                        # Use indexed data if available, otherwise fallback to quick token matching
+                        if indexed_lemmas:
+                            # Match query lemmas against indexed lemmas
+                            matching_query_lemmas = indexed_lemmas & filtered_query_lemmas
+                            if matching_query_lemmas:
+                                # Find the actual words that correspond to matching lemmas
+                                for i, lemma in enumerate(line_info.get('lemmas', [])):
+                                    if lemma in matching_query_lemmas and i < len(indexed_tokens):
+                                        matched_words.append(indexed_tokens[i])
                         else:
-                            text_tokens = re.sub(r'[^\w\s]', '', text.lower()).split()
+                            # Quick fallback: just check token overlap without full lemmatization
+                            text_tokens = set(re.sub(r'[^\w\s]', '', text.lower()).split())
                             for token in text_tokens:
-                                norm_token = normalize_latin_lemma(token)
-                                if norm_token in all_fallback_forms:
+                                if token in filtered_query_lemmas:
                                     matched_words.append(token)
-                                    matched_indexed_lemmas.append(norm_token)
                         
-                        unique_matched_lemmas = set()
-                        for idx_lemma in matched_indexed_lemmas:
-                            for ql in filtered_query_lemmas:
-                                if idx_lemma == ql or (token_to_lemma_fallbacks and ql in token_to_lemma_fallbacks and idx_lemma in token_to_lemma_fallbacks[ql]):
-                                    unique_matched_lemmas.add(ql)
-                        
-                        if len(unique_matched_lemmas) < 2:
+                        if len(set(matched_words)) < 2:
                             continue
                         
                         # Exclude source line if specified (normalize both sides for robust matching)
@@ -1430,7 +1360,7 @@ def line_search():
             
             else:
                 # SLOW PATH: Fallback to file scanning (for exact/regex search)
-                text_files = [f for f in safe_listdir(lang_dir) if f.endswith('.tess')]
+                text_files = [f for f in os.listdir(lang_dir) if f.endswith('.tess')]
                 
                 for filename in text_files:
                     filepath = os.path.join(lang_dir, filename)
@@ -1444,7 +1374,7 @@ def line_search():
                     author_key = filename.split('.')[0].lower()
                     author_info = lang_dates.get(author_key, {})
                     era = author_info.get('era', 'Unknown')
-                    year = author_info.get('year') or 9999
+                    year = author_info.get('year', 9999)
                     
                     with open(filepath, 'r', encoding='utf-8') as f:
                         for line in f:
@@ -1560,7 +1490,7 @@ def line_search():
             }
             results.sort(key=lambda x: (
                 era_order.get(x.get('era', 'Unknown'), 50),
-                x.get('year', 9999),  # Sort by year within era
+                x.get('year') if x.get('year') is not None else 9999,
                 x.get('author', '').lower()
             ))
             
@@ -1583,7 +1513,7 @@ def line_search():
         return jsonify({'error': str(e)}), 500
 
 
-@api_route('/line-search-parallel', methods=['POST'])
+@app.route('/api/line-search-parallel', methods=['POST'])
 def line_search_parallel():
     """
     Search a single line against the entire corpus using inverted index for speed.
@@ -1716,7 +1646,7 @@ def line_search_parallel():
                     
                 author_key = filename.split('.')[0].lower()
                 author_info = lang_dates.get(author_key, {})
-                author_year = author_info.get('year') or 9999
+                author_year = author_info.get('year')
                 author_era = author_info.get('era', 'Unknown')
                 
                 # Get line data - FAST: from index, SLOW: from file
@@ -1862,15 +1792,14 @@ def line_search_parallel():
                         'match_count': match_count,
                         'score': round(score, 3),
                         'year': author_year,
-                        'era': author_era,
-                        'is_poetry': not is_prose
+                        'era': author_era
                     })
                 
                 text_matches.sort(key=lambda x: x['score'], reverse=True)
                 all_results.extend(text_matches[:max_per_text])
         else:
             # FALLBACK: Scan all texts (original behavior)
-            text_files = [f for f in safe_listdir(lang_dir) if f.endswith('.tess')]
+            text_files = [f for f in os.listdir(lang_dir) if f.endswith('.tess')]
             if exclude_source and source_text_id:
                 text_files = [f for f in text_files if f != source_text_id]
             
@@ -1881,7 +1810,7 @@ def line_search_parallel():
                 
                 author_key = filename.split('.')[0].lower()
                 author_info = lang_dates.get(author_key, {})
-                author_year = author_info.get('year') or 9999
+                author_year = author_info.get('year')
                 author_era = author_info.get('era', 'Unknown')
                 
                 units = get_processed_units(filename, language, 'line', text_processor)
@@ -1982,8 +1911,7 @@ def line_search_parallel():
                             'match_count': len(shared),
                             'score': round(score, 3),
                             'year': author_year,
-                            'era': author_era,
-                            'is_poetry': not is_prose
+                            'era': author_era
                         })
                 
                 text_matches.sort(key=lambda x: x['score'], reverse=True)
@@ -2037,7 +1965,7 @@ def line_search_parallel():
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
-@api_route('/corpus-search', methods=['POST'])
+@app.route('/api/corpus-search', methods=['POST'])
 def corpus_search():
     """Search the entire corpus for lines containing specific lemmas using inverted index"""
     try:
@@ -2058,7 +1986,7 @@ def corpus_search():
         if not is_index_available(language):
             return jsonify({'error': 'Index not available for this language'}), 400
         
-        matches = find_co_occurring_lemmas(lemmas, language, min_matches=len(lemmas))
+        matches = find_co_occurring_lemmas(lemmas, language, min_matches=min(2, len(lemmas)))
         
         results = []
         text_matches = {}
@@ -2109,7 +2037,7 @@ def corpus_search():
             metadata = get_text_metadata(filepath)
             author_key = filename.split('.')[0].lower()
             author_info = lang_dates.get(author_key, {})
-            author_year = author_info.get('year') or 9999
+            author_year = author_info.get('year')
             author_era = author_info.get('era', 'Unknown')
             author_note = author_info.get('note', '')
             is_poetry = text_genre_cache.get(filename, False)
@@ -2178,7 +2106,7 @@ def corpus_search():
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
-@api_route('/request', methods=['POST'])
+@app.route('/api/request', methods=['POST'])
 def submit_request():
     """Submit a text upload request with optional file attachment"""
     # Handle both JSON and multipart form data
@@ -2246,7 +2174,7 @@ def submit_request():
 # USER FEEDBACK AND SUPPORT API ROUTES
 # =============================================================================
 
-@api_route('/feedback', methods=['POST'])
+@app.route('/api/feedback', methods=['POST'])
 def submit_feedback():
     """Submit user feedback/suggestion"""
     data = request.get_json() or {}
@@ -2281,7 +2209,7 @@ def submit_feedback():
         app_logger.error(f"Failed to submit feedback: {e}")
         return jsonify({'error': str(e)}), 500
 
-@api_route('/admin/login', methods=['POST'])
+@app.route('/api/admin/login', methods=['POST'])
 def admin_login():
     """Verify admin password"""
     data = request.get_json() or {}
@@ -2295,7 +2223,7 @@ def admin_login():
     else:
         return jsonify({'error': 'Invalid password'}), 401
 
-@api_route('/admin/requests')
+@app.route('/api/admin/requests')
 def get_requests():
     """Get all text requests (admin only)"""
     password = request.headers.get('X-Admin-Password', '')
@@ -2334,7 +2262,7 @@ def get_requests():
         app_logger.error(f"Failed to get text requests: {e}")
         return jsonify({'error': str(e)}), 500
 
-@api_route('/admin/requests/<int:request_id>', methods=['PUT'])
+@app.route('/api/admin/requests/<int:request_id>', methods=['PUT'])
 def update_request(request_id):
     """Update a text request status (admin only)"""
     password = request.headers.get('X-Admin-Password', '')
@@ -2358,7 +2286,7 @@ def update_request(request_id):
         app_logger.error(f"Failed to update text request: {e}")
         return jsonify({'error': str(e)}), 500
 
-@api_route('/admin/requests/<int:request_id>/approve', methods=['POST'])
+@app.route('/api/admin/requests/<int:request_id>/approve', methods=['POST'])
 def approve_and_add_text(request_id):
     """Approve a request and add the text to corpus (admin only)"""
     password = request.headers.get('X-Admin-Password', '')
@@ -2437,7 +2365,7 @@ def approve_and_add_text(request_id):
         app_logger.error(f"Failed to approve text request: {e}")
         return jsonify({'error': str(e)}), 500
 
-@api_route('/admin/requests/<int:request_id>', methods=['DELETE'])
+@app.route('/api/admin/requests/<int:request_id>', methods=['DELETE'])
 def delete_request(request_id):
     """Delete a text request (admin only)"""
     password = request.headers.get('X-Admin-Password', '')
@@ -2452,7 +2380,7 @@ def delete_request(request_id):
         app_logger.error(f"Failed to delete text request: {e}")
         return jsonify({'error': str(e)}), 500
 
-@api_route('/admin/author-dates', methods=['GET'])
+@app.route('/api/admin/author-dates', methods=['GET'])
 def get_author_dates():
     """Get all author dates (admin only)"""
     password = request.headers.get('X-Admin-Password', '')
@@ -2461,7 +2389,7 @@ def get_author_dates():
     
     return jsonify(AUTHOR_DATES)
 
-@api_route('/admin/author-dates/<language>/<author_key>', methods=['PUT'])
+@app.route('/api/admin/author-dates/<language>/<author_key>', methods=['PUT'])
 def update_author_date(language, author_key):
     """Update or add an author date entry (admin only)"""
     global AUTHOR_DATES
@@ -2488,7 +2416,7 @@ def update_author_date(language, author_key):
     
     return jsonify({'success': True})
 
-@api_route('/admin/author-dates/<language>/<author_key>', methods=['DELETE'])
+@app.route('/api/admin/author-dates/<language>/<author_key>', methods=['DELETE'])
 def delete_author_date(language, author_key):
     """Delete an author date entry (admin only)"""
     global AUTHOR_DATES
@@ -2504,7 +2432,7 @@ def delete_author_date(language, author_key):
     
     return jsonify({'error': 'Entry not found'}), 404
 
-@api_route('/admin/lemma-cache/stats', methods=['GET'])
+@app.route('/api/admin/lemma-cache/stats', methods=['GET'])
 def lemma_cache_stats():
     """Get lemma cache statistics (admin only)"""
     password = request.headers.get('X-Admin-Password', '')
@@ -2513,7 +2441,7 @@ def lemma_cache_stats():
     
     return jsonify(get_lemma_cache_stats())
 
-@api_route('/admin/lemma-cache/rebuild', methods=['POST'])
+@app.route('/api/admin/lemma-cache/rebuild', methods=['POST'])
 def rebuild_lemma_cache_endpoint():
     """Rebuild lemma cache for a language (admin only)"""
     password = request.headers.get('X-Admin-Password', '')
@@ -2529,7 +2457,7 @@ def rebuild_lemma_cache_endpoint():
     result = rebuild_lemma_cache(language, text_processor)
     return jsonify(result)
 
-@api_route('/admin/lemma-cache/clear', methods=['POST'])
+@app.route('/api/admin/lemma-cache/clear', methods=['POST'])
 def clear_lemma_cache_endpoint():
     """Clear lemma cache (admin only)"""
     password = request.headers.get('X-Admin-Password', '')
@@ -2545,12 +2473,12 @@ def clear_lemma_cache_endpoint():
     result = clear_lemma_cache(language)
     return jsonify(result)
 
-@api_route('/features/weights', methods=['GET'])
+@app.route('/api/features/weights', methods=['GET'])
 def get_feature_weights():
     """Get current feature weights"""
     return jsonify(feature_extractor.get_weights())
 
-@api_route('/features/weights', methods=['POST'])
+@app.route('/api/features/weights', methods=['POST'])
 def update_feature_weights():
     """Update feature weights (admin only)"""
     password = request.headers.get('X-Admin-Password', '')
@@ -2565,7 +2493,7 @@ def update_feature_weights():
     else:
         return jsonify({'error': 'Failed to save weights'}), 500
 
-@api_route('/features/toggle', methods=['POST'])
+@app.route('/api/features/toggle', methods=['POST'])
 def toggle_feature():
     """Toggle a feature on/off (admin only)"""
     password = request.headers.get('X-Admin-Password', '')
@@ -2595,7 +2523,7 @@ def toggle_feature():
     else:
         return jsonify({'error': 'Failed to save'}), 500
 
-@api_route('/admin/feedback', methods=['GET'])
+@app.route('/api/admin/feedback', methods=['GET'])
 def get_feedback():
     """Get all feedback submissions (admin only)"""
     password = request.headers.get('X-Admin-Password', '')
@@ -2628,7 +2556,7 @@ def get_feedback():
         app_logger.error(f"Failed to get feedback: {e}")
         return jsonify({'error': str(e)}), 500
 
-@api_route('/admin/feedback/<int:feedback_id>', methods=['PUT'])
+@app.route('/api/admin/feedback/<int:feedback_id>', methods=['PUT'])
 def update_feedback(feedback_id):
     """Update feedback status (admin only)"""
     password = request.headers.get('X-Admin-Password', '')
@@ -2652,7 +2580,7 @@ def update_feedback(feedback_id):
         app_logger.error(f"Failed to update feedback: {e}")
         return jsonify({'error': str(e)}), 500
 
-@api_route('/admin/settings', methods=['GET'])
+@app.route('/api/admin/settings', methods=['GET'])
 def get_settings():
     """Get admin settings (admin only)"""
     password = request.headers.get('X-Admin-Password', '')
@@ -2670,7 +2598,7 @@ def get_settings():
         app_logger.error(f"Failed to get settings: {e}")
         return jsonify({'error': str(e)}), 500
 
-@api_route('/admin/settings', methods=['POST'])
+@app.route('/api/admin/settings', methods=['POST'])
 def update_settings():
     """Update admin settings (admin only)"""
     password = request.headers.get('X-Admin-Password', '')
@@ -2691,7 +2619,7 @@ def update_settings():
         app_logger.error(f"Failed to update settings: {e}")
         return jsonify({'error': str(e)}), 500
 
-@api_route('/admin/user-data', methods=['GET'])
+@app.route('/api/admin/user-data', methods=['GET'])
 def get_user_data():
     """Get all data for a user by email (GDPR data export)"""
     password = request.headers.get('X-Admin-Password', '')
@@ -2752,7 +2680,7 @@ def get_user_data():
         app_logger.error(f"Failed to get user data: {e}")
         return jsonify({'error': str(e)}), 500
 
-@api_route('/admin/analytics', methods=['GET'])
+@app.route('/api/admin/analytics', methods=['GET'])
 def get_analytics():
     """Get search analytics (admin only)"""
     password = request.headers.get('X-Admin-Password', '')
@@ -2904,6 +2832,12 @@ def get_analytics():
     except Exception as e:
         app_logger.error(f"Failed to get analytics: {e}")
         return jsonify({'error': str(e)}), 500
+
+
+def create_app():
+    """Return app for scripts that need app context (e.g. import_connections)."""
+    return app
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)

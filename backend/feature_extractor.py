@@ -328,7 +328,10 @@ class FeatureExtractor:
         try:
             from backend.syntax_parser import get_syntax_matcher
         except ImportError:
-            from syntax_parser import get_syntax_matcher
+            try:
+                from syntax_parser import get_syntax_matcher
+            except ImportError:
+                return 0.0, None, None
         
         src_text = source_unit.get('text', '')
         tgt_text = target_unit.get('text', '')
@@ -586,6 +589,8 @@ class FeatureExtractor:
             boost *= (1.0 + syntax_weight * features['syntax_score'])
         
         result = base_score * boost
+        if settings.get('unbounded_scoring', False):
+            return result
         return min(result, 1.0)
 
 
