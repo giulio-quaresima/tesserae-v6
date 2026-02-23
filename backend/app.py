@@ -86,9 +86,27 @@ DIST_FOLDER = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'dist')
 LEGACY_FRONTEND = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'frontend')
 STATIC_FOLDER = DIST_FOLDER if os.path.exists(DIST_FOLDER) else LEGACY_FRONTEND
 
+# API prefix handling:
+# - Behind Apache (production): WSGIScriptAlias /api strips the prefix, so Flask
+#   routes don't need it. API_PREFIX = ""
+# - Direct Flask server (dev): Flask gets the full /api/... URL from the browser,
+#   so routes need the /api prefix. API_PREFIX = "/api"
+# main.py sets TESSERAE_DIRECT_SERVER=1 when running Flask directly.
+DEPLOYMENT_ENV = os.environ.get("DEPLOYMENT_ENV", "dev")
+DIRECT_SERVER = os.environ.get("TESSERAE_DIRECT_SERVER", "") == "1"
+API_PREFIX = "/api" if DIRECT_SERVER else ""
+
 # Create Flask app with static file serving
 app = Flask(__name__, static_folder=STATIC_FOLDER, static_url_path='')
 CORS(app, supports_credentials=True)  # Enable cross-origin requests
+
+
+def api_route(path, **kwargs):
+    """Decorator for API routes that auto-prepends API_PREFIX.
+    On Marvin (behind Apache), prefix is empty. On dev, prefix is /api."""
+    full_path = f"{API_PREFIX}{path}" if path != "/" else API_PREFIX or "/"
+    return app.route(full_path, **kwargs)
+
 
 # Application configuration
 app.secret_key = os.environ.get("SESSION_SECRET")
@@ -384,17 +402,23 @@ init_fusion_blueprint(
     get_processed_units_fn=get_processed_units,
 )
 
-app.register_blueprint(admin_bp)
-app.register_blueprint(search_bp)
-app.register_blueprint(corpus_bp)
-app.register_blueprint(intertext_bp)
-app.register_blueprint(downloads_bp)
-app.register_blueprint(hapax_bp)
-app.register_blueprint(batch_bp)
-app.register_blueprint(api_docs_bp)
-app.register_blueprint(fusion_bp)
+# Register blueprints with environment-aware prefix.
+# On Marvin: API_PREFIX="" (Apache strips /api via WSGIScriptAlias)
+# On dev: API_PREFIX="/api" (Flask handles the full URL)
+admin_prefix = f"{API_PREFIX}/admin" if API_PREFIX else "/admin"
+intertext_prefix = f"{API_PREFIX}/intertexts" if API_PREFIX else None  # None = use blueprint's own /intertexts
 
-app_logger.info("Blueprints registered.")
+app.register_blueprint(admin_bp, url_prefix=admin_prefix)
+app.register_blueprint(search_bp, url_prefix=API_PREFIX or None)
+app.register_blueprint(corpus_bp, url_prefix=API_PREFIX or None)
+app.register_blueprint(intertext_bp, url_prefix=intertext_prefix)
+app.register_blueprint(downloads_bp, url_prefix=API_PREFIX or None)
+app.register_blueprint(hapax_bp, url_prefix=API_PREFIX or None)
+app.register_blueprint(batch_bp, url_prefix=API_PREFIX or None)
+app.register_blueprint(api_docs_bp, url_prefix=API_PREFIX or None)
+app.register_blueprint(fusion_bp, url_prefix=API_PREFIX or None)
+
+app_logger.info(f"Blueprints registered (API_PREFIX='{API_PREFIX}', env={DEPLOYMENT_ENV})")
 
 
 # =============================================================================
@@ -435,7 +459,8 @@ def legacy_frontend():
 @app.errorhandler(404)
 def page_not_found(e):
     """Handle 404 errors by serving the SPA for client-side routing"""
-    if request.path.startswith('/api/'):
+    api_path = f"{API_PREFIX}/" if API_PREFIX else "/api/"
+    if request.path.startswith(api_path):
         return jsonify({'error': 'Not found'}), 404
     static_folder = app.static_folder or '../frontend'
     return send_from_directory(static_folder, 'index.html')
@@ -445,13 +470,13 @@ def page_not_found(e):
 # AUTHENTICATION API ROUTES
 # =============================================================================
 
-@app.route('/api/auth/user')
+@api_route('/auth/user')
 def get_auth_user():
     """Get current logged-in user info"""
     user_info = get_current_user_info()
     return jsonify({'user': user_info})
 
-@app.route('/api/auth/saved-searches')
+@api_route('/auth/saved-searches')
 def get_saved_searches():
     """Get saved searches for current user"""
     if not current_user.is_authenticated:
@@ -477,7 +502,7 @@ def get_saved_searches():
         'target_unit_type': s.target_unit_type,
     } for s in searches])
 
-@app.route('/api/auth/saved-searches', methods=['POST'])
+@api_route('/auth/saved-searches', methods=['POST'])
 def save_search():
     """Save a search configuration for current user"""
     if not current_user.is_authenticated:
@@ -506,7 +531,7 @@ def save_search():
     db.session.commit()
     return jsonify({'success': True, 'id': search.id})
 
-@app.route('/api/auth/saved-searches/<int:search_id>', methods=['DELETE'])
+@api_route('/auth/saved-searches/<int:search_id>', methods=['DELETE'])
 def delete_saved_search(search_id):
     """Delete a saved search"""
     if not current_user.is_authenticated:
@@ -519,7 +544,7 @@ def delete_saved_search(search_id):
     db.session.commit()
     return jsonify({'success': True})
 
-@app.route('/api/auth/profile', methods=['PUT'])
+@api_route('/auth/profile', methods=['PUT'])
 def update_profile():
     """Update user profile (institution)"""
     if not current_user.is_authenticated:
@@ -529,7 +554,7 @@ def update_profile():
     db.session.commit()
     return jsonify({'success': True, 'user': get_current_user_info()})
 
-@app.route('/api/auth/orcid/link', methods=['POST'])
+@api_route('/auth/orcid/link', methods=['POST'])
 def link_orcid():
     """Link an ORCID to user account (manual entry for now)"""
     if not current_user.is_authenticated:
@@ -547,7 +572,7 @@ def link_orcid():
         return jsonify({'success': True, 'user': get_current_user_info()})
     return jsonify({'error': 'Failed to update ORCID'}), 500
 
-@app.route('/api/auth/orcid/unlink', methods=['POST'])
+@api_route('/auth/orcid/unlink', methods=['POST'])
 def unlink_orcid():
     """Remove ORCID from user account"""
     if not current_user.is_authenticated:
@@ -567,13 +592,13 @@ def health():
     return jsonify({"status": "ok", "message": "Tesserae V6 is running"})
 
 
-@app.route('/api/health')
+@api_route('/health')
 def api_health():
     """API health check endpoint"""
     return jsonify({"status": "ok", "message": "Tesserae V6 is running"})
 
 
-@app.route('/api/version')
+@api_route('/version')
 def api_version():
     """Get version and last updated info from git"""
     import subprocess
@@ -607,7 +632,7 @@ def api_version():
 # TEXT AND CORPUS API ROUTES
 # =============================================================================
 
-@app.route('/api/check-meter')
+@api_route('/check-meter')
 def check_meter():
     """Check if source and target texts are suitable for metrical analysis (both poetry)"""
     source = request.args.get('source', '')
@@ -629,7 +654,7 @@ def check_meter():
     
     return jsonify({'available': True})
 
-@app.route('/api/texts')
+@api_route('/texts')
 def get_texts():
     language = request.args.get('language', 'la')
     lang_dir = os.path.join(TEXTS_DIR, language)
@@ -647,7 +672,7 @@ def get_texts():
     
     return jsonify(texts)
 
-@app.route('/api/authors')
+@api_route('/authors')
 def get_authors():
     language = request.args.get('language', 'la')
     lang_dir = os.path.join(TEXTS_DIR, language)
@@ -673,12 +698,12 @@ def get_authors():
     
     return jsonify(result)
 
-@app.route('/api/author-dates')
+@api_route('/author-dates')
 def get_public_author_dates():
     """Get author dates for timeline visualization (public endpoint)"""
     return jsonify(AUTHOR_DATES)
 
-@app.route('/api/texts/hierarchy')
+@api_route('/texts/hierarchy')
 def get_texts_hierarchy():
     """Get hierarchical text structure: Author -> Work -> Parts"""
     language = request.args.get('language', 'la')
@@ -722,7 +747,7 @@ def get_texts_hierarchy():
 # These routes handle the core search functionality for finding parallel
 # passages between source and target texts using various matching algorithms.
 
-@app.route('/api/search', methods=['POST'])
+@api_route('/search', methods=['POST'])
 def search():
     try:
         data = request.get_json()
@@ -861,16 +886,16 @@ def search():
         traceback.print_exc()
         return jsonify({"error": str(e)})
 
-@app.route('/api/cache/stats')
+@api_route('/cache/stats')
 def cache_stats():
     return jsonify(get_cache_stats())
 
-@app.route('/api/cache/clear', methods=['POST'])
+@api_route('/cache/clear', methods=['POST'])
 def cache_clear():
     count = clear_cache()
     return jsonify({"cleared": count})
 
-@app.route('/api/stoplist', methods=['POST'])
+@api_route('/stoplist', methods=['POST'])
 def get_stoplist():
     """Get the computed stoplist for given texts and settings"""
     data = request.get_json() or {}
@@ -905,7 +930,7 @@ def get_stoplist():
     except Exception as e:
         return jsonify({'error': str(e), 'stopwords': []})
 
-@app.route('/api/stats')
+@api_route('/stats')
 def get_stats():
     stats = {
         'languages': {},
@@ -924,7 +949,7 @@ def get_stats():
     
     return jsonify(stats)
 
-@app.route('/api/text/<path:text_id>')
+@api_route('/text/<path:text_id>')
 def get_text_content(text_id):
     """Get the full content of a text file"""
     language = request.args.get('language', 'la')
@@ -965,7 +990,7 @@ def get_text_content(text_id):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@app.route('/api/text/<path:text_id>/lines')
+@api_route('/text/<path:text_id>/lines')
 def get_text_lines(text_id):
     """Get lines from a text file for browsing"""
     language = request.args.get('language', '')
@@ -1008,7 +1033,7 @@ def get_text_lines(text_id):
         return jsonify({'error': str(e), 'lines': []}), 500
 
 
-@app.route('/api/frequencies/<language>')
+@api_route('/frequencies/<language>')
 def get_frequencies(language):
     """Get cached corpus frequencies for a language"""
     freq_data = get_corpus_frequencies(language, text_processor)
@@ -1023,7 +1048,7 @@ def get_frequencies(language):
         })
     return jsonify({'error': 'No frequency data available'}), 404
 
-@app.route('/api/frequencies/recalculate', methods=['POST'])
+@api_route('/frequencies/recalculate', methods=['POST'])
 def recalculate_frequencies():
     """Recalculate corpus frequencies for a language"""
     data = request.get_json() or {}
@@ -1039,7 +1064,7 @@ def recalculate_frequencies():
         })
     return jsonify({'error': 'Failed to recalculate frequencies'}), 500
 
-@app.route('/api/texts/preview', methods=['POST'])
+@api_route('/texts/preview', methods=['POST'])
 def preview_text():
     """Preview how text will be chunked into units"""
     data = request.get_json() or {}
@@ -1083,7 +1108,7 @@ def preview_text():
         'errors': errors
     })
 
-@app.route('/api/texts/add', methods=['POST'])
+@api_route('/texts/add', methods=['POST'])
 def add_text():
     """Add a new text to the corpus"""
     data = request.get_json() or {}
@@ -1144,7 +1169,7 @@ def add_text():
 # These routes enable searching for words/phrases across the entire corpus
 # using the pre-built inverted index for fast lookups.
 
-@app.route('/api/line-search', methods=['POST'])
+@api_route('/line-search', methods=['POST'])
 def line_search():
     """
     Search for words/phrases across the corpus with optional filters.
@@ -1513,7 +1538,7 @@ def line_search():
         return jsonify({'error': str(e)}), 500
 
 
-@app.route('/api/line-search-parallel', methods=['POST'])
+@api_route('/line-search-parallel', methods=['POST'])
 def line_search_parallel():
     """
     Search a single line against the entire corpus using inverted index for speed.
@@ -1965,7 +1990,7 @@ def line_search_parallel():
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
-@app.route('/api/corpus-search', methods=['POST'])
+@api_route('/corpus-search', methods=['POST'])
 def corpus_search():
     """Search the entire corpus for lines containing specific lemmas using inverted index"""
     try:
@@ -2106,7 +2131,7 @@ def corpus_search():
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
-@app.route('/api/request', methods=['POST'])
+@api_route('/request', methods=['POST'])
 def submit_request():
     """Submit a text upload request with optional file attachment"""
     # Handle both JSON and multipart form data
@@ -2174,7 +2199,7 @@ def submit_request():
 # USER FEEDBACK AND SUPPORT API ROUTES
 # =============================================================================
 
-@app.route('/api/feedback', methods=['POST'])
+@api_route('/feedback', methods=['POST'])
 def submit_feedback():
     """Submit user feedback/suggestion"""
     data = request.get_json() or {}
@@ -2209,7 +2234,7 @@ def submit_feedback():
         app_logger.error(f"Failed to submit feedback: {e}")
         return jsonify({'error': str(e)}), 500
 
-@app.route('/api/admin/login', methods=['POST'])
+@api_route('/admin/login', methods=['POST'])
 def admin_login():
     """Verify admin password"""
     data = request.get_json() or {}
@@ -2223,7 +2248,7 @@ def admin_login():
     else:
         return jsonify({'error': 'Invalid password'}), 401
 
-@app.route('/api/admin/requests')
+@api_route('/admin/requests')
 def get_requests():
     """Get all text requests (admin only)"""
     password = request.headers.get('X-Admin-Password', '')
@@ -2262,7 +2287,7 @@ def get_requests():
         app_logger.error(f"Failed to get text requests: {e}")
         return jsonify({'error': str(e)}), 500
 
-@app.route('/api/admin/requests/<int:request_id>', methods=['PUT'])
+@api_route('/admin/requests/<int:request_id>', methods=['PUT'])
 def update_request(request_id):
     """Update a text request status (admin only)"""
     password = request.headers.get('X-Admin-Password', '')
@@ -2286,7 +2311,7 @@ def update_request(request_id):
         app_logger.error(f"Failed to update text request: {e}")
         return jsonify({'error': str(e)}), 500
 
-@app.route('/api/admin/requests/<int:request_id>/approve', methods=['POST'])
+@api_route('/admin/requests/<int:request_id>/approve', methods=['POST'])
 def approve_and_add_text(request_id):
     """Approve a request and add the text to corpus (admin only)"""
     password = request.headers.get('X-Admin-Password', '')
@@ -2365,7 +2390,7 @@ def approve_and_add_text(request_id):
         app_logger.error(f"Failed to approve text request: {e}")
         return jsonify({'error': str(e)}), 500
 
-@app.route('/api/admin/requests/<int:request_id>', methods=['DELETE'])
+@api_route('/admin/requests/<int:request_id>', methods=['DELETE'])
 def delete_request(request_id):
     """Delete a text request (admin only)"""
     password = request.headers.get('X-Admin-Password', '')
@@ -2380,7 +2405,7 @@ def delete_request(request_id):
         app_logger.error(f"Failed to delete text request: {e}")
         return jsonify({'error': str(e)}), 500
 
-@app.route('/api/admin/author-dates', methods=['GET'])
+@api_route('/admin/author-dates', methods=['GET'])
 def get_author_dates():
     """Get all author dates (admin only)"""
     password = request.headers.get('X-Admin-Password', '')
@@ -2389,7 +2414,7 @@ def get_author_dates():
     
     return jsonify(AUTHOR_DATES)
 
-@app.route('/api/admin/author-dates/<language>/<author_key>', methods=['PUT'])
+@api_route('/admin/author-dates/<language>/<author_key>', methods=['PUT'])
 def update_author_date(language, author_key):
     """Update or add an author date entry (admin only)"""
     global AUTHOR_DATES
@@ -2416,7 +2441,7 @@ def update_author_date(language, author_key):
     
     return jsonify({'success': True})
 
-@app.route('/api/admin/author-dates/<language>/<author_key>', methods=['DELETE'])
+@api_route('/admin/author-dates/<language>/<author_key>', methods=['DELETE'])
 def delete_author_date(language, author_key):
     """Delete an author date entry (admin only)"""
     global AUTHOR_DATES
@@ -2432,7 +2457,7 @@ def delete_author_date(language, author_key):
     
     return jsonify({'error': 'Entry not found'}), 404
 
-@app.route('/api/admin/lemma-cache/stats', methods=['GET'])
+@api_route('/admin/lemma-cache/stats', methods=['GET'])
 def lemma_cache_stats():
     """Get lemma cache statistics (admin only)"""
     password = request.headers.get('X-Admin-Password', '')
@@ -2441,7 +2466,7 @@ def lemma_cache_stats():
     
     return jsonify(get_lemma_cache_stats())
 
-@app.route('/api/admin/lemma-cache/rebuild', methods=['POST'])
+@api_route('/admin/lemma-cache/rebuild', methods=['POST'])
 def rebuild_lemma_cache_endpoint():
     """Rebuild lemma cache for a language (admin only)"""
     password = request.headers.get('X-Admin-Password', '')
@@ -2457,7 +2482,7 @@ def rebuild_lemma_cache_endpoint():
     result = rebuild_lemma_cache(language, text_processor)
     return jsonify(result)
 
-@app.route('/api/admin/lemma-cache/clear', methods=['POST'])
+@api_route('/admin/lemma-cache/clear', methods=['POST'])
 def clear_lemma_cache_endpoint():
     """Clear lemma cache (admin only)"""
     password = request.headers.get('X-Admin-Password', '')
@@ -2473,12 +2498,12 @@ def clear_lemma_cache_endpoint():
     result = clear_lemma_cache(language)
     return jsonify(result)
 
-@app.route('/api/features/weights', methods=['GET'])
+@api_route('/features/weights', methods=['GET'])
 def get_feature_weights():
     """Get current feature weights"""
     return jsonify(feature_extractor.get_weights())
 
-@app.route('/api/features/weights', methods=['POST'])
+@api_route('/features/weights', methods=['POST'])
 def update_feature_weights():
     """Update feature weights (admin only)"""
     password = request.headers.get('X-Admin-Password', '')
@@ -2493,7 +2518,7 @@ def update_feature_weights():
     else:
         return jsonify({'error': 'Failed to save weights'}), 500
 
-@app.route('/api/features/toggle', methods=['POST'])
+@api_route('/features/toggle', methods=['POST'])
 def toggle_feature():
     """Toggle a feature on/off (admin only)"""
     password = request.headers.get('X-Admin-Password', '')
@@ -2523,7 +2548,7 @@ def toggle_feature():
     else:
         return jsonify({'error': 'Failed to save'}), 500
 
-@app.route('/api/admin/feedback', methods=['GET'])
+@api_route('/admin/feedback', methods=['GET'])
 def get_feedback():
     """Get all feedback submissions (admin only)"""
     password = request.headers.get('X-Admin-Password', '')
@@ -2556,7 +2581,7 @@ def get_feedback():
         app_logger.error(f"Failed to get feedback: {e}")
         return jsonify({'error': str(e)}), 500
 
-@app.route('/api/admin/feedback/<int:feedback_id>', methods=['PUT'])
+@api_route('/admin/feedback/<int:feedback_id>', methods=['PUT'])
 def update_feedback(feedback_id):
     """Update feedback status (admin only)"""
     password = request.headers.get('X-Admin-Password', '')
@@ -2580,7 +2605,7 @@ def update_feedback(feedback_id):
         app_logger.error(f"Failed to update feedback: {e}")
         return jsonify({'error': str(e)}), 500
 
-@app.route('/api/admin/settings', methods=['GET'])
+@api_route('/admin/settings', methods=['GET'])
 def get_settings():
     """Get admin settings (admin only)"""
     password = request.headers.get('X-Admin-Password', '')
@@ -2598,7 +2623,7 @@ def get_settings():
         app_logger.error(f"Failed to get settings: {e}")
         return jsonify({'error': str(e)}), 500
 
-@app.route('/api/admin/settings', methods=['POST'])
+@api_route('/admin/settings', methods=['POST'])
 def update_settings():
     """Update admin settings (admin only)"""
     password = request.headers.get('X-Admin-Password', '')
@@ -2619,7 +2644,7 @@ def update_settings():
         app_logger.error(f"Failed to update settings: {e}")
         return jsonify({'error': str(e)}), 500
 
-@app.route('/api/admin/user-data', methods=['GET'])
+@api_route('/admin/user-data', methods=['GET'])
 def get_user_data():
     """Get all data for a user by email (GDPR data export)"""
     password = request.headers.get('X-Admin-Password', '')
@@ -2680,7 +2705,7 @@ def get_user_data():
         app_logger.error(f"Failed to get user data: {e}")
         return jsonify({'error': str(e)}), 500
 
-@app.route('/api/admin/analytics', methods=['GET'])
+@api_route('/admin/analytics', methods=['GET'])
 def get_analytics():
     """Get search analytics (admin only)"""
     password = request.headers.get('X-Admin-Password', '')

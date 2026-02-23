@@ -25,7 +25,7 @@ from backend.cache import get_cached_results, save_cached_results
 
 logger = get_logger('fusion')
 
-fusion_bp = Blueprint('fusion', __name__, url_prefix='/api')
+fusion_bp = Blueprint('fusion', __name__)
 
 # Module-level references (injected via init_fusion_blueprint)
 _matcher = None
