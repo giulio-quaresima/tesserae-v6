@@ -113,7 +113,8 @@ function App() {
     max_distance: 999,
     max_results: 0,
     bigram_boost: false,
-    stoplist: false
+    stoplist: false,
+    use_meter: true
   });
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
   
@@ -292,6 +293,17 @@ function App() {
   useEffect(() => {
     setSessionValue('targetText', targetText);
   }, [targetText]);
+
+  // Auto-enable meter when both texts are poetry, auto-disable when not
+  useEffect(() => {
+    if (!sourceText || !targetText) return;
+    fetch(`/api/check-meter?source=${encodeURIComponent(sourceText)}&target=${encodeURIComponent(targetText)}&language=${activeTab}`)
+      .then(res => res.json())
+      .then(data => {
+        setSettings(prev => ({ ...prev, use_meter: data.available }));
+      })
+      .catch(() => {});
+  }, [sourceText, targetText, activeTab]);
 
   const handleSearch = useCallback(async () => {
     if (!sourceText || !targetText) {
