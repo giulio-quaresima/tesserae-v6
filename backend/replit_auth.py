@@ -48,7 +48,9 @@ def init_auth(app):
         return User.query.get(user_id)
     
     replit_bp = make_replit_blueprint()
-    app.register_blueprint(replit_bp, url_prefix="/api/auth")
+    from backend.app import API_PREFIX
+    auth_prefix = f"{API_PREFIX}/auth" if API_PREFIX else "/auth"
+    app.register_blueprint(replit_bp, url_prefix=auth_prefix)
     
     return replit_bp
 

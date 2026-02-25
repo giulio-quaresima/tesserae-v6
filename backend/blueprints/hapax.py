@@ -35,6 +35,23 @@ from backend.text_processor import get_latin_lemma_table, get_greek_lemma_table
 
 logger = get_logger('hapax')
 
+# Greek display forms: normalized lemma -> accented form for display
+_greek_display_forms = None
+def get_greek_display_forms():
+    """Load cached Greek display forms (normalized → accented) from JSON.
+    Returns dict mapping stripped lemma keys to proper dictionary forms."""
+    global _greek_display_forms
+    if _greek_display_forms is None:
+        display_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
+                                     'data', 'lemma_tables', 'greek_display_forms.json')
+        if os.path.exists(display_path):
+            with open(display_path, 'r', encoding='utf-8') as f:
+                _greek_display_forms = json.load(f)
+            logger.info(f"Loaded {len(_greek_display_forms)} Greek display forms")
+        else:
+            _greek_display_forms = {}
+    return _greek_display_forms
+
 
 # =============================================================================
 # STOPLIST DEFINITIONS
@@ -161,15 +178,16 @@ _latin_lemma_table = {}
 _greek_lemma_table = {}
 _latin_valid_lemmas = set()
 _greek_valid_lemmas = set()
-_greek_display_forms = {}
 _greek_text_forms = {}
 
 
 def load_greek_display_forms():
-    """Load mapping from normalized Greek to proper dictionary forms with diacritics"""
+    """Build Greek display form lookup from corpus data files.
+    Loads normalized → accented form mapping from greek_display_forms.json
+    and text form fallback from greek_text_forms.json."""
     global _greek_display_forms, _greek_text_forms
-    
-    if _greek_display_forms:
+
+    if _greek_display_forms is not None:
         return
     
     base_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
@@ -194,7 +212,8 @@ def load_greek_display_forms():
 
 
 def normalize_to_greek(text):
-    """Convert Latin lookalike characters to Greek equivalents"""
+    """Normalize string for Greek display form lookup.
+    Converts Latin lookalike characters (a→α, b→β, etc.) to Greek equivalents."""
     latin_to_greek = {
         'a': 'α', 'b': 'β', 'e': 'ε', 'h': 'η', 'i': 'ι', 'k': 'κ',
         'm': 'μ', 'n': 'ν', 'o': 'ο', 'p': 'ρ', 't': 'τ', 'u': 'υ',
@@ -574,7 +593,8 @@ def get_original_word_form(text_id, ref, position, language):
 
 
 def strip_punctuation(word):
-    """Remove trailing/leading punctuation from a word"""
+    """Remove leading/trailing punctuation from a token, preserving Greek diacritics.
+    Also strips stray combining marks at word boundaries."""
     import re
     import unicodedata
     # Strip common punctuation and combining marks at word boundaries
@@ -588,14 +608,15 @@ def strip_punctuation(word):
 
 
 def fix_final_sigma(word):
-    """Convert medial sigma at word end to final sigma for Greek"""
+    """Convert medial sigma (σ) at word end to final sigma (ς) for Greek display."""
     if word and word[-1] == 'σ':
         return word[:-1] + 'ς'
     return word
 
 
 def fix_greek_combining(word):
-    """Fix malformed Greek where combining marks come before base letters"""
+    """Fix malformed Greek where combining marks appear before base letters.
+    Reorders so combining diacritics follow their base character (NFC-like)."""
     import unicodedata
     if not word:
         return word
@@ -619,44 +640,229 @@ def fix_greek_combining(word):
     return ''.join(result)
 
 
+def strip_latin_enclitics(word):
+    """Strip common Latin enclitics (-que, -ne, -ve/-ue) from a word.
+    Conservative: only strips -que (most common and unambiguous).
+    -ne and -ve are too often part of the stem (e.g., omne, nave)."""
+    if not word or len(word) < 6:
+        return word
+    lower = word.lower().replace('v', 'u')
+    # Words where -que is part of the stem, not an enclitic
+    _que_whole_words = {
+        'usque', 'quoque', 'ubique', 'undique', 'utrique', 'utroque',
+        'neque', 'atque', 'absque', 'itaque', 'namque', 'quisque',
+        'quinque', 'denique', 'plerumque', 'plerique', 'cumque',
+        'quandoque', 'quacumque', 'quocumque', 'quoscumque'
+    }
+    if lower.endswith('que'):
+        if lower not in _que_whole_words:
+            return word[:-3]
+    return word
+
+
+def clean_lemma_key(lemma):
+    """Clean up lemma notation for display and matching.
+    Removes prefix separators (de_-suesco -> desuesco, ad-pello -> adpello)
+    and trailing homograph numbers (eo1 -> eo, edo1 -> edo)."""
+    import re
+    if not lemma:
+        return lemma
+    # Remove prefix separators: _- or single -
+    cleaned = lemma.replace('_-', '')
+    # Only remove hyphens that separate prefix from stem (not in Greek or if hyphen is the whole thing)
+    if '-' in cleaned and len(cleaned) > 2:
+        cleaned = cleaned.replace('-', '')
+    # Remove trailing homograph disambiguation numbers
+    cleaned = re.sub(r'\d+$', '', cleaned)
+    return cleaned or lemma
+
+
+def word_matches_lemma(word, lemma, language):
+    """Check if a surface word plausibly matches a lemma (for position validation).
+    Handles Latin u/v and i/j normalization, enclitics, prefix notation,
+    Greek diacritics, and stem matching."""
+    import unicodedata as _ucd
+    if not word or not lemma:
+        return False
+    w = word.lower()
+    # Clean lemma: remove prefix separators and trailing numbers
+    l = clean_lemma_key(lemma).lower()
+    if language == 'la':
+        w = w.replace('v', 'u').replace('j', 'i')
+        l = l.replace('v', 'u').replace('j', 'i')
+        if w == l:
+            return True
+        # Try after stripping enclitics
+        w_stripped = strip_latin_enclitics(word).lower().replace('v', 'u').replace('j', 'i')
+        if w_stripped != w and w_stripped == l:
+            return True
+        # Stem match: shared prefix of at least 4 chars (Latin inflection)
+        min_stem = min(4, len(l))
+        if len(l) >= 3:
+            if len(w) >= min_stem and w[:min_stem] == l[:min_stem]:
+                return True
+            if len(w_stripped) >= min_stem and w_stripped[:min_stem] == l[:min_stem]:
+                return True
+    elif language == 'grc':
+        # Strip diacritics and normalize sigma for comparison
+        w_base = ''.join(c for c in _ucd.normalize('NFD', w) if not _ucd.combining(c))
+        l_base = ''.join(c for c in _ucd.normalize('NFD', l) if not _ucd.combining(c))
+        w_base = w_base.replace('ς', 'σ')
+        l_base = l_base.replace('ς', 'σ')
+        if w_base == l_base:
+            return True
+        min_stem = min(4, len(l_base))
+        if len(l_base) >= 3 and len(w_base) >= min_stem and w_base[:min_stem] == l_base[:min_stem]:
+            return True
+    else:
+        # English
+        if w == l:
+            return True
+        min_stem = min(4, len(l))
+        if len(l) >= 3 and len(w) >= min_stem and w[:min_stem] == l[:min_stem]:
+            return True
+    return False
+
+
+def _find_lemma_token_in_text(text, lemma, language):
+    """Search line text for a token matching the lemma. Returns (token, index) or (None, -1).
+    Strips enclitics from the returned token for clean display.
+    This is a fallback when index positions are misaligned."""
+    if not text:
+        return None, -1
+    tokens = text.split()
+    for idx, token in enumerate(tokens):
+        clean = strip_punctuation(token)
+        if clean and word_matches_lemma(clean, lemma, language):
+            # Strip enclitics for clean display
+            if language == 'la':
+                clean = strip_latin_enclitics(clean)
+            return clean, idx
+    return None, -1
+
+
 def get_display_form(lemma, language, locations):
-    """Get a display form with diacritics by sampling from locations"""
+    """Get a display form with diacritics by sampling from locations.
+    Validates that the word at the indexed position actually matches the lemma;
+    falls back to searching the line text if positions are misaligned."""
     import unicodedata
-    
+
     display = None
     if locations:
-        for loc in locations[:3]:
+        for loc in locations[:5]:
             positions = loc.get('positions', [])
+            # Try position-based lookup first (fast path)
             if positions:
                 word = get_original_word_form(loc['text_id'], loc['ref'], positions[0], language)
                 if word:
                     word = strip_punctuation(word)
+                    if word and word_matches_lemma(word, lemma, language):
+                        if language == 'la':
+                            word = strip_latin_enclitics(word)
+                        if language == 'grc':
+                            word = fix_greek_combining(word)
+                            display = unicodedata.normalize('NFC', word)
+                        else:
+                            display = word
+                        break
+            # Fallback: search through line text for a matching token
+            if not display:
+                token, _ = _find_lemma_token_in_text(loc.get('text', ''), lemma, language)
+                if token:
                     if language == 'grc':
-                        # Fix malformed combining character order, then normalize to NFC
-                        word = fix_greek_combining(word)
-                        display = unicodedata.normalize('NFC', word)
+                        token = fix_greek_combining(token)
+                        display = unicodedata.normalize('NFC', token)
                     else:
-                        # For Latin, lowercase and handle u/v normalization
-                        display = word.lower()
+                        display = token
                     break
-    
+
     # Fallback to Morpheus lookup if Greek and no location found
     if not display and language == 'grc':
         display = get_greek_display_form(lemma)
-    
-    # If still no display, use the lemma itself
+
+    # If still no display, use the lemma itself (cleaned up)
     if not display:
-        display = lemma
-    
+        display = clean_lemma_key(lemma)
+
     # Convert trailing medial sigma to final sigma for Greek
     if language == 'grc' and display and display.endswith('σ'):
         display = display[:-1] + 'ς'
-    
+
     return display
 
 
+def is_proper_noun(lemma, language, locations):
+    """
+    Determine if a word is a proper noun by checking capitalization patterns
+    across multiple corpus occurrences.
+
+    Instead of trusting index positions (which may be misaligned), searches
+    the actual line text for tokens matching the lemma and checks their case.
+
+    Uses ratio-based detection: if >= 50% of non-line-initial occurrences
+    are capitalized, the word is a proper noun. This tolerates prose authors
+    who sometimes lowercase proper adjectives (e.g., Pliny) while catching
+    borderline cases like Caspia (57%) and Hesperidum (50%).
+
+    Works for Latin, Greek, and English.
+    """
+    if not locations:
+        return False
+
+    uppercase_non_initial = 0
+    lowercase_non_initial = 0
+    uppercase_initial = 0
+    lowercase_initial = 0
+
+    for loc in locations[:20]:
+        text = loc.get('text', '')
+        if not text:
+            continue
+        tokens = text.split()
+        for idx, token in enumerate(tokens):
+            clean = strip_punctuation(token)
+            if not clean:
+                continue
+            if not word_matches_lemma(clean, lemma, language):
+                continue
+
+            is_upper = clean[0].isupper()
+            is_line_initial = (idx == 0)
+
+            if is_line_initial:
+                if is_upper:
+                    uppercase_initial += 1
+                else:
+                    lowercase_initial += 1
+            else:
+                if is_upper:
+                    uppercase_non_initial += 1
+                else:
+                    lowercase_non_initial += 1
+            break  # Only count first match per line to avoid double-counting
+
+    # Use ratio-based detection for non-initial positions
+    total_non_initial = uppercase_non_initial + lowercase_non_initial
+    if total_non_initial > 0:
+        uppercase_ratio = uppercase_non_initial / total_non_initial
+        # >= 50% uppercase in non-initial positions -> proper noun
+        # Catches borderline cases (Caspia 57%, Hesperidum 50%)
+        if uppercase_ratio >= 0.5:
+            return True
+        return False
+
+    # Only line-initial evidence available — use as tie-breaker
+    # If always uppercase at line start and never lowercase, likely proper noun
+    # But this is weak evidence, so require multiple occurrences
+    if uppercase_initial >= 2 and lowercase_initial == 0:
+        return True
+
+    return False
+
+
 def init_hapax_blueprint(texts_dir, text_processor, author_dates):
-    """Initialize blueprint with required dependencies"""
+    """Initialize hapax blueprint with shared dependencies (texts dir, processor, dates).
+    Called once at app startup to inject references needed by route handlers."""
     global _texts_dir, _text_processor, _author_dates
     _texts_dir = texts_dir
     _text_processor = text_processor
@@ -885,15 +1091,25 @@ def get_rare_lemmata():
         include_locations = request.args.get('include_locations', 'false').lower() == 'true'
         
         rare_words = get_rare_words_from_cache(language, max_occ)
-        
-        filtered = {k: v for k, v in rare_words.items() if v >= min_occ}
-        
-        sorted_words = sorted(filtered.items(), key=lambda x: (x[1], x[0]))[:limit]
-        
+
+        # Strip leading/trailing whitespace from lemma keys
+        cleaned = {}
+        for k, v in rare_words.items():
+            clean_k = k.strip()
+            if clean_k and v >= min_occ:
+                cleaned[clean_k] = cleaned.get(clean_k, 0) + v
+
+        sorted_words = sorted(cleaned.items(), key=lambda x: (x[1], x[0]))[:limit]
+
+        # Load Greek display forms for accented display
+        display_forms = get_greek_display_forms() if language == 'grc' else {}
+
         results = []
         for lemma, count in sorted_words:
+            display = display_forms.get(lemma, lemma) if display_forms else lemma
             entry = {
                 'lemma': lemma,
+                'display': display,
                 'count': count,
                 'language': language
             }
@@ -903,7 +1119,7 @@ def get_rare_lemmata():
         
         return jsonify({
             'language': language,
-            'total_rare_words': len(filtered),
+            'total_rare_words': len(cleaned),
             'returned': len(results),
             'max_occurrences': max_occ,
             'min_occurrences': min_occ,
@@ -991,6 +1207,8 @@ def regenerate_rare_words_cache(language):
                 if normalized not in _greek_valid_lemmas:
                     continue
                 display = get_greek_display_form(normalized)
+                # Ensure proper NFC normalization (combining marks after base chars)
+                display = unicodedata.normalize('NFC', display)
                 rare_words.append({'lemma': normalized, 'display': display, 'count': count})
     
     elif language == 'en':
@@ -1035,7 +1253,15 @@ def regenerate_rare_words_cache(language):
         except Exception as e:
             logger.debug(f"Could not look up location for {lemma}: {e}")
     
-    unique_rare = sorted(seen.values(), key=lambda x: x.get('display', x.get('lemma', '')).lower().lstrip('*'))
+    def greek_sort_key(x):
+        """Sort by base letter form so accented and unaccented entries interleave"""
+        display = x.get('display', x.get('lemma', '')).lower().lstrip('*')
+        # Normalize to base characters for sorting (Ἀ sorts with α, not after ω)
+        normalized = unicodedata.normalize('NFD', display)
+        base = ''.join(c for c in normalized if not unicodedata.combining(c))
+        return base
+
+    unique_rare = sorted(seen.values(), key=greek_sort_key)
     
     cache_dir = os.path.join('cache', 'rare_words')
     os.makedirs(cache_dir, exist_ok=True)
@@ -1083,12 +1309,15 @@ def get_rare_lemmata_full():
         filtered = matching[:limit]
         
         # Format response using pre-computed display forms
+        import unicodedata as _ucd
         results = []
         for w in filtered:
             display = w.get('display', w.get('lemma', ''))
             # Strip leading asterisks (denote reconstructed forms in linguistics)
             if display.startswith('*'):
                 display = display[1:]
+            # Ensure proper NFC normalization for consistent browser rendering
+            display = _ucd.normalize('NFC', display)
             results.append({
                 'lemma': display,
                 'count': w['count'],
@@ -1202,6 +1431,7 @@ def hapax_search():
         source_language: source text language (for cross-lingual)
         target_language: target text language (for cross-lingual)
         max_occurrences: max corpus frequency to consider rare (default: 10)
+        exclude_proper_nouns: filter out proper nouns like names/places (default: false)
     """
     try:
         data = request.get_json() or {}
@@ -1211,6 +1441,9 @@ def hapax_search():
         source_language = data.get('source_language', language)
         target_language = data.get('target_language', language)
         max_occ = int(data.get('max_occurrences', 50))
+        exclude_proper = data.get('exclude_proper_nouns', False)
+        if isinstance(exclude_proper, str):
+            exclude_proper = exclude_proper.lower() in ('true', '1', 'yes')
         
         if not source_id or not target_id:
             return jsonify({'error': 'Please select both source and target texts'}), 400
@@ -1283,27 +1516,52 @@ def hapax_search():
                         target_locations.append(loc)
             
             display_form = get_display_form(lemma, source_language, source_locations + target_locations)
-            
+
             if len(source_locations) > 0 and len(target_locations) > 0:
+                # Check if this word is a proper noun — corpus-wide OR local context
+                # Local context catches names like Achates that are always capitalized
+                # in the source/target but have lowercase homographs elsewhere in corpus
+                word_is_pn = (is_proper_noun(lemma, source_language, all_locations) or
+                              is_proper_noun(lemma, source_language, source_locations + target_locations))
+
+                # Lowercase display_form for non-proper-nouns that got capitalized
+                # from line-initial sampling (e.g., "Fatalem" at start of a line)
+                if not word_is_pn and display_form and display_form[0].isupper():
+                    display_form = display_form[0].lower() + display_form[1:]
+
                 results.append({
                     'lemma': lemma,
                     'display_form': display_form,
                     'corpus_count': corpus_count,
+                    'is_proper_noun': word_is_pn,
                     'source_occurrences': len(source_locations),
                     'target_occurrences': len(target_locations),
                     'source_locations': source_locations,
                     'target_locations': target_locations,
                     'all_corpus_locations': all_locations
                 })
-        
+
+        # Apply proper noun filter if requested
+        proper_nouns_excluded = 0
+        if exclude_proper:
+            filtered = []
+            for r in results:
+                if r['is_proper_noun']:
+                    proper_nouns_excluded += 1
+                else:
+                    filtered.append(r)
+            results = filtered
+
         results.sort(key=lambda x: (x['corpus_count'], x['lemma']))
-        
+
         return jsonify({
             'source': source_id,
             'target': target_id,
             'source_language': source_language,
             'target_language': target_language,
             'max_occurrences': max_occ,
+            'exclude_proper_nouns': exclude_proper,
+            'proper_nouns_excluded': proper_nouns_excluded,
             'source_total_lemmas': len(source_lemmas),
             'target_total_lemmas': len(target_lemmas),
             'shared_lemmas': len(shared_lemmas),

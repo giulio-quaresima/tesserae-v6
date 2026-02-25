@@ -339,8 +339,18 @@ def get_greek_lookup():
         curated = _build_curated_lookup(CURATED_GREEK)
         v3_path = os.path.join(_DATA_DIR, 'fixed_greek_syn.csv')
         v3 = _load_v3_synonym_file(v3_path)
-        _GREEK_LOOKUP = _merge_lookups(curated, v3)
-        print(f"Loaded {len(_GREEK_LOOKUP)} Greek synonym entries (V3 + curated)")
+        merged = _merge_lookups(curated, v3)
+        # Normalize keys and values to strip diacritics — Greek lemmas from
+        # text processing are diacritic-free, so the lookup must match.
+        _GREEK_LOOKUP = {}
+        for key, synonyms in merged.items():
+            norm_key = _normalize_greek(key)
+            norm_syns = {_normalize_greek(s) for s in synonyms}
+            if norm_key in _GREEK_LOOKUP:
+                _GREEK_LOOKUP[norm_key] = _GREEK_LOOKUP[norm_key].union(norm_syns)
+            else:
+                _GREEK_LOOKUP[norm_key] = norm_syns
+        print(f"Loaded {len(_GREEK_LOOKUP)} Greek synonym entries (V3 + curated, diacritic-normalized)")
     return _GREEK_LOOKUP
 
 def find_synonyms(lemma: str, language: str) -> set:

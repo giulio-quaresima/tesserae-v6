@@ -27,12 +27,12 @@ def init_marvin_auth(app):
         return User.query.get(user_id)
     
     marvin_auth_bp = create_marvin_auth_blueprint()
-    
-    deployment_env = os.environ.get('DEPLOYMENT_ENV', 'replit')
-    if deployment_env == 'marvin':
-        app.register_blueprint(marvin_auth_bp, url_prefix="")
-    else:
-        app.register_blueprint(marvin_auth_bp, url_prefix="/api")
+
+    # Use API_PREFIX from app.py so auth routes match all other routes.
+    # Previously this checked DEPLOYMENT_ENV independently, causing a mismatch
+    # when DEPLOYMENT_ENV=marvin but DIRECT_SERVER=1 (dev server scenario).
+    from backend.app import API_PREFIX
+    app.register_blueprint(marvin_auth_bp, url_prefix=API_PREFIX or None)
     
     return marvin_auth_bp
 

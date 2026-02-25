@@ -1,6 +1,12 @@
+/**
+ * RareResultsDisplay — Renders hapax (rare word) and rare bigram search results.
+ * Handles result tables, Greek display normalization, dictionary links,
+ * word highlighting, proper noun filtering UI, and rarity distribution charts.
+ */
 import { useState, useCallback, useRef, useMemo } from 'react';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js';
 import { Bar } from 'react-chartjs-2';
+import { formatElapsedTime } from '../../utils/formatting';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
@@ -346,7 +352,7 @@ const RareResultsDisplay = ({
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-700 mb-4"></div>
         <p className="text-gray-600">Searching for {isHapax ? 'rare words' : 'rare pairs'}...</p>
         {elapsedTime > 0 && (
-          <p className="text-sm text-gray-500 mt-2">{elapsedTime.toFixed(1)}s</p>
+          <p className="text-sm text-gray-500 mt-2">{formatElapsedTime(elapsedTime)}</p>
         )}
       </div>
     );
@@ -380,7 +386,7 @@ const RareResultsDisplay = ({
           </h3>
           {elapsedTime > 0 && (
             <p className="text-sm text-gray-500">
-              Search completed in {elapsedTime.toFixed(2)}s
+              Search completed in {formatElapsedTime(elapsedTime)}
             </p>
           )}
         </div>
@@ -491,7 +497,7 @@ const RareResultsDisplay = ({
       <div className="space-y-3">
         {sortedResults.slice(0, displayLimit).map((r, i) => {
           // For hapax (rare words), show the lemma (dictionary form); for bigrams, use display forms
-          let displayName = isHapax ? (r.lemma || r.display_form) : (r.display_form || r.lemma || r.bigram);
+          let displayName = isHapax ? (r.display_form || r.lemma) : (r.display_form || r.lemma || r.bigram);
           if (!displayName && r.word1 && r.word2) {
             // Try to get actual words from location text that match the lemmas
             const srcText = r.source_locations?.[0]?.text || '';
@@ -548,9 +554,14 @@ const RareResultsDisplay = ({
                     </div>
                   )}
                   <span className="text-xs px-2 py-0.5 rounded bg-amber-100 text-amber-700">
-                    {r.rarity_percent ? `${r.rarity_percent.toFixed(1)}% rare` : 
+                    {r.rarity_percent ? `${r.rarity_percent.toFixed(1)}% rare` :
                      r.corpus_count ? `${r.corpus_count} in corpus` : isHapax ? 'rare' : ''}
                   </span>
+                  {isHapax && r.is_proper_noun && (
+                    <span className="text-xs px-1.5 py-0.5 rounded bg-blue-100 text-blue-700" title="Proper noun (name, place, etc.)">
+                      PN
+                    </span>
+                  )}
                   <span className="text-sm text-gray-500">
                     Source: {r.source_occurrences || 0} | Target: {r.target_occurrences || 0}
                   </span>
