@@ -22,6 +22,7 @@ DEPREL_CATEGORIES = {
 }
 
 def get_deprel_category(deprel):
+    """Map a UD dependency relation to its broad category (core, nominal, modifier, etc.)."""
     base_rel = deprel.split(':')[0] if ':' in deprel else deprel
     for category, rels in DEPREL_CATEGORIES.items():
         if base_rel in rels:
@@ -29,6 +30,7 @@ def get_deprel_category(deprel):
     return 'other'
 
 def normalize_text_for_lookup(text):
+    """Normalize text for treebank sentence lookup: lowercase, strip punctuation, collapse whitespace."""
     if not text:
         return ''
     text = text.lower()
@@ -38,7 +40,10 @@ def normalize_text_for_lookup(text):
 
 
 class SyntaxToken:
+    """A single token from a CoNLL-U parsed sentence with UD annotations."""
+
     def __init__(self, id, form, lemma, upos, xpos, feats, head, deprel, deps, misc):
+        """Store CoNLL-U fields: word form, lemma, POS tags, features, dependency head/relation."""
         self.id = id
         self.form = form
         self.lemma = lemma.lower() if lemma else ''
@@ -51,6 +56,7 @@ class SyntaxToken:
         self.misc = misc
         
     def _parse_feats(self, feats_str):
+        """Parse CoNLL-U feature string ('Case=Nom|Number=Sing') into a dict."""
         if not feats_str or feats_str == '_':
             return {}
         result = {}
@@ -62,7 +68,10 @@ class SyntaxToken:
 
 
 class SyntaxSentence:
+    """A parsed sentence with its tokens, dependency pattern, and role-extraction methods."""
+
     def __init__(self, sent_id, text, tokens):
+        """Initialize with sentence ID, raw text, and list of SyntaxToken objects."""
         self.sent_id = sent_id
         self.text = text
         self.normalized_text = normalize_text_for_lookup(text)
@@ -71,11 +80,13 @@ class SyntaxSentence:
         
     @property
     def dependency_pattern(self):
+        """Lazy-computed tuple of (UPOS, deprel, category) for non-punctuation tokens."""
         if self._dependency_pattern is None:
             self._dependency_pattern = self._compute_pattern()
         return self._dependency_pattern
     
     def _compute_pattern(self):
+        """Build the dependency pattern tuple from non-punctuation tokens."""
         pattern = []
         for tok in self.tokens:
             if tok.upos not in ['PUNCT']:
@@ -83,6 +94,7 @@ class SyntaxSentence:
         return tuple(pattern)
     
     def get_lemma_roles(self):
+        """Return dict mapping each lemma to its syntactic role (deprel, category, UPOS, feats)."""
         roles = {}
         for tok in self.tokens:
             if tok.lemma and tok.upos not in ['PUNCT', 'X']:
@@ -114,6 +126,7 @@ class SyntaxSentence:
         return {tok.deprel for tok in self.tokens if tok.upos not in ['PUNCT', 'X']}
     
     def get_structure_signature(self):
+        """Return sorted tuple of core dependency relations (nsubj, obj, etc.) as a structural fingerprint."""
         core_deps = []
         for tok in self.tokens:
             cat = get_deprel_category(tok.deprel)
@@ -123,11 +136,14 @@ class SyntaxSentence:
 
 
 class SyntaxIndex:
+    """Index of parsed sentences for fast lookup by normalized text or content words."""
+
     def __init__(self):
         self.sentences_by_text = {}
         self.sentences_by_words = defaultdict(list)
         
     def add_sentence(self, sentence):
+        """Add a sentence to both the exact-text and word-based lookup indexes."""
         if sentence.normalized_text:
             self.sentences_by_text[sentence.normalized_text] = sentence
             
@@ -137,6 +153,7 @@ class SyntaxIndex:
                     self.sentences_by_words[word].append(sentence)
         
     def find_sentence(self, text):
+        """Find a matching sentence by exact text or fuzzy word overlap (>50% Jaccard)."""
         normalized = normalize_text_for_lookup(text)
         
         if normalized in self.sentences_by_text:
@@ -172,10 +189,12 @@ class SyntaxIndex:
         return None
     
     def __len__(self):
+        """Return the number of indexed sentences."""
         return len(self.sentences_by_text)
 
 
 def parse_conllu_file(filepath):
+    """Parse a CoNLL-U file into a list of SyntaxSentence objects."""
     sentences = []
     current_sent_id = None
     current_text = None
@@ -270,6 +289,7 @@ def features_match(feats1, feats2):
     return comparisons >= 2 and matches >= comparisons - 1
 
 def compute_syntax_similarity(sent1, sent2, matched_lemmas=None):
+    """Score syntactic similarity (0.0–1.0) based on shared lemma roles and structural overlap."""
     if not sent1 or not sent2:
         return 0.0
     
@@ -330,6 +350,7 @@ class StanzaParser:
     """On-the-fly parser using Stanza for texts not in treebanks"""
     
     def __init__(self, cache_dir=None):
+        """Initialize with optional cache directory for persisting Stanza parse results."""
         self.pipelines = {}
         self.cache = {}
         self.cache_dir = cache_dir or os.path.join(
@@ -471,7 +492,10 @@ class StanzaParser:
 
 
 class SyntaxMatcher:
+    """Main interface for syntax-based matching. Loads UD treebanks and scores sentence pairs."""
+
     def __init__(self, treebank_dir=None):
+        """Initialize with per-language SyntaxIndex objects and optional treebank directory."""
         self.index = {'la': SyntaxIndex(), 'grc': SyntaxIndex(), 'en': SyntaxIndex()}
         self.loaded = False
         self.treebank_dir = treebank_dir or os.path.join(
@@ -480,6 +504,7 @@ class SyntaxMatcher:
         self.stanza_parser = None
         
     def load_treebanks(self):
+        """Load all UD treebank .conllu files for Latin, Greek, and English into the index."""
         if self.loaded:
             return
             
@@ -566,6 +591,7 @@ class SyntaxMatcher:
         return score, sent1, sent2, from_treebank
     
     def get_sentence_info(self, text, language):
+        """Return structural info (roles, signature) for a sentence, using treebank or Stanza fallback."""
         if not self.loaded:
             self.load_treebanks()
         
@@ -595,4 +621,5 @@ syntax_matcher = SyntaxMatcher()
 
 
 def get_syntax_matcher():
+    """Return the module-level SyntaxMatcher singleton."""
     return syntax_matcher

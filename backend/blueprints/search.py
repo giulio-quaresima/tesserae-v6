@@ -252,7 +252,12 @@ def search_stream():
 
 @search_bp.route('/search', methods=['POST'])
 def search():
-    """Main text comparison search"""
+    """Non-streaming text comparison search (POST /api/search).
+
+    Matches source vs target text using the specified match_type (lemma, exact, sound,
+    edit_distance, semantic, dictionary, or cross-lingual variants). Returns all results
+    at once with matched_words, scores, and highlight indices.
+    """
     try:
         data = request.get_json()
         source_id = data.get('source')

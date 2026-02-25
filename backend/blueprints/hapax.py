@@ -29,8 +29,8 @@ import os
 import json
 
 from backend.logging_config import get_logger
-from backend.frequency_cache import load_frequency_cache, get_corpus_frequencies
-from backend.inverted_index import get_connection, is_index_available
+from backend.frequency_cache import load_frequency_cache
+from backend.inverted_index import get_connection
 from backend.text_processor import get_latin_lemma_table, get_greek_lemma_table
 
 logger = get_logger('hapax')

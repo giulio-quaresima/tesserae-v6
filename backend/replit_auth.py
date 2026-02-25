@@ -16,7 +16,6 @@ from flask_dance.consumer import (
 )
 from flask_dance.consumer.storage import BaseStorage
 from flask_login import LoginManager, login_user, logout_user, current_user
-from oauthlib.oauth2.rfc6749.errors import InvalidGrantError
 from sqlalchemy.exc import NoResultFound
 
 from backend.models import db, OAuth, User
@@ -26,6 +25,7 @@ JWKS_URL = "https://replit.com/.well-known/jwks.json"
 JWKS_CLIENT = None
 
 def get_jwks_client():
+    """Get or initialize the JSON Web Key Set client for Replit JWT validation."""
     global JWKS_CLIENT
     if JWKS_CLIENT is None:
         try:
@@ -55,7 +55,10 @@ def init_auth(app):
     return replit_bp
 
 class UserSessionStorage(BaseStorage):
+    """Flask-Dance token storage backed by the database, keyed by user + browser session."""
+
     def get(self, blueprint):
+        """Retrieve the OAuth token for the current user and browser session."""
         try:
             token = db.session.query(OAuth).filter_by(
                 user_id=current_user.get_id(),
@@ -67,6 +70,7 @@ class UserSessionStorage(BaseStorage):
         return token
 
     def set(self, blueprint, token):
+        """Store (or replace) the OAuth token for the current user and browser session."""
         db.session.query(OAuth).filter_by(
             user_id=current_user.get_id(),
             browser_session_key=g.browser_session_key,
@@ -81,6 +85,7 @@ class UserSessionStorage(BaseStorage):
         db.session.commit()
 
     def delete(self, blueprint):
+        """Remove the OAuth token for the current user and browser session."""
         db.session.query(OAuth).filter_by(
             user_id=current_user.get_id(),
             browser_session_key=g.browser_session_key,
@@ -88,6 +93,7 @@ class UserSessionStorage(BaseStorage):
         db.session.commit()
 
 def make_replit_blueprint():
+    """Create the Replit OAuth2 blueprint with PKCE, session management, and logout endpoint."""
     try:
         repl_id = os.environ['REPL_ID']
     except KeyError:
@@ -139,6 +145,7 @@ def make_replit_blueprint():
     return bp
 
 def save_user(user_claims):
+    """Create or update a User record from decoded JWT claims (sub, email, name, etc.)."""
     user = User()
     user.id = user_claims['sub']
     user.email = user_claims.get('email')
@@ -151,6 +158,7 @@ def save_user(user_claims):
 
 @oauth_authorized.connect
 def logged_in(blueprint, token):
+    """Handle successful OAuth callback: validate JWT, save user, log in, and redirect."""
     try:
         jwks_client = get_jwks_client()
         if jwks_client:
@@ -180,9 +188,11 @@ def logged_in(blueprint, token):
 
 @oauth_error.connect
 def handle_error(blueprint, error, error_description=None, error_uri=None):
+    """Handle OAuth errors by redirecting to the home page."""
     return redirect('/')
 
 def require_login(f):
+    """Decorator that redirects unauthenticated users to the Replit login page."""
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if not current_user.is_authenticated:
