@@ -1119,6 +1119,96 @@ def get_text_lemmas(text_id, language):
         return set()
 
 
+def find_rare_word_matches_direct(source_units, target_units, language='la',
+                                   max_occurrences=50):
+    """Find matches based on shared rare lemmas between source and target units.
+
+    Uses an inverted-index approach (like the dictionary channel): collects all
+    lemmas, batch-queries document frequencies, filters to rare words, then
+    builds a target index for fast pair lookup.
+
+    Called by the fusion engine (backend/fusion.py) for the rare_word channel.
+
+    Args:
+        source_units: List of dicts with 'lemmas' field
+        target_units: List of dicts with 'lemmas' field
+        language: Language code ('la', 'grc', 'en')
+        max_occurrences: Maximum corpus doc frequency to count as "rare"
+
+    Returns:
+        List of match dicts: [{'source_idx', 'target_idx', 'matched_lemmas'}, ...]
+    """
+    from collections import defaultdict
+
+    # Collect unique lemmas per unit
+    source_lemma_sets = []
+    all_source_lemmas = set()
+    for unit in source_units:
+        lemmas = set(l.lower() for l in unit.get('lemmas', []) if len(l) > 2)
+        source_lemma_sets.append(lemmas)
+        all_source_lemmas.update(lemmas)
+
+    target_lemma_sets = []
+    all_target_lemmas = set()
+    for unit in target_units:
+        lemmas = set(l.lower() for l in unit.get('lemmas', []) if len(l) > 2)
+        target_lemma_sets.append(lemmas)
+        all_target_lemmas.update(lemmas)
+
+    # Only query doc freqs for lemmas that appear in both source and target
+    shared_lemmas = all_source_lemmas & all_target_lemmas
+    if not shared_lemmas:
+        logger.info("[RARE_WORD] No shared lemmas between source and target")
+        return []
+
+    # Batch document-frequency lookup
+    doc_freqs = get_document_frequencies_batch(shared_lemmas, language)
+
+    # Filter to rare: 1 <= doc_freq <= max_occurrences
+    rare_lemmas = set()
+    for lemma in shared_lemmas:
+        df = doc_freqs.get(lemma, 0)
+        if 1 <= df <= max_occurrences:
+            rare_lemmas.add(lemma)
+
+    if not rare_lemmas:
+        logger.info(f"[RARE_WORD] No rare lemmas (max_occ={max_occurrences}) "
+                     f"among {len(shared_lemmas)} shared lemmas")
+        return []
+
+    logger.info(f"[RARE_WORD] {len(rare_lemmas)} rare lemmas "
+                f"(from {len(shared_lemmas)} shared, max_occ={max_occurrences})")
+
+    # Build target index: rare_lemma -> set of target line indices
+    target_index = defaultdict(set)
+    for tgt_idx, lemma_set in enumerate(target_lemma_sets):
+        for lemma in lemma_set:
+            if lemma in rare_lemmas:
+                target_index[lemma].add(tgt_idx)
+
+    # For each source unit, find target units sharing rare lemmas via index
+    matches = []
+    for src_idx, src_lemmas in enumerate(source_lemma_sets):
+        # tgt_idx -> set of shared rare lemmas
+        pair_shared = defaultdict(set)
+        for lemma in src_lemmas:
+            if lemma in target_index:
+                for tgt_idx in target_index[lemma]:
+                    pair_shared[tgt_idx].add(lemma)
+
+        for tgt_idx, shared_rare in pair_shared.items():
+            if len(shared_rare) >= 1:
+                matches.append({
+                    'source_idx': src_idx,
+                    'target_idx': tgt_idx,
+                    'matched_lemmas': list(shared_rare),
+                })
+
+    logger.info(f"[RARE_WORD] Found {len(matches)} matches "
+                f"(source={len(source_units)}, target={len(target_units)})")
+    return matches
+
+
 @hapax_bp.route('/rare-lemmata', methods=['GET'])
 def get_rare_lemmata():
     """
