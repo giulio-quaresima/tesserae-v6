@@ -13,49 +13,7 @@ to ensure consistent filtering behavior across the entire application.
 import re
 import unicodedata
 
-PROSE_AUTHORS = [
-    # Latin prose authors
-    'cicero', 'caesar', 'livy', 'sallust', 'tacitus', 'suetonius',
-    'nepos', 'quintilian', 'pliny', 'apuleius', 'petronius',
-    'augustine', 'jerome', 'ambrose', 'seneca_prose', 'ammianus',
-    'curtius', 'valerius_maximus', 'gellius', 'macrobius', 'boethius',
-    'cassiodorus', 'isidore', 'bede', 'hegesippus', 'hilary',
-    'cassian', 'lactantius', 'tertullian', 'cyprian', 'minucius',
-    'arnobius', 'firmicus', 'sulpicius', 'orosius', 'salvian',
-    'florus', 'eutropius', 'dante', 'justinus', 'frontinus', 'eugippius',
-    'sedulius', 'salutati', 'petrarch', 'boccaccio', 'poggio',
-    'bruni', 'valla', 'ficino', 'poliziano', 'erasmus',
-    'cic.', 'caes.', 'liv.', 'sall.', 'tac.', 'suet.', 'nep.',
-    'quint.', 'plin.', 'apul.', 'petron.', 'aug.', 'hier.', 'ambr.',
-    'amm.', 'curt.', 'val.max.', 'gell.', 'macr.', 'boeth.', 'cass.',
-    'isid.', 'bed.', 'lact.', 'tert.', 'cypr.', 'oros.', 'flor.', 'eutr.',
-    # Greek prose authors
-    'epictetus', 'plato', 'aristotle', 'xenophon', 'thucydides', 'herodotus',
-    'plutarch', 'lucian', 'demosthenes', 'isocrates', 'lysias', 'polybius',
-    'diodorus', 'strabo', 'pausanias', 'dio', 'appian', 'arrian',
-    'diogenes_laertius', 'athenaeus', 'aelian', 'philostratus', 'plotinus',
-    'porphyry', 'iamblichus', 'proclus', 'longinus', 'galen', 'hippocrates',
-    'josephus', 'philo', 'clement', 'origen', 'eusebius', 'basil', 'gregory',
-    'chrysostom', 'theodoret', 'procopius', 'agathias', 'menander',
-    'discourses', 'enchiridion', 'republic', 'symposium', 'phaedo', 'laws',
-    'anabasis', 'hellenica', 'memorabilia', 'histories', 'peloponnesian'
-]
-
-PROSE_MARKERS = [
-    'epistulae', 'letters', 'de_officiis', 'de_oratore', 
-    'de_finibus', 'de_natura', 'tusculan', 'bellum_gallicum',
-    'bellum_civile', 'historiae', 'annales', 'agricola', 'germania', 
-    'dialogus', 'satyricon', 'confessions', 'de_civitate',
-    'res_gestae', 'rerum_gestarum', 'orationes', 'in_catilinam',
-    'pro_', 'contra_', 'adversus_',
-    'confucius', 'sinarum', 'philosophus',
-    'divina_commedia', 'divine_comedy', 'commedia', 'divina_comedia',
-    'couplet', 'proem', 'decl',
-    'excidio', 'hierosolymitano', 'tractatus', 'super_psalmos',
-    'conlationes', 'institutionum', 'divinarum', 'apologeticum',
-    'adversus_marcionem', 'de_spectaculis',
-    'opus_paschale', 'paschale', 'de_laboribus', 'herculis'
-]
+from backend.utils import detect_text_type
 
 POETRY_MAX_DISTANCE = 10
 PROSE_MAX_DISTANCE = 4  # No more than 3 intervening words (positions 0 to 4)
@@ -64,24 +22,18 @@ PROSE_MAX_DISTANCE = 4  # No more than 3 intervening words (positions 0 to 4)
 def is_prose_text(text_id: str, language: str = 'la') -> bool:
     """
     Determine if a text is prose based on its ID/filename.
-    
+    Delegates to the unified detect_text_type() in utils.py.
+
     Args:
         text_id: The text filename or identifier
         language: Language code (la, grc, en)
-    
+
     Returns:
         True if the text is prose, False if poetry
     """
     if not text_id:
         return False
-    
-    text_lower = text_id.lower()
-    
-    for marker in PROSE_AUTHORS + PROSE_MARKERS:
-        if marker in text_lower:
-            return True
-    
-    return False
+    return detect_text_type(text_id, language=language) == 'prose'
 
 
 def get_max_distance(text_id: str, language: str = 'la') -> int:
