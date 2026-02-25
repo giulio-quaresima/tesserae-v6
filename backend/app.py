@@ -1375,7 +1375,6 @@ def line_search():
     try:
         from backend.inverted_index import is_index_available, find_co_occurring_lemmas, has_lines_data, get_lines_batch
         from backend.distance_filter import passes_distance_filter, is_prose_text as is_prose_text_unified
-        import re
         
         data = request.get_json() or {}
         
@@ -1428,22 +1427,16 @@ def line_search():
                 sorted_lemmas = sorted(corpus_frequencies.items(), key=lambda x: x[1], reverse=True)
                 stopwords.update(lemma for lemma, _ in sorted_lemmas[:stoplist_size])
             
-            def normalize_latin_lemma(lemma):
-                """Normalize Latin lemmas to match index (v->u, j->i)"""
-                if language == 'la':
-                    return lemma.replace('v', 'u').replace('j', 'i')
-                return lemma
-            
             query_lemmas = set()
             if search_type == 'lemma':
                 query_tokens = query.lower().split()
                 for token in query_tokens:
                     lemmas = text_processor.lemmatize_word(token, language)
-                    query_lemmas.update(normalize_latin_lemma(l) for l in lemmas)
+                    query_lemmas.update(_normalize_latin_lemma(l) for l in lemmas)
                 if not query_lemmas:
-                    query_lemmas = set(normalize_latin_lemma(t) for t in query_tokens)
+                    query_lemmas = set(_normalize_latin_lemma(t) for t in query_tokens)
             else:
-                query_lemmas = set(normalize_latin_lemma(t) for t in query.lower().split())
+                query_lemmas = set(_normalize_latin_lemma(t) for t in query.lower().split())
             
             # Filter out stopwords from query lemmas (like pairwise search)
             filtered_query_lemmas = query_lemmas - stopwords
