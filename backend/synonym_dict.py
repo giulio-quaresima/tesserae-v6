@@ -456,61 +456,197 @@ def get_greek_latin_dict():
     return _GREEK_LATIN_DICT, _GREEK_LATIN_DICT_NORMALIZED
 
 
+# Greek-to-Latin transliteration for cognate matching
+# Maps normalized (accent-stripped) Greek characters to their most common Latin equivalents
+# Multiple variants handled: κ→c/k, υ→u/y, αι→ae, οι→oe, ου→u, ει→i
+_GREEK_DIGRAPH_MAP = {
+    'αι': 'ae', 'ει': 'i', 'οι': 'oe', 'ου': 'u',
+    'φι': 'phi', 'χι': 'chi',
+}
+_GREEK_CHAR_MAP = {
+    'α': 'a', 'β': 'b', 'γ': 'g', 'δ': 'd', 'ε': 'e',
+    'ζ': 'z', 'η': 'e', 'θ': 'th', 'ι': 'i', 'κ': 'c',
+    'λ': 'l', 'μ': 'm', 'ν': 'n', 'ξ': 'x', 'ο': 'o',
+    'π': 'p', 'ρ': 'r', 'σ': 's', 'ς': 's', 'τ': 't',
+    'υ': 'u', 'φ': 'ph', 'χ': 'ch', 'ψ': 'ps', 'ω': 'o',
+}
+
+def _transliterate_greek(greek_text):
+    """Transliterate normalized Greek text to Latin characters.
+    Returns a set of variant transliterations to handle κ→c/k, υ→u/y, etc.
+    """
+    norm = _normalize_greek(greek_text)
+    if not norm:
+        return set()
+
+    # Build primary transliteration, handling digraphs first
+    result = []
+    i = 0
+    while i < len(norm):
+        if i + 1 < len(norm):
+            digraph = norm[i:i+2]
+            if digraph in _GREEK_DIGRAPH_MAP:
+                result.append(_GREEK_DIGRAPH_MAP[digraph])
+                i += 2
+                continue
+        char = norm[i]
+        result.append(_GREEK_CHAR_MAP.get(char, char))
+        i += 1
+    primary = ''.join(result)
+
+    # Generate common variants: κ→k, υ→y, c→k
+    variants = {primary}
+    if 'c' in primary:
+        variants.add(primary.replace('c', 'k'))
+    if 'u' in primary:
+        variants.add(primary.replace('u', 'y'))
+    # Handle -os/-us ending (Greek -ος → Latin -us)
+    if primary.endswith('os'):
+        variants.add(primary[:-2] + 'us')
+    # Handle -on/-um ending (Greek -ον → Latin -um)
+    if primary.endswith('on'):
+        variants.add(primary[:-2] + 'um')
+    # Handle -e/-a ending (Greek -η → Latin -a in first declension)
+    if primary.endswith('e') and len(primary) > 3:
+        variants.add(primary[:-1] + 'a')
+
+    return variants
+
+
+def _is_cognate_match(greek_norm, latin_lower):
+    """Check if a Greek lemma and Latin lemma are cognates via transliteration.
+    Conservative: requires exact transliteration match or very close match
+    to avoid false positives. Only matches words of 4+ characters.
+    """
+    if len(greek_norm) < 3 or len(latin_lower) < 4:
+        return False
+
+    transliterations = _transliterate_greek(greek_norm)
+
+    for trans in transliterations:
+        if len(trans) < 4:
+            continue
+        # Exact match
+        if trans == latin_lower:
+            return True
+        # One is a prefix of the other (for inflected forms)
+        # e.g., achille- matches achilles, achillem, etc.
+        shorter, longer = (trans, latin_lower) if len(trans) <= len(latin_lower) else (latin_lower, trans)
+        if len(shorter) >= 4 and longer.startswith(shorter) and len(longer) - len(shorter) <= 3:
+            return True
+        # Same stem (both 5+ chars, share first 4+ chars, differ by ≤ 2 at end)
+        if len(trans) >= 5 and len(latin_lower) >= 5:
+            # Find common prefix length
+            common = 0
+            for a, b in zip(trans, latin_lower):
+                if a == b:
+                    common += 1
+                else:
+                    break
+            # At least 4 shared prefix chars and remaining differs by ≤ 2 chars
+            if common >= 4 and max(len(trans), len(latin_lower)) - common <= 2:
+                return True
+
+    return False
+
+
 def find_greek_latin_matches(greek_lemmas: list, latin_lemmas: list, use_stoplist: bool = True) -> list:
-    """Find Greek-Latin word matches using curated vocabulary + V3 dictionary.
+    """Find Greek-Latin word matches using curated vocabulary + V3 dictionary + cognate matching.
     Uses accent-normalized Greek for matching.
-    
+
+    Three matching layers:
+    1. Curated Greek-Latin pairs (highest confidence, ~76 key entries)
+    2. V3 dictionary (34,535 entries from Lewis & Short / LSJ)
+    3. Cognate matching via transliteration (proper nouns, borrowed vocabulary)
+
     Args:
         greek_lemmas: List of Greek lemmas from source text
         latin_lemmas: List of Latin lemmas from target text
         use_stoplist: If True, skip common function words (default True)
-        
+
     Returns:
         List of match dicts with source/target indices and matched words
     """
     _, gl_dict_norm = get_greek_latin_dict()
-    
+
     matches = []
     seen = set()
-    
+
     latin_lower_set = {l.lower() for l in latin_lemmas}
     latin_lower_list = [l.lower() for l in latin_lemmas]
-    
+
     for grc_idx, grc_lemma in enumerate(greek_lemmas):
         grc_norm = _normalize_greek(grc_lemma)
-        
+
         # Skip Greek stopwords
         if use_stoplist and grc_norm in CROSSLINGUAL_STOPLIST_GREEK:
             continue
-        
+
         curated_translations = set(CURATED_GREEK_LATIN.get(grc_norm, []))
         v3_translations = gl_dict_norm.get(grc_norm, set()) if gl_dict_norm else set()
         latin_translations = curated_translations.union(v3_translations)
-        
-        if not latin_translations:
+
+        if latin_translations:
+            matching_latins = latin_translations.intersection(latin_lower_set)
+
+            for lat_lower in matching_latins:
+                # Skip Latin stopwords
+                if use_stoplist and lat_lower in CROSSLINGUAL_STOPLIST_LATIN:
+                    continue
+
+                pair_key = (grc_norm, lat_lower)
+                if pair_key in seen:
+                    continue
+                seen.add(pair_key)
+
+                lat_indices = [i for i, l in enumerate(latin_lower_list) if l == lat_lower]
+                grc_indices = [i for i, l in enumerate(greek_lemmas) if _normalize_greek(l) == grc_norm]
+
+                matches.append({
+                    'greek_lemma': grc_lemma,
+                    'latin_lemma': latin_lemmas[lat_indices[0]] if lat_indices else lat_lower,
+                    'greek_indices': grc_indices,
+                    'latin_indices': lat_indices,
+                    'type': 'cross_lingual'
+                })
+
+    # Layer 3: Cognate matching via transliteration for unmatched Greek lemmas
+    # This catches proper nouns, borrowed vocabulary, and shared roots
+    matched_greek_norms = {pair_key[0] for pair_key in seen}
+
+    for grc_idx, grc_lemma in enumerate(greek_lemmas):
+        grc_norm = _normalize_greek(grc_lemma)
+
+        # Skip if already matched by dictionary or if stopword
+        if grc_norm in matched_greek_norms:
             continue
-        
-        matching_latins = latin_translations.intersection(latin_lower_set)
-        
-        for lat_lower in matching_latins:
-            # Skip Latin stopwords
+        if use_stoplist and grc_norm in CROSSLINGUAL_STOPLIST_GREEK:
+            continue
+        if len(grc_norm) < 3:
+            continue
+
+        for lat_lower in latin_lower_set:
             if use_stoplist and lat_lower in CROSSLINGUAL_STOPLIST_LATIN:
                 continue
-                
+
             pair_key = (grc_norm, lat_lower)
             if pair_key in seen:
                 continue
-            seen.add(pair_key)
-            
-            lat_indices = [i for i, l in enumerate(latin_lower_list) if l == lat_lower]
-            grc_indices = [i for i, l in enumerate(greek_lemmas) if _normalize_greek(l) == grc_norm]
-            
-            matches.append({
-                'greek_lemma': grc_lemma,
-                'latin_lemma': latin_lemmas[lat_indices[0]] if lat_indices else lat_lower,
-                'greek_indices': grc_indices,
-                'latin_indices': lat_indices,
-                'type': 'cross_lingual'
-            })
-    
+
+            if _is_cognate_match(grc_norm, lat_lower):
+                seen.add(pair_key)
+                matched_greek_norms.add(grc_norm)
+
+                lat_indices = [i for i, l in enumerate(latin_lower_list) if l == lat_lower]
+                grc_indices = [i for i, l in enumerate(greek_lemmas) if _normalize_greek(l) == grc_norm]
+
+                matches.append({
+                    'greek_lemma': grc_lemma,
+                    'latin_lemma': latin_lemmas[lat_indices[0]] if lat_indices else lat_lower,
+                    'greek_indices': grc_indices,
+                    'latin_indices': lat_indices,
+                    'type': 'cognate'
+                })
+                break  # One cognate match per Greek lemma to avoid noise
+
     return matches
