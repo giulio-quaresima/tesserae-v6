@@ -501,6 +501,9 @@ const RareResultsDisplay = ({
             <div key={i} className="bg-white border rounded-lg p-4 hover:shadow-md transition-shadow">
               <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
                 <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-xs text-gray-400 min-w-[2.5rem] text-right shrink-0 leading-none" style={{paddingTop: '4px'}}>
+                    {i + 1}.
+                  </span>
                   <span className="font-semibold text-lg text-amber-700">
                     {displayName}
                   </span>
