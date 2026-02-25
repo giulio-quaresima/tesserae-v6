@@ -7,22 +7,10 @@ import { useState, useCallback, useRef, useMemo } from 'react';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js';
 import { Bar } from 'react-chartjs-2';
 import { formatElapsedTime } from '../../utils/formatting';
+import { displayGreekWithFinalSigma } from '../../utils/greekUtils';
+import { getDictionaryUrl } from '../../utils/linkUtils';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
-
-const displayGreekWithFinalSigma = (text) => {
-  if (!text) return text;
-  return text.replace(/σ(?=\s|$|[,.;:!?])/g, 'ς');
-};
-
-const getDictionaryUrl = (word, language) => {
-  if (!word) return null;
-  if (language === 'en') {
-    return `https://en.wiktionary.org/wiki/${encodeURIComponent(word)}`;
-  }
-  // Latin and Greek both use Logeion
-  return `https://logeion.uchicago.edu/${encodeURIComponent(word)}`;
-};
 
 const highlightMatchedWords = (text, matchedWords, lemma1, lemma2, positions) => {
   if (!text) return text;

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { LoadingSpinner, Modal } from '../common';
+import { getDictionaryUrl } from '../../utils/linkUtils';
 
 function capitalizeWords(text) {
   if (!text) return '';
@@ -21,15 +22,6 @@ function extractLineNumber(ref) {
   if (!ref) return '';
   const match = ref.match(/(\d+[\d.]*\d*)$/);
   return match ? match[1] : ref;
-}
-
-function getDictionaryUrl(word, language) {
-  if (!word) return null;
-  if (language === 'en') {
-    return `https://en.wiktionary.org/wiki/${encodeURIComponent(word)}`;
-  }
-  // Latin and Greek both use Logeion
-  return `https://logeion.uchicago.edu/${encodeURIComponent(word)}`;
 }
 
 export default function RareWordsExplorer() {
