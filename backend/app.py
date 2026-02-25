@@ -746,6 +746,85 @@ def get_texts_hierarchy():
 
 
 # =============================================================================
+# PROSE DETECTION HELPERS
+# =============================================================================
+# Used by search(), line_search_parallel(), and corpus_search() to apply
+# prose-appropriate max_distance settings. Defined once here to avoid
+# duplicating the author/marker lists across multiple functions.
+
+PROSE_AUTHORS = [
+    'cicero', 'caesar', 'livy', 'sallust', 'tacitus', 'suetonius',
+    'nepos', 'quintilian', 'pliny', 'apuleius', 'petronius',
+    'augustine', 'jerome', 'ambrose', 'seneca_prose',
+    'cic.', 'caes.', 'liv.', 'sall.', 'tac.', 'suet.', 'nep.',
+    'quint.', 'plin.', 'apul.', 'petron.', 'aug.', 'hier.', 'ambr.',
+]
+PROSE_MARKERS = [
+    'epistulae', 'letters', 'de_officiis', 'de_oratore',
+    'de_finibus', 'de_natura', 'tusculan', 'bellum_gallicum',
+    'historiae', 'annales', 'agricola', 'germania', 'dialogus',
+    'satyricon', 'confessions', 'de_civitate',
+]
+
+POETRY_MAX_DISTANCE = 20
+PROSE_MAX_DISTANCE = 4
+
+
+def _is_prose_text(filename):
+    """Check if a text is prose based on author name or work title markers."""
+    text_lower = filename.lower()
+    return any(marker in text_lower for marker in PROSE_AUTHORS + PROSE_MARKERS)
+
+
+def _normalize_latin_lemma(lem):
+    """Normalize Latin u/v and i/j for lemma comparison."""
+    return lem.replace('v', 'u').replace('j', 'i')
+
+
+def _score_v3_idf(shared_lemmas, corpus_frequencies, total_corpus_words,
+                   distance, phrase_match_bonus=1.0):
+    """V3-style scoring: sum(IDF) * distance_factor * phrase_bonus.
+
+    Args:
+        shared_lemmas: Set of shared lemma strings.
+        corpus_frequencies: Dict mapping lemma → corpus frequency count.
+        total_corpus_words: Total word count across corpus.
+        distance: Span between first and last matched word positions.
+        phrase_match_bonus: Multiplier for phrase matches (default 1.0).
+
+    Returns:
+        float score.
+    """
+    idf_sum = 0
+    for lemma in shared_lemmas:
+        freq = corpus_frequencies.get(lemma, 1)
+        idf = math.log(total_corpus_words / (freq + 1)) + 1
+        idf_sum += idf
+    distance_factor = 1.0 / (1 + math.log(distance + 1))
+    return idf_sum * distance_factor * phrase_match_bonus
+
+
+def _deduplicate_and_normalize(results):
+    """Deduplicate results by text content (keep highest score) and normalize scores to 0-10."""
+    import re as _re
+    seen_texts = {}
+    deduplicated = []
+    for r in results:
+        text_key = _re.sub(r'[^\w\s]', '', r['text'].lower()).strip()
+        if text_key not in seen_texts:
+            seen_texts[text_key] = r
+            deduplicated.append(r)
+
+    if deduplicated:
+        max_score = max(r['score'] for r in deduplicated) or 1
+        for r in deduplicated:
+            r['raw_score'] = r['score']
+            r['score'] = round((r['score'] / max_score) * 10, 2)
+
+    return deduplicated
+
+
+# =============================================================================
 # MAIN SEARCH API ROUTES
 # =============================================================================
 # These routes handle the core search functionality for finding parallel
@@ -775,28 +854,11 @@ def search():
         settings['language'] = language
         
         # Apply prose-aware max_distance defaults if not explicitly set
-        # Use inline prose detection (faster and more reliable)
         if 'max_distance' not in settings or settings.get('max_distance') == 999:
-            PROSE_AUTHORS = ['cicero', 'caesar', 'livy', 'sallust', 'tacitus', 'suetonius',
-                            'nepos', 'quintilian', 'pliny', 'apuleius', 'petronius',
-                            'augustine', 'jerome', 'ambrose', 'seneca_prose',
-                            'cic.', 'caes.', 'liv.', 'sall.', 'tac.', 'suet.', 'nep.',
-                            'quint.', 'plin.', 'apul.', 'petron.', 'aug.', 'hier.', 'ambr.']
-            PROSE_MARKERS = ['epistulae', 'letters', 'de_officiis', 'de_oratore', 
-                            'de_finibus', 'de_natura', 'tusculan', 'bellum_gallicum',
-                            'historiae', 'annales', 'agricola', 'germania', 'dialogus',
-                            'satyricon', 'confessions', 'de_civitate']
-            
-            source_lower = source_id.lower()
-            target_lower = target_id.lower()
-            source_is_prose = any(marker in source_lower for marker in PROSE_AUTHORS + PROSE_MARKERS)
-            target_is_prose = any(marker in target_lower for marker in PROSE_AUTHORS + PROSE_MARKERS)
-            
-            # Use prose settings if either text is prose
-            if source_is_prose or target_is_prose:
-                settings['max_distance'] = 4  # Very tight for compact prose phrases
+            if _is_prose_text(source_id) or _is_prose_text(target_id):
+                settings['max_distance'] = PROSE_MAX_DISTANCE
             else:
-                settings['max_distance'] = 20  # Poetry allows more spread
+                settings['max_distance'] = POETRY_MAX_DISTANCE
         
         cached_results, cached_meta = get_cached_results(
             source_id, target_id, language, settings
@@ -1740,12 +1802,9 @@ def line_search_parallel():
                     target_lemmas_list = unit.get('lemmas', [])
                     
                     # Normalize Latin u/v and i/j for comparison (cached may have 'vir', query has 'uir')
-                    def normalize_latin_lemma(lem):
-                        return lem.replace('v', 'u').replace('j', 'i')
-                    
-                    target_lemmas_normalized = {normalize_latin_lemma(l) for l in target_lemmas_list}
-                    source_lemmas_normalized = {normalize_latin_lemma(l) for l in filtered_source_lemmas}
-                    matching_lemmas_normalized = {normalize_latin_lemma(l) for l in matching_lemmas}
+                    target_lemmas_normalized = {_normalize_latin_lemma(l) for l in target_lemmas_list}
+                    source_lemmas_normalized = {_normalize_latin_lemma(l) for l in filtered_source_lemmas}
+                    matching_lemmas_normalized = {_normalize_latin_lemma(l) for l in matching_lemmas}
                     
                     # Intersect normalized lemmas
                     shared_normalized = matching_lemmas_normalized & target_lemmas_normalized & source_lemmas_normalized
@@ -1760,7 +1819,7 @@ def line_search_parallel():
                     
                     # Calculate positions from actual target lemmas (more reliable than index)
                     # Index positions may be stale for duplicate refs
-                    match_positions = [i for i, lem in enumerate(target_lemmas_list) if normalize_latin_lemma(lem) in shared]
+                    match_positions = [i for i, lem in enumerate(target_lemmas_list) if _normalize_latin_lemma(lem) in shared]
                     
                     # Calculate distance (span) between matched words - V3 style
                     if len(match_positions) >= 2:
@@ -1769,40 +1828,11 @@ def line_search_parallel():
                         distance = 1
                     
                     # APPLY MAX_DISTANCE FILTER (same as pairwise search)
-                    # Poetry allows wider spans, prose requires tighter clustering
-                    # Use inline prose detection (faster and more reliable than import)
-                    PROSE_AUTHORS = ['cicero', 'caesar', 'livy', 'sallust', 'tacitus', 'suetonius',
-                                    'nepos', 'quintilian', 'pliny', 'apuleius', 'petronius',
-                                    'augustine', 'jerome', 'ambrose', 'seneca_prose',
-                                    'cic.', 'caes.', 'liv.', 'sall.', 'tac.', 'suet.', 'nep.',
-                                    'quint.', 'plin.', 'apul.', 'petron.', 'aug.', 'hier.', 'ambr.']
-                    PROSE_MARKERS = ['epistulae', 'letters', 'de_officiis', 'de_oratore', 
-                                    'de_finibus', 'de_natura', 'tusculan', 'bellum_gallicum',
-                                    'historiae', 'annales', 'agricola', 'germania', 'dialogus',
-                                    'satyricon', 'confessions', 'de_civitate']
-                    
-                    text_lower = filename.lower()
-                    is_prose = any(marker in text_lower for marker in PROSE_AUTHORS + PROSE_MARKERS)
-                    
-                    POETRY_MAX_DISTANCE = 20
-                    PROSE_MAX_DISTANCE = 4  # Very tight for compact prose phrases
-                    max_dist = PROSE_MAX_DISTANCE if is_prose else POETRY_MAX_DISTANCE
-                    
+                    max_dist = PROSE_MAX_DISTANCE if _is_prose_text(filename) else POETRY_MAX_DISTANCE
                     if distance > max_dist:
-                        continue  # Skip results where matched words are too far apart
-                    
-                    # V3-STYLE SCORING: score = sum(IDF) / (1 + log(distance))
-                    idf_sum = 0
-                    for lemma in shared:
-                        freq = corpus_frequencies.get(lemma, 1)
-                        idf = math.log(total_corpus_words / (freq + 1)) + 1
-                        idf_sum += idf
-                    
-                    # V3 distance penalty: 1 / (1 + log(distance))
-                    distance_factor = 1.0 / (1 + math.log(distance + 1))
-                    
-                    # V3 final score: IDF sum * distance factor
-                    score = idf_sum * distance_factor * phrase_match_bonus
+                        continue
+
+                    score = _score_v3_idf(shared, corpus_frequencies, total_corpus_words, distance, phrase_match_bonus)
                     tokens = unit.get('tokens', [])
                     
                     parts = filename.replace('.tess', '').split('.')
@@ -1887,39 +1917,11 @@ def line_search_parallel():
                             distance = 1
                         
                         # APPLY MAX_DISTANCE FILTER (same as pairwise search)
-                        # Use inline prose detection (faster and more reliable than import)
-                        PROSE_AUTHORS = ['cicero', 'caesar', 'livy', 'sallust', 'tacitus', 'suetonius',
-                                        'nepos', 'quintilian', 'pliny', 'apuleius', 'petronius',
-                                        'augustine', 'jerome', 'ambrose', 'seneca_prose',
-                                        'cic.', 'caes.', 'liv.', 'sall.', 'tac.', 'suet.', 'nep.',
-                                        'quint.', 'plin.', 'apul.', 'petron.', 'aug.', 'hier.', 'ambr.']
-                        PROSE_MARKERS = ['epistulae', 'letters', 'de_officiis', 'de_oratore', 
-                                        'de_finibus', 'de_natura', 'tusculan', 'bellum_gallicum',
-                                        'historiae', 'annales', 'agricola', 'germania', 'dialogus',
-                                        'satyricon', 'confessions', 'de_civitate']
-                        
-                        text_lower = filename.lower()
-                        is_prose = any(marker in text_lower for marker in PROSE_AUTHORS + PROSE_MARKERS)
-                        
-                        POETRY_MAX_DISTANCE = 20
-                        PROSE_MAX_DISTANCE = 4  # Very tight for compact prose phrases
-                        max_dist = PROSE_MAX_DISTANCE if is_prose else POETRY_MAX_DISTANCE
-                        
+                        max_dist = PROSE_MAX_DISTANCE if _is_prose_text(filename) else POETRY_MAX_DISTANCE
                         if distance > max_dist:
-                            continue  # Skip results where matched words are too far apart
-                        
-                        # V3-STYLE SCORING: score = sum(IDF) / (1 + log(distance))
-                        idf_sum = 0
-                        for lemma in shared:
-                            freq = corpus_frequencies.get(lemma, 1)
-                            idf = math.log(total_corpus_words / (freq + 1)) + 1
-                            idf_sum += idf
-                        
-                        # V3 distance penalty: 1 / (1 + log(distance))
-                        distance_factor = 1.0 / (1 + math.log(distance + 1))
-                        
-                        # V3 final score: IDF sum * distance factor
-                        score = idf_sum * distance_factor * phrase_match_bonus
+                            continue
+
+                        score = _score_v3_idf(shared, corpus_frequencies, total_corpus_words, distance, phrase_match_bonus)
                         
                         result_key = (filename, unit.get('ref', ''))
                         if result_key in seen_results:
@@ -1948,26 +1950,7 @@ def line_search_parallel():
         
         all_results.sort(key=lambda x: x['score'], reverse=True)
         
-        # Deduplicate by text content (keep highest scoring version)
-        seen_texts = {}
-        deduplicated = []
-        for r in all_results:
-            # Normalize text for comparison (lowercase, strip punctuation)
-            text_key = re.sub(r'[^\w\s]', '', r['text'].lower()).strip()
-            if text_key not in seen_texts:
-                seen_texts[text_key] = r
-                deduplicated.append(r)
-            # Keep the one with the highest score (already sorted)
-        
-        all_results = deduplicated
-        
-        # Normalize scores to 0-10 range for readability
-        if all_results:
-            max_score = max(r['score'] for r in all_results) or 1
-            for r in all_results:
-                # Keep raw score for internal use, add normalized for display
-                r['raw_score'] = r['score']
-                r['score'] = round((r['score'] / max_score) * 10, 2)
+        all_results = _deduplicate_and_normalize(all_results)
         
         final_results = all_results[:max_results] if max_results > 0 else all_results
         
@@ -2021,27 +2004,12 @@ def corpus_search():
         text_matches = {}
         text_genre_cache = {}
         
-        POETRY_MAX_DISTANCE = 20
-        PROSE_MAX_DISTANCE = 4  # Very tight for compact prose phrases
-        
-        # Use inline prose detection (faster and more reliable)
-        PROSE_AUTHORS = ['cicero', 'caesar', 'livy', 'sallust', 'tacitus', 'suetonius',
-                        'nepos', 'quintilian', 'pliny', 'apuleius', 'petronius',
-                        'augustine', 'jerome', 'ambrose', 'seneca_prose',
-                        'cic.', 'caes.', 'liv.', 'sall.', 'tac.', 'suet.', 'nep.',
-                        'quint.', 'plin.', 'apul.', 'petron.', 'aug.', 'hier.', 'ambr.']
-        PROSE_MARKERS = ['epistulae', 'letters', 'de_officiis', 'de_oratore', 
-                        'de_finibus', 'de_natura', 'tusculan', 'bellum_gallicum',
-                        'historiae', 'annales', 'agricola', 'germania', 'dialogus',
-                        'satyricon', 'confessions', 'de_civitate']
-        
         for filename, ref, matching_lemmas, positions in matches:
             if filename in exclude_texts:
                 continue
             if filename not in text_genre_cache:
-                text_lower = filename.lower()
-                text_genre_cache[filename] = not any(marker in text_lower for marker in PROSE_AUTHORS + PROSE_MARKERS)
-            
+                text_genre_cache[filename] = not _is_prose_text(filename)
+
             is_poetry = text_genre_cache[filename]
             max_distance = POETRY_MAX_DISTANCE if is_poetry else PROSE_MAX_DISTANCE
             
