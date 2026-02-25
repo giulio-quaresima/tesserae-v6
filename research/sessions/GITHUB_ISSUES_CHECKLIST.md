@@ -99,12 +99,14 @@ Generated 2026-02-24. Close issues on GitHub after pushing to production.
 - **Notes:** Closed Feb 25. V3 never had a "within X lines" feature. V3 had: (1) phrase mode (combining lines at punctuation boundaries `.;:?`), which V6 already has; (2) max distance in words (within-unit filter, default 10), which V6 already has; (3) V1 had a 6-word sliding window, which V3 dropped. V6's fusion engine already exceeds all of these with its 2-line sliding window pass (Pass 2 in `fusion.py`) that runs 4 channels across adjacent line pairs, catching enjambed allusions automatically. No new feature needed.
 
 ### #20 — Email notifications for site admin list
-- [ ] **Status:** Not started
+- [ ] **Status:** Blocked — needs SMTP credentials
 - **Details:** Addresses in admin Notification Email Addresses list do not receive notifications for feedback or text submissions.
+- **Notes:** Investigated Feb 25. Code is fully implemented (`backend/email_notifications.py` — `send_notification()`, `notify_feedback()`, `notify_text_request()`). Both feedback and text request endpoints call the notification functions. Problem: `.env` has no SMTP config (`SMTP_HOST`, `SMTP_USER`, `SMTP_PASSWORD`). Without these, the code silently logs "SMTP not configured" and returns success. Notification email addresses in the DB settings table may also be empty. Needs someone with mail server access to provide credentials. Not a code fix.
 
 ### #21 — Text addition upload not working
-- [ ] **Status:** Not started
+- [x] **Status:** Fixed Feb 25
 - **Details:** Admins not alerted and texts not received when submitted through Help and Support > Upload Your Text > Submit Your Formatted Text.
+- **Notes:** Fixed Feb 25. Root cause: admin blueprint queries 24 columns from `text_requests` but only 13 existed in the DB schema, causing a silent PostgreSQL error. Added 11 missing columns (`text_date`, `approved_filename`, `official_author`, `official_work`, `admin_updated_at`, `author_era`, `author_year`, `e_source`, `e_source_url`, `print_source`, `added_by`) to both the CREATE TABLE DDL and the live database. Also removed duplicate `get_requests()`/`update_request()` endpoints from `app.py` that shadowed the full admin blueprint versions.
 
 ### #22 — Add credits for text edition to the corpus viewer
 - [ ] **Status:** Not started
