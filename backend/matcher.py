@@ -33,11 +33,9 @@ def normalize_latin(text):
     return text.lower().replace('v', 'u')
 
 from collections import defaultdict, Counter
-import math
 import os
 from concurrent.futures import ProcessPoolExecutor
 from backend.zipf import find_zipf_elbow
-from backend.feature_extractor import feature_extractor
 
 
 def _get_trigrams(token):

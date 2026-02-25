@@ -9,7 +9,7 @@ import json
 
 from backend.db_utils import get_db_cursor
 from backend.logging_config import get_logger
-from backend.utils import get_text_metadata, get_override, set_override, load_metadata_overrides, safe_listdir
+from backend.utils import get_text_metadata, get_override, set_override, safe_listdir
 from backend.lemma_cache import (
     rebuild_lemma_cache, get_cache_stats as get_lemma_cache_stats,
     clear_lemma_cache
@@ -18,7 +18,7 @@ from backend.frequency_cache import recalculate_language_frequencies, clear_freq
 from backend.cache import clear_cache as clear_search_cache, get_cache_stats as get_search_cache_stats
 from backend.feature_extractor import feature_extractor
 from backend.bigram_frequency import (
-    calculate_bigram_frequencies, get_bigram_frequencies, 
+    calculate_bigram_frequencies,
     get_bigram_stats, is_bigram_cache_available
 )
 

@@ -40,8 +40,8 @@ from datetime import datetime
 
 # Application modules
 from backend.logging_config import setup_logging, get_logger
-from backend.db_utils import DatabaseError, get_db_cursor
-from backend.services import get_client_ip, get_user_location, log_search
+from backend.db_utils import get_db_cursor
+from backend.services import get_user_location, log_search
 
 # =============================================================================
 # LOGGING SETUP
