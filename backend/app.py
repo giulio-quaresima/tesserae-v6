@@ -454,6 +454,12 @@ def index():
     static_folder = app.static_folder or '../frontend'
     return send_from_directory(static_folder, 'index.html')
 
+@app.route('/static/downloads/<path:filepath>')
+def serve_static_downloads(filepath):
+    """Serve static download files (benchmarks, etc.)"""
+    downloads_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'static', 'downloads')
+    return send_from_directory(downloads_dir, filepath)
+
 @app.route('/legacy')
 def legacy_frontend():
     """Serve the legacy frontend for full feature access during migration"""
