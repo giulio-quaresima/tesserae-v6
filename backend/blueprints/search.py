@@ -72,68 +72,253 @@ def init_search_blueprint(matcher, scorer, text_processor, texts_dir,
 
 
 # =============================================================================
+# SHARED SEARCH HELPERS
+# =============================================================================
+
+def _parse_search_request(data):
+    """Parse and validate a search request from either endpoint.
+
+    Returns dict with source_id, target_id, language, source_language,
+    target_language, settings, source_path, target_path, is_crosslingual.
+    Raises ValueError for missing fields, FileNotFoundError for missing texts.
+    """
+    source_id = data.get('source')
+    target_id = data.get('target')
+    language = data.get('language', 'la')
+    source_language = data.get('source_language', language)
+    target_language = data.get('target_language', language)
+
+    settings = data.get('settings', {})
+    for key in ['match_type', 'min_matches', 'max_results', 'max_distance',
+                'stoplist_basis', 'stoplist_size', 'source_unit_type', 'target_unit_type',
+                'use_meter', 'use_pos', 'use_syntax', 'use_sound', 'use_edit_distance',
+                'bigram_boost', 'custom_stopwords']:
+        if key in data and key not in settings:
+            settings[key] = data[key]
+
+    if not source_id or not target_id:
+        raise ValueError('Please select both source and target texts')
+
+    match_type = settings.get('match_type', 'lemma')
+    is_crosslingual = match_type in ('semantic_cross', 'dictionary_cross')
+
+    if is_crosslingual:
+        source_path = os.path.join(_texts_dir, source_language, source_id)
+        target_path = os.path.join(_texts_dir, target_language, target_id)
+    else:
+        lang_dir = os.path.join(_texts_dir, language)
+        source_path = os.path.join(lang_dir, source_id)
+        target_path = os.path.join(lang_dir, target_id)
+
+    if not os.path.exists(source_path) or not os.path.exists(target_path):
+        raise FileNotFoundError('Text files not found')
+
+    settings['language'] = language
+    settings['source_language'] = source_language
+    settings['target_language'] = target_language
+    settings['source_text_path'] = source_path
+    settings['target_text_path'] = target_path
+
+    return {
+        'source_id': source_id, 'target_id': target_id,
+        'language': language, 'source_language': source_language,
+        'target_language': target_language, 'settings': settings,
+        'source_path': source_path, 'target_path': target_path,
+        'is_crosslingual': is_crosslingual,
+    }
+
+
+def _load_units(params):
+    """Load processed text units for source and target texts."""
+    settings = params['settings']
+    source_unit_type = settings.get('source_unit_type', 'line')
+    target_unit_type = settings.get('target_unit_type', 'line')
+
+    if params['is_crosslingual']:
+        source_units = _get_processed_units(params['source_id'], params['source_language'], source_unit_type, _text_processor)
+        target_units = _get_processed_units(params['target_id'], params['target_language'], target_unit_type, _text_processor)
+    else:
+        source_units = _get_processed_units(params['source_id'], params['language'], source_unit_type, _text_processor)
+        target_units = _get_processed_units(params['target_id'], params['language'], target_unit_type, _text_processor)
+
+    return source_units, target_units
+
+
+def _load_corpus_frequencies(language, settings):
+    """Load corpus frequencies if stoplist basis requires them."""
+    stoplist_basis = settings.get('stoplist_basis', 'source_target')
+    if stoplist_basis == 'corpus':
+        freq_data = _get_corpus_frequencies(language, _text_processor)
+        if freq_data:
+            return freq_data.get('frequencies', {})
+    return None
+
+
+def _run_matcher(match_type, source_units, target_units, settings, corpus_frequencies=None):
+    """Dispatch to the appropriate matcher based on match_type.
+
+    Returns (matches, stoplist_size).
+    Raises ValueError for cross-lingual types that need special handling.
+    """
+    if match_type == 'sound':
+        return _matcher.find_sound_matches(source_units, target_units, settings)
+    elif match_type == 'edit_distance':
+        return _matcher.find_edit_distance_matches(source_units, target_units, settings)
+    elif match_type == 'semantic':
+        from backend.semantic_similarity import find_semantic_matches
+        return find_semantic_matches(source_units, target_units, settings)
+    elif match_type == 'dictionary':
+        from backend.semantic_similarity import find_dictionary_matches
+        return find_dictionary_matches(source_units, target_units, settings)
+    elif match_type in ('semantic_cross', 'dictionary_cross'):
+        raise ValueError(f'Cross-lingual match type {match_type} requires special handling')
+    else:
+        return _matcher.find_matches(source_units, target_units, settings, corpus_frequencies)
+
+
+def _finalize_results(scored_results, source_units, target_units, stoplist_size,
+                      settings, source_id, target_id, language, cached=False):
+    """Cache results, log the search, and build the response dict."""
+    if not cached:
+        metadata = {
+            'source_lines': len(source_units),
+            'target_lines': len(target_units),
+            'stoplist_size': stoplist_size,
+        }
+        save_cached_results(source_id, target_id, language, settings, scored_results, metadata)
+
+    max_results = settings.get('max_results', 0)
+    display_results = scored_results[:max_results] if max_results > 0 else scored_results
+
+    user_id = current_user.id if current_user and current_user.is_authenticated else None
+    city, country = get_user_location()
+    log_search('text_comparison', language, source_id, target_id, None,
+               settings.get('match_type', 'lemma'), len(scored_results), cached, user_id,
+               city, country)
+
+    return {
+        "results": display_results,
+        "total_matches": len(scored_results),
+        "source_lines": len(source_units),
+        "target_lines": len(target_units),
+        "stoplist_size": stoplist_size,
+        "cached": cached,
+    }
+
+
+def _handle_dictionary_cross(params, source_units, target_units, settings):
+    """Handle dictionary_cross match type with custom IDF-based result building.
+
+    Unlike other match types, dictionary_cross builds results directly from
+    matches (already sorted by IDF score) rather than going through the scorer.
+    """
+    from backend.semantic_similarity import find_dictionary_crosslingual_matches
+
+    source_id = params['source_id']
+    target_id = params['target_id']
+    language = params['language']
+
+    greek_freq_data = _get_corpus_frequencies('grc', _text_processor)
+    latin_freq_data = _get_corpus_frequencies('la', _text_processor)
+    greek_frequencies = greek_freq_data.get('frequencies', {}) if greek_freq_data else {}
+    latin_frequencies = latin_freq_data.get('frequencies', {}) if latin_freq_data else {}
+
+    matches, stoplist_size = find_dictionary_crosslingual_matches(
+        source_units, target_units, params['source_language'],
+        params['target_language'], settings,
+        greek_frequencies=greek_frequencies, latin_frequencies=latin_frequencies
+    )
+
+    scored_results = []
+    for m in matches:
+        src_unit = source_units[m['source_idx']]
+        tgt_unit = target_units[m['target_idx']]
+        src_tokens = src_unit.get('tokens', [])
+        tgt_tokens = tgt_unit.get('tokens', [])
+        src_original = src_unit.get('original_tokens', src_tokens)
+        tgt_original = tgt_unit.get('original_tokens', tgt_tokens)
+
+        matched_words_with_original = []
+        for wm in m.get('word_matches', []):
+            grc_indices = wm.get('greek_indices', [])
+            lat_indices = wm.get('latin_indices', [])
+            grc_original = (src_original[grc_indices[0]]
+                            if grc_indices and grc_indices[0] < len(src_original)
+                            else wm['greek_lemma'])
+            lat_original_word = (tgt_original[lat_indices[0]]
+                                 if lat_indices and lat_indices[0] < len(tgt_original)
+                                 else wm['latin_lemma'])
+            matched_words_with_original.append({
+                'greek_word': grc_original,
+                'latin_word': lat_original_word,
+                'greek_lemma': wm.get('greek_lemma', ''),
+                'latin_lemma': wm.get('latin_lemma', ''),
+                'display': f"{grc_original}\u2192{lat_original_word}",
+                'type': 'cross_lingual',
+                'idf': wm.get('idf_score', 0)
+            })
+
+        scored_results.append({
+            'source': {
+                'ref': src_unit.get('ref', ''),
+                'text': src_unit.get('text', ''),
+                'tokens': src_original,
+                'highlight_indices': [idx for wm in m.get('word_matches', [])
+                                      for idx in wm.get('greek_indices', [])]
+            },
+            'target': {
+                'ref': tgt_unit.get('ref', ''),
+                'text': tgt_unit.get('text', ''),
+                'tokens': tgt_original,
+                'highlight_indices': [idx for wm in m.get('word_matches', [])
+                                      for idx in wm.get('latin_indices', [])]
+            },
+            'matched_words': matched_words_with_original,
+            'match_count': m.get('match_count', 0),
+            'distance': m.get('distance', 0),
+            'idf_score': m.get('idf_score', 0),
+            'overall_score': m.get('overall_score', 0),
+            'match_basis': 'dictionary_cross'
+        })
+
+    return jsonify(_finalize_results(scored_results, source_units, target_units,
+                                      stoplist_size, settings, source_id, target_id, language))
+
+
+# =============================================================================
 # STREAMING SEARCH ENDPOINT
 # =============================================================================
 
 @search_bp.route('/search-stream', methods=['POST'])
 def search_stream():
-    """Main text comparison search with SSE progress streaming"""
+    """Main text comparison search with SSE progress streaming."""
     data = request.get_json()
-    
+
     def generate():
         try:
             start_time = time.time()
-            
+
             def send_progress(step, detail=""):
                 elapsed = round(time.time() - start_time, 1)
                 msg = {"type": "progress", "step": step, "detail": detail, "elapsed": elapsed}
                 return f"data: {json.dumps(msg)}\n\n"
-            
+
             yield send_progress("Initializing search")
-            
-            source_id = data.get('source')
-            target_id = data.get('target')
-            language = data.get('language', 'la')
-            source_language = data.get('source_language', language)
-            target_language = data.get('target_language', language)
-            
-            settings = data.get('settings', {})
-            for key in ['match_type', 'min_matches', 'max_results', 'max_distance', 
-                        'stoplist_basis', 'stoplist_size', 'source_unit_type', 'target_unit_type',
-                        'use_meter', 'use_pos', 'use_syntax', 'use_sound', 'use_edit_distance',
-                        'bigram_boost', 'custom_stopwords']:
-                if key in data and key not in settings:
-                    settings[key] = data[key]
-            
-            if not source_id or not target_id:
-                yield f"data: {json.dumps({'type': 'error', 'message': 'Please select both source and target texts'})}\n\n"
+
+            try:
+                params = _parse_search_request(data)
+            except (ValueError, FileNotFoundError) as e:
+                yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
                 return
-            
+
+            settings = params['settings']
+            source_id = params['source_id']
+            target_id = params['target_id']
+            language = params['language']
             match_type = settings.get('match_type', 'lemma')
-            is_crosslingual = match_type in ('semantic_cross', 'dictionary_cross')
-            
-            if is_crosslingual:
-                source_lang_dir = os.path.join(_texts_dir, source_language)
-                target_lang_dir = os.path.join(_texts_dir, target_language)
-                source_path = os.path.join(source_lang_dir, source_id)
-                target_path = os.path.join(target_lang_dir, target_id)
-            else:
-                lang_dir = os.path.join(_texts_dir, language)
-                source_path = os.path.join(lang_dir, source_id)
-                target_path = os.path.join(lang_dir, target_id)
-            
-            if not os.path.exists(source_path) or not os.path.exists(target_path):
-                yield f"data: {json.dumps({'type': 'error', 'message': 'Text files not found'})}\n\n"
-                return
-            
-            settings['language'] = language
-            settings['source_language'] = source_language
-            settings['target_language'] = target_language
-            settings['source_text_path'] = source_path
-            settings['target_text_path'] = target_path
-            
+
+            # Check cache
             cached_results, cached_meta = get_cached_results(source_id, target_id, language, settings)
-            
             if cached_results is not None:
                 yield send_progress("Loading cached results")
                 max_results = settings.get('max_results', 0)
@@ -151,48 +336,36 @@ def search_stream():
                 }
                 yield f"data: {json.dumps(result)}\n\n"
                 return
-            
+
+            # Load text units (with per-text progress messages)
             source_unit_type = settings.get('source_unit_type', 'line')
             target_unit_type = settings.get('target_unit_type', 'line')
-            
+
             yield send_progress("Loading source text", source_id.replace('.tess', ''))
-            if is_crosslingual:
-                source_units = _get_processed_units(source_id, source_language, source_unit_type, _text_processor)
+            if params['is_crosslingual']:
+                source_units = _get_processed_units(source_id, params['source_language'], source_unit_type, _text_processor)
             else:
                 source_units = _get_processed_units(source_id, language, source_unit_type, _text_processor)
-            
+
             yield send_progress("Loading target text", target_id.replace('.tess', ''))
-            if is_crosslingual:
-                target_units = _get_processed_units(target_id, target_language, target_unit_type, _text_processor)
+            if params['is_crosslingual']:
+                target_units = _get_processed_units(target_id, params['target_language'], target_unit_type, _text_processor)
             else:
                 target_units = _get_processed_units(target_id, language, target_unit_type, _text_processor)
-            
-            corpus_frequencies = None
-            stoplist_basis = settings.get('stoplist_basis', 'source_target')
-            if stoplist_basis == 'corpus':
+
+            # Load corpus frequencies if needed
+            if settings.get('stoplist_basis', 'source_target') == 'corpus':
                 yield send_progress("Loading corpus frequencies")
-                freq_data = _get_corpus_frequencies(language, _text_processor)
-                if freq_data:
-                    corpus_frequencies = freq_data.get('frequencies', {})
-            
-            yield send_progress("Finding matches", f"{len(source_units)} × {len(target_units)} units")
-            
-            if match_type == 'sound':
-                matches, stoplist_size = _matcher.find_sound_matches(source_units, target_units, settings)
-            elif match_type == 'edit_distance':
-                matches, stoplist_size = _matcher.find_edit_distance_matches(source_units, target_units, settings)
-            elif match_type == 'semantic':
-                from backend.semantic_similarity import find_semantic_matches
-                matches, stoplist_size = find_semantic_matches(source_units, target_units, settings)
-            elif match_type == 'dictionary':
-                from backend.semantic_similarity import find_dictionary_matches
-                matches, stoplist_size = find_dictionary_matches(source_units, target_units, settings)
-            elif match_type in ('semantic_cross', 'dictionary_cross'):
+            corpus_frequencies = _load_corpus_frequencies(language, settings)
+
+            # Find matches
+            yield send_progress("Finding matches", f"{len(source_units)} \u00d7 {len(target_units)} units")
+            try:
+                matches, stoplist_size = _run_matcher(match_type, source_units, target_units, settings, corpus_frequencies)
+            except ValueError:
                 yield f"data: {json.dumps({'type': 'error', 'message': 'Use regular search endpoint for cross-lingual'})}\n\n"
                 return
-            else:
-                matches, stoplist_size = _matcher.find_matches(source_units, target_units, settings, corpus_frequencies)
-            
+
             if not matches:
                 result = {
                     "type": "complete",
@@ -205,44 +378,32 @@ def search_stream():
                 }
                 yield f"data: {json.dumps(result)}\n\n"
                 return
-            
+
+            # Score, cache, log, and return
             yield send_progress("Scoring matches", f"{len(matches)} candidates")
             scored_results = _scorer.score_matches(matches, source_units, target_units, settings, source_id, target_id)
             scored_results.sort(key=lambda x: x['overall_score'], reverse=True)
-            
+
             yield send_progress("Saving to cache")
-            metadata = {
-                'source_lines': len(source_units),
-                'target_lines': len(target_units),
-                'stoplist_size': stoplist_size
-            }
-            save_cached_results(source_id, target_id, language, settings, scored_results, metadata)
-            
-            max_results = settings.get('max_results', 0)
-            display_results = scored_results[:max_results] if max_results > 0 else scored_results
-            
-            user_id = current_user.id if current_user and current_user.is_authenticated else None
-            city, country = get_user_location()
-            log_search('text_comparison', language, source_id, target_id, None,
-                      settings.get('match_type', 'lemma'), len(scored_results), False, user_id,
-                      city, country)
-            
+            response_data = _finalize_results(scored_results, source_units, target_units,
+                                               stoplist_size, settings, source_id, target_id, language)
+
             elapsed_time = round(time.time() - start_time, 2)
             result = {
                 "type": "complete",
-                "results": display_results,
-                "total_matches": len(scored_results),
-                "source_lines": len(source_units),
-                "target_lines": len(target_units),
-                "stoplist_size": stoplist_size,
+                "results": response_data["results"],
+                "total_matches": response_data["total_matches"],
+                "source_lines": response_data["source_lines"],
+                "target_lines": response_data["target_lines"],
+                "stoplist_size": response_data["stoplist_size"],
                 "elapsed_time": elapsed_time
             }
             yield f"data: {json.dumps(result)}\n\n"
-            
+
         except Exception as e:
             logger.error(f"Search stream error: {e}")
             yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
-    
+
     return Response(generate(), mimetype='text/event-stream', headers={
         'Cache-Control': 'no-cache',
         'Connection': 'keep-alive',
@@ -260,59 +421,22 @@ def search():
     """
     try:
         data = request.get_json()
-        source_id = data.get('source')
-        target_id = data.get('target')
-        language = data.get('language', 'la')
-        source_language = data.get('source_language', language)
-        target_language = data.get('target_language', language)
-        
-        # Build settings from nested 'settings' object OR top-level properties
-        settings = data.get('settings', {})
-        # Also check for settings spread at top level (frontend sends them this way)
-        for key in ['match_type', 'min_matches', 'max_results', 'max_distance', 
-                    'stoplist_basis', 'stoplist_size', 'source_unit_type', 'target_unit_type',
-                    'use_meter', 'use_pos', 'use_syntax', 'use_sound', 'use_edit_distance',
-                    'bigram_boost', 'custom_stopwords']:
-            if key in data and key not in settings:
-                settings[key] = data[key]
-        
-        if not source_id or not target_id:
-            return jsonify({"error": "Please select both source and target texts"})
-        
+        params = _parse_search_request(data)
+        settings = params['settings']
+        source_id = params['source_id']
+        target_id = params['target_id']
+        language = params['language']
         match_type = settings.get('match_type', 'lemma')
-        is_crosslingual = match_type in ('semantic_cross', 'dictionary_cross')
-        
-        if is_crosslingual:
-            source_lang_dir = os.path.join(_texts_dir, source_language)
-            target_lang_dir = os.path.join(_texts_dir, target_language)
-            source_path = os.path.join(source_lang_dir, source_id)
-            target_path = os.path.join(target_lang_dir, target_id)
-        else:
-            lang_dir = os.path.join(_texts_dir, language)
-            source_path = os.path.join(lang_dir, source_id)
-            target_path = os.path.join(lang_dir, target_id)
-        
-        if not os.path.exists(source_path) or not os.path.exists(target_path):
-            return jsonify({"error": "Text files not found"})
-        
-        settings['language'] = language
-        settings['source_language'] = source_language
-        settings['target_language'] = target_language
-        settings['source_text_path'] = source_path
-        settings['target_text_path'] = target_path
-        
-        cached_results, cached_meta = get_cached_results(
-            source_id, target_id, language, settings
-        )
-        
+
+        # Check cache
+        cached_results, cached_meta = get_cached_results(source_id, target_id, language, settings)
         if cached_results is not None:
             max_results = settings.get('max_results', 0)
             display_results = cached_results[:max_results] if max_results > 0 else cached_results
             user_id = current_user.id if current_user and current_user.is_authenticated else None
             city, country = get_user_location()
-            log_search('text_comparison', language, source_id, target_id, None, 
-                      settings.get('match_type', 'lemma'), len(cached_results), True, user_id,
-                      city, country)
+            log_search('text_comparison', language, source_id, target_id, None,
+                      match_type, len(cached_results), True, user_id, city, country)
             meta = cached_meta or {}
             return jsonify({
                 "results": display_results,
@@ -322,169 +446,31 @@ def search():
                 "stoplist_size": meta.get('stoplist_size', 0),
                 "cached": True
             })
-        
-        source_unit_type = settings.get('source_unit_type', 'line')
-        target_unit_type = settings.get('target_unit_type', 'line')
-        
-        if is_crosslingual:
-            source_units = _get_processed_units(source_id, source_language, source_unit_type, _text_processor)
-            target_units = _get_processed_units(target_id, target_language, target_unit_type, _text_processor)
-        else:
-            source_units = _get_processed_units(source_id, language, source_unit_type, _text_processor)
-            target_units = _get_processed_units(target_id, language, target_unit_type, _text_processor)
-        
-        corpus_frequencies = None
-        stoplist_basis = settings.get('stoplist_basis', 'source_target')
-        if stoplist_basis == 'corpus':
-            freq_data = _get_corpus_frequencies(language, _text_processor)
-            if freq_data:
-                corpus_frequencies = freq_data.get('frequencies', {})
-        
-        match_type = settings.get('match_type', 'lemma')
-        
-        if match_type == 'sound':
-            matches, stoplist_size = _matcher.find_sound_matches(
-                source_units, target_units, settings
-            )
-        elif match_type == 'edit_distance':
-            matches, stoplist_size = _matcher.find_edit_distance_matches(
-                source_units, target_units, settings
-            )
-        elif match_type == 'semantic':
-            from backend.semantic_similarity import find_semantic_matches
-            matches, stoplist_size = find_semantic_matches(
-                source_units, target_units, settings
-            )
-        elif match_type == 'dictionary':
-            from backend.semantic_similarity import find_dictionary_matches
-            matches, stoplist_size = find_dictionary_matches(
-                source_units, target_units, settings
-            )
-        elif match_type == 'semantic_cross':
+
+        # Load text units and corpus frequencies
+        source_units, target_units = _load_units(params)
+        corpus_frequencies = _load_corpus_frequencies(language, settings)
+
+        # Cross-lingual dictionary has custom IDF-based result building
+        if match_type == 'dictionary_cross':
+            return _handle_dictionary_cross(params, source_units, target_units, settings)
+
+        # Cross-lingual semantic
+        if match_type == 'semantic_cross':
             from backend.semantic_similarity import find_crosslingual_matches
             matches, stoplist_size = find_crosslingual_matches(
-                source_units, target_units, source_language, target_language, settings
-            )
-        elif match_type == 'dictionary_cross':
-            from backend.semantic_similarity import find_dictionary_crosslingual_matches
-            # Load frequency data for IDF scoring (uses cached data from app init)
-            greek_freq_data = _get_corpus_frequencies('grc', _text_processor)
-            latin_freq_data = _get_corpus_frequencies('la', _text_processor)
-            greek_frequencies = greek_freq_data.get('frequencies', {}) if greek_freq_data else {}
-            latin_frequencies = latin_freq_data.get('frequencies', {}) if latin_freq_data else {}
-            matches, stoplist_size = find_dictionary_crosslingual_matches(
-                source_units, target_units, source_language, target_language, settings,
-                greek_frequencies=greek_frequencies, latin_frequencies=latin_frequencies
-            )
-            # For dictionary matches, use IDF score directly instead of re-scoring
-            # Build results directly from matches (already sorted by IDF)
-            scored_results = []
-            for m in matches:
-                src_unit = source_units[m['source_idx']]
-                tgt_unit = target_units[m['target_idx']]
-                src_tokens = src_unit.get('tokens', [])
-                tgt_tokens = tgt_unit.get('tokens', [])
-                # Use original_tokens for display (preserves capitalization and diacritics)
-                src_original = src_unit.get('original_tokens', src_tokens)
-                tgt_original = tgt_unit.get('original_tokens', tgt_tokens)
-                
-                # Map matched lemmas back to original tokens (with diacritics and capitalization)
-                # Use the first matched index to get the original token
-                matched_words_with_original = []
-                for wm in m.get('word_matches', []):
-                    grc_indices = wm.get('greek_indices', [])
-                    lat_indices = wm.get('latin_indices', [])
-                    # Get original token with diacritics and capitalization
-                    grc_original = src_original[grc_indices[0]] if grc_indices and grc_indices[0] < len(src_original) else wm['greek_lemma']
-                    lat_original_word = tgt_original[lat_indices[0]] if lat_indices and lat_indices[0] < len(tgt_original) else wm['latin_lemma']
-                    matched_words_with_original.append({
-                        'greek_word': grc_original,
-                        'latin_word': lat_original_word,
-                        'greek_lemma': wm.get('greek_lemma', ''),
-                        'latin_lemma': wm.get('latin_lemma', ''),
-                        'display': f"{grc_original}→{lat_original_word}",
-                        'type': 'cross_lingual',
-                        'idf': wm.get('idf_score', 0)
-                    })
-                
-                scored_results.append({
-                    'source': {
-                        'ref': src_unit.get('ref', ''),
-                        'text': src_unit.get('text', ''),
-                        'tokens': src_original,  # Use original tokens with capitalization/diacritics
-                        'highlight_indices': [idx for wm in m.get('word_matches', []) for idx in wm.get('greek_indices', [])]
-                    },
-                    'target': {
-                        'ref': tgt_unit.get('ref', ''),
-                        'text': tgt_unit.get('text', ''),
-                        'tokens': tgt_original,  # Use original tokens with capitalization
-                        'highlight_indices': [idx for wm in m.get('word_matches', []) for idx in wm.get('latin_indices', [])]
-                    },
-                    'matched_words': matched_words_with_original,
-                    'match_count': m.get('match_count', 0),
-                    'distance': m.get('distance', 0),
-                    'idf_score': m.get('idf_score', 0),
-                    'overall_score': m.get('overall_score', 0),  # Combined IDF + distance score
-                    'match_basis': 'dictionary_cross'
-                })
-            # Skip scorer and go directly to results
-            metadata = {
-                'source_lines': len(source_units),
-                'target_lines': len(target_units),
-                'stoplist_size': stoplist_size
-            }
-            save_cached_results(source_id, target_id, language, settings, 
-                              scored_results, metadata)
-            max_results = settings.get('max_results', 0)
-            display_results = scored_results[:max_results] if max_results > 0 else scored_results
-            user_id = current_user.id if current_user and current_user.is_authenticated else None
-            city, country = get_user_location()
-            log_search('text_comparison', language, source_id, target_id, None,
-                      'dictionary_cross', len(scored_results), False, user_id, city, country)
-            return jsonify({
-                "results": display_results,
-                "total_matches": len(scored_results),
-                "source_lines": len(source_units),
-                "target_lines": len(target_units),
-                "stoplist_size": stoplist_size,
-                "cached": False
-            })
+                source_units, target_units, params['source_language'],
+                params['target_language'], settings)
         else:
-            matches, stoplist_size = _matcher.find_matches(
-                source_units, target_units, settings, 
-                corpus_frequencies=corpus_frequencies
-            )
-        
+            matches, stoplist_size = _run_matcher(match_type, source_units, target_units,
+                                                   settings, corpus_frequencies)
+
+        # Score, cache, log, and return
         scored_results = _scorer.score_matches(matches, source_units, target_units, settings, source_id, target_id)
         scored_results.sort(key=lambda x: x['overall_score'], reverse=True)
-        
-        metadata = {
-            'source_lines': len(source_units),
-            'target_lines': len(target_units),
-            'stoplist_size': stoplist_size
-        }
-        
-        save_cached_results(source_id, target_id, language, settings, 
-                          scored_results, metadata)
-        
-        max_results = settings.get('max_results', 0)
-        display_results = scored_results[:max_results] if max_results > 0 else scored_results
-        
-        user_id = current_user.id if current_user and current_user.is_authenticated else None
-        city, country = get_user_location()
-        log_search('text_comparison', language, source_id, target_id, None,
-                  settings.get('match_type', 'lemma'), len(scored_results), False, user_id,
-                  city, country)
-        
-        return jsonify({
-            "results": display_results,
-            "total_matches": len(scored_results),
-            "source_lines": len(source_units),
-            "target_lines": len(target_units),
-            "stoplist_size": stoplist_size,
-            "cached": False
-        })
-        
+        return jsonify(_finalize_results(scored_results, source_units, target_units,
+                                          stoplist_size, settings, source_id, target_id, language))
+
     except Exception as e:
         import traceback
         traceback.print_exc()
