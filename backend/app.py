@@ -228,7 +228,18 @@ def init_db():
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     reviewed_at TIMESTAMP,
                     reviewed_by VARCHAR(255),
-                    admin_notes TEXT
+                    admin_notes TEXT,
+                    text_date TEXT,
+                    approved_filename VARCHAR(255),
+                    official_author VARCHAR(255),
+                    official_work VARCHAR(255),
+                    admin_updated_at TIMESTAMP,
+                    author_era VARCHAR(100),
+                    author_year INTEGER,
+                    e_source VARCHAR(255),
+                    e_source_url TEXT,
+                    print_source TEXT,
+                    added_by VARCHAR(255)
                 )
             ''')
             cur.execute('''
@@ -2143,69 +2154,6 @@ def admin_login():
         return jsonify({'success': True})
     else:
         return jsonify({'error': 'Invalid password'}), 401
-
-@api_route('/admin/requests')
-def get_requests():
-    """Get all text requests (admin only)"""
-    password = request.headers.get('X-Admin-Password', '')
-    if password != ADMIN_PASSWORD:
-        return jsonify({'error': 'Unauthorized'}), 401
-    
-    try:
-        with get_db_cursor(commit=False) as cur:
-            cur.execute('''
-                SELECT id, name, email, author, work, language, notes, content, 
-                       status, created_at, reviewed_at, reviewed_by, admin_notes
-                FROM text_requests
-                ORDER BY created_at DESC
-            ''')
-            rows = cur.fetchall()
-        
-        requests = []
-        for row in rows:
-            requests.append({
-                'id': row[0],
-                'name': row[1],
-                'email': row[2],
-                'author': row[3],
-                'work': row[4],
-                'language': row[5],
-                'notes': row[6],
-                'content': row[7],
-                'status': row[8],
-                'created_at': row[9].isoformat() if row[9] else None,
-                'reviewed_at': row[10].isoformat() if row[10] else None,
-                'reviewed_by': row[11],
-                'admin_notes': row[12]
-            })
-        return jsonify(requests)
-    except Exception as e:
-        app_logger.error(f"Failed to get text requests: {e}")
-        return jsonify({'error': str(e)}), 500
-
-@api_route('/admin/requests/<int:request_id>', methods=['PUT'])
-def update_request(request_id):
-    """Update a text request status (admin only)"""
-    password = request.headers.get('X-Admin-Password', '')
-    if password != ADMIN_PASSWORD:
-        return jsonify({'error': 'Unauthorized'}), 401
-    
-    data = request.get_json() or {}
-    status = data.get('status', 'pending')
-    admin_notes = data.get('admin_notes', '')
-    reviewed_by = data.get('reviewed_by', 'admin')
-    
-    try:
-        with get_db_cursor() as cur:
-            cur.execute('''
-                UPDATE text_requests 
-                SET status = %s, admin_notes = %s, reviewed_by = %s, reviewed_at = %s
-                WHERE id = %s
-            ''', (status, admin_notes, reviewed_by, datetime.now(), request_id))
-        return jsonify({'success': True})
-    except Exception as e:
-        app_logger.error(f"Failed to update text request: {e}")
-        return jsonify({'error': str(e)}), 500
 
 @api_route('/admin/requests/<int:request_id>/approve', methods=['POST'])
 def approve_and_add_text(request_id):
