@@ -748,32 +748,12 @@ def get_texts_hierarchy():
 # =============================================================================
 # PROSE DETECTION HELPERS
 # =============================================================================
-# Used by search(), line_search_parallel(), and corpus_search() to apply
-# prose-appropriate max_distance settings. Defined once here to avoid
-# duplicating the author/marker lists across multiple functions.
-
-PROSE_AUTHORS = [
-    'cicero', 'caesar', 'livy', 'sallust', 'tacitus', 'suetonius',
-    'nepos', 'quintilian', 'pliny', 'apuleius', 'petronius',
-    'augustine', 'jerome', 'ambrose', 'seneca_prose',
-    'cic.', 'caes.', 'liv.', 'sall.', 'tac.', 'suet.', 'nep.',
-    'quint.', 'plin.', 'apul.', 'petron.', 'aug.', 'hier.', 'ambr.',
-]
-PROSE_MARKERS = [
-    'epistulae', 'letters', 'de_officiis', 'de_oratore',
-    'de_finibus', 'de_natura', 'tusculan', 'bellum_gallicum',
-    'historiae', 'annales', 'agricola', 'germania', 'dialogus',
-    'satyricon', 'confessions', 'de_civitate',
-]
+# Prose detection delegated to unified detect_text_type() in utils.py via
+# distance_filter.is_prose_text (imported as is_prose_text_unified at top).
+# POETRY_MAX_DISTANCE / PROSE_MAX_DISTANCE kept here for app.py's own use.
 
 POETRY_MAX_DISTANCE = 20
 PROSE_MAX_DISTANCE = 4
-
-
-def _is_prose_text(filename):
-    """Check if a text is prose based on author name or work title markers."""
-    text_lower = filename.lower()
-    return any(marker in text_lower for marker in PROSE_AUTHORS + PROSE_MARKERS)
 
 
 def _normalize_latin_lemma(lem):
@@ -927,7 +907,7 @@ def _evaluate_line_candidate(unit, ref, filename, filtered_source_lemmas, query_
     else:
         distance = 1
 
-    max_dist = PROSE_MAX_DISTANCE if _is_prose_text(filename) else POETRY_MAX_DISTANCE
+    max_dist = PROSE_MAX_DISTANCE if is_prose_text_unified(filename) else POETRY_MAX_DISTANCE
     if distance > max_dist:
         return None
 
@@ -986,7 +966,7 @@ def search():
         
         # Apply prose-aware max_distance defaults if not explicitly set
         if 'max_distance' not in settings or settings.get('max_distance') == 999:
-            if _is_prose_text(source_id) or _is_prose_text(target_id):
+            if is_prose_text_unified(source_id) or is_prose_text_unified(target_id):
                 settings['max_distance'] = PROSE_MAX_DISTANCE
             else:
                 settings['max_distance'] = POETRY_MAX_DISTANCE
@@ -1921,7 +1901,6 @@ def corpus_search():
     """Search the entire corpus for lines containing specific lemmas using inverted index"""
     try:
         from backend.inverted_index import is_index_available, find_co_occurring_lemmas, has_lines_data, get_lines_batch
-        from backend.metrical_scanner import is_prose_text
         
         data = request.get_json() or {}
         lemmas = data.get('lemmas', [])
@@ -1947,7 +1926,7 @@ def corpus_search():
             if filename in exclude_texts:
                 continue
             if filename not in text_genre_cache:
-                text_genre_cache[filename] = not _is_prose_text(filename)
+                text_genre_cache[filename] = not is_prose_text_unified(filename, language)
 
             is_poetry = text_genre_cache[filename]
             max_distance = POETRY_MAX_DISTANCE if is_poetry else PROSE_MAX_DISTANCE
