@@ -1144,6 +1144,98 @@
       "year": 1250,
       "era": "Medieval",
       "note": "Greek philosopher (d. 322 BCE); Latin translations primarily 12th-13th c."
+    },
+
+    "hilary_saint_bishop_of_poitiers": {
+      "year": 367,
+      "note": "d. 367 CE",
+      "era": "Late Antique"
+    },
+    "magnus_felix_ennodius": {
+      "year": 521,
+      "note": "d. 521 CE",
+      "era": "Late Antique"
+    },
+    "orosius_paulus": {
+      "year": 420,
+      "note": "fl. c. 420 CE",
+      "era": "Late Antique"
+    },
+    "julius_firmicus_maternus": {
+      "year": 350,
+      "note": "fl. c. 350 CE",
+      "era": "Later Imperial"
+    },
+    "juvencus_caius_vettius_aquilinus": {
+      "year": 330,
+      "note": "fl. c. 330 CE",
+      "era": "Later Imperial"
+    },
+    "iuuencus": {
+      "year": 330,
+      "note": "fl. c. 330 CE",
+      "era": "Later Imperial"
+    },
+    "orientius_saint": {
+      "year": 450,
+      "note": "fl. c. 450 CE",
+      "era": "Late Antique"
+    },
+    "jerome_saint": {
+      "year": 420,
+      "note": "d. 420 CE",
+      "era": "Late Antique"
+    },
+
+    "calpurnius_siculus": {
+      "year": 55,
+      "note": "fl. c. 55 CE (date contested; some scholars place in 3rd c.)",
+      "era": "Early Imperial"
+    },
+    "optatus_saint_bishop_of_mileve": {
+      "year": 370,
+      "note": "fl. c. 370 CE",
+      "era": "Late Antique"
+    },
+    "lucifer_bishop_of_cagliari": {
+      "year": 371,
+      "note": "d. 370/371 CE",
+      "era": "Late Antique"
+    },
+    "paulinus_of_pella": {
+      "year": 459,
+      "note": "fl. c. 459 CE",
+      "era": "Late Antique"
+    },
+    "paulinus_petricordiae": {
+      "year": 470,
+      "note": "fl. c. 470 CE",
+      "era": "Late Antique"
+    },
+    "petrus_diaconus": {
+      "year": 1130,
+      "note": "fl. c. 1130 CE",
+      "era": "Medieval"
+    },
+    "philastrius": {
+      "year": 397,
+      "note": "d. c. 397 CE",
+      "era": "Late Antique"
+    },
+    "pontius_diaconus": {
+      "year": 260,
+      "note": "fl. c. 260 CE",
+      "era": "Later Imperial"
+    },
+    "proba_active_4th_century": {
+      "year": 360,
+      "note": "fl. c. 360 CE",
+      "era": "Late Antique"
+    },
+    "paul_the_apostle_saint": {
+      "year": 64,
+      "note": "d. c. 64 CE (Latin translations)",
+      "era": "Early Imperial"
     }
   },
   "grc": {
@@ -1486,6 +1578,292 @@
       "year": -250,
       "note": "c. 3rd cent. BCE",
       "era": "Hellenistic"
+    },
+
+    "acta_joannis": {
+      "year": 175,
+      "note": "c. 150-200 CE",
+      "era": "Early Imperial"
+    },
+    "aelius_herodianus": {
+      "year": 170,
+      "note": "fl. c. 170 CE",
+      "era": "Early Imperial"
+    },
+    "aelius_theon": {
+      "year": 50,
+      "note": "fl. c. 50 CE",
+      "era": "Early Imperial"
+    },
+    "agatharchides": {
+      "year": -150,
+      "note": "fl. c. 150 BCE",
+      "era": "Hellenistic"
+    },
+    "agathemerus": {
+      "year": 250,
+      "note": "c. 3rd c. CE",
+      "era": "Later Imperial"
+    },
+    "alcidamas": {
+      "year": -390,
+      "note": "fl. c. 390 BCE",
+      "era": "Classical"
+    },
+    "anacharsis": {
+      "year": -250,
+      "note": "comp. c. mid-3rd c. BCE (pseudepigraphical)",
+      "era": "Hellenistic"
+    },
+    "antisthenes": {
+      "year": -420,
+      "note": "c. 446-366 BCE",
+      "era": "Classical"
+    },
+    "apollonius_rhodius": {
+      "year": -260,
+      "note": "fl. c. 260 BCE",
+      "era": "Hellenistic"
+    },
+    "archytas_of_tarentum": {
+      "year": -400,
+      "note": "c. 425-350 BCE",
+      "era": "Classical"
+    },
+    "aristoxenus": {
+      "year": -340,
+      "note": "c. 375-after 322 BCE",
+      "era": "Classical"
+    },
+    "arius_didymus": {
+      "year": -10,
+      "note": "fl. c. 1st c. BCE/CE",
+      "era": "Hellenistic"
+    },
+    "artaxerxis_epistulae": {
+      "year": 100,
+      "note": "comp. prob. 1st-2nd c. CE (pseudepigraphical)",
+      "era": "Early Imperial"
+    },
+    "artemidorus": {
+      "year": 150,
+      "note": "fl. c. 150 CE",
+      "era": "Early Imperial"
+    },
+    "aspasius": {
+      "year": 130,
+      "note": "c. 80-150 CE",
+      "era": "Early Imperial"
+    },
+    "babrius": {
+      "year": 200,
+      "note": "fl. c. 2nd c. CE",
+      "era": "Early Imperial"
+    },
+    "carmina_delphis_inventa": {
+      "year": -128,
+      "note": "128 BCE",
+      "era": "Hellenistic"
+    },
+    "chionis_epistulae": {
+      "year": 50,
+      "note": "comp. prob. 1st c. CE (pseudepigraphical)",
+      "era": "Early Imperial"
+    },
+    "cleonides": {
+      "year": 150,
+      "note": "prob. 2nd c. CE",
+      "era": "Early Imperial"
+    },
+    "cratetis_epistulae": {
+      "year": 50,
+      "note": "comp. prob. 1st c. CE (pseudepigraphical)",
+      "era": "Early Imperial"
+    },
+    "critias": {
+      "year": -430,
+      "note": "c. 460-403 BCE",
+      "era": "Classical"
+    },
+    "didymus_alexandrinus": {
+      "year": -30,
+      "note": "c. 63 BCE-10 CE (Didymus Chalcenterus)",
+      "era": "Hellenistic"
+    },
+    "diogenianus_of_heraclea": {
+      "year": 130,
+      "note": "fl. reign of Hadrian, c. 117-138 CE",
+      "era": "Early Imperial"
+    },
+    "dionysius_calliphontis": {
+      "year": -80,
+      "note": "prob. 1st c. BCE (periegete)",
+      "era": "Hellenistic"
+    },
+    "dionysius_of_halicarnassus": {
+      "year": -20,
+      "note": "c. 60 BCE-after 7 BCE",
+      "era": "Hellenistic"
+    },
+    "dionysius_of_halicarnasus": {
+      "year": -20,
+      "note": "c. 60 BCE-after 7 BCE",
+      "era": "Hellenistic"
+    },
+    "epicharmus": {
+      "year": -480,
+      "note": "c. 550-460 BCE",
+      "era": "Classical"
+    },
+    "eutropius": {
+      "year": 369,
+      "note": "fl. 363-387 CE",
+      "era": "Late Imperial"
+    },
+    "gaius_romanus": {
+      "year": 160,
+      "note": "fl. c. 160 CE",
+      "era": "Early Imperial"
+    },
+    "gorgias_of_leontini": {
+      "year": -430,
+      "note": "c. 483-376 BCE",
+      "era": "Classical"
+    },
+    "hanno": {
+      "year": -450,
+      "note": "fl. c. 5th c. BCE",
+      "era": "Classical"
+    },
+    "heraclitus_of_ephesus": {
+      "year": -500,
+      "note": "c. 535-475 BCE",
+      "era": "Archaic"
+    },
+    "hermogenes": {
+      "year": 170,
+      "note": "fl. c. 170 CE",
+      "era": "Early Imperial"
+    },
+    "herodian": {
+      "year": 220,
+      "note": "c. 170-240 CE (historian)",
+      "era": "Later Imperial"
+    },
+    "herodianus": {
+      "year": 170,
+      "note": "fl. c. 170 CE (grammarian Aelius Herodianus)",
+      "era": "Early Imperial"
+    },
+    "heronis_alexandrini": {
+      "year": 62,
+      "note": "fl. c. 62 CE",
+      "era": "Early Imperial"
+    },
+    "isidore_of_charax": {
+      "year": -1,
+      "note": "fl. c. 1st c. BCE/CE",
+      "era": "Hellenistic"
+    },
+    "maximus_of_tyre": {
+      "year": 180,
+      "note": "fl. c. 180 CE",
+      "era": "Early Imperial"
+    },
+    "niciae_epistula": {
+      "year": 50,
+      "note": "comp. prob. 1st c. CE (pseudepigraphical)",
+      "era": "Early Imperial"
+    },
+    "orphica": {
+      "year": 200,
+      "note": "comp. c. 2nd-3rd c. CE (Orphic Hymns)",
+      "era": "Early Imperial"
+    },
+    "paradoxographus_florentinus": {
+      "year": -100,
+      "note": "prob. Hellenistic/Early Imperial",
+      "era": "Hellenistic"
+    },
+    "phalaridis_epistulae": {
+      "year": 150,
+      "note": "comp. prob. 2nd c. CE (pseudepigraphical)",
+      "era": "Early Imperial"
+    },
+    "philip_ii_king_of_macedonia": {
+      "year": 50,
+      "note": "comp. prob. 1st c. CE (pseudepigraphical)",
+      "era": "Early Imperial"
+    },
+    "polyaenus": {
+      "year": 163,
+      "note": "fl. c. 163 CE",
+      "era": "Early Imperial"
+    },
+    "pseudo_dicaearchus_messeniushe": {
+      "year": -320,
+      "note": "attr. Dicaearchus, prob. Hellenistic",
+      "era": "Hellenistic"
+    },
+    "pseudoaristotle": {
+      "year": -200,
+      "note": "various, prob. 3rd-1st c. BCE",
+      "era": "Hellenistic"
+    },
+    "pseudoarrianus": {
+      "year": 150,
+      "note": "attr. Arrian, prob. 2nd c. CE",
+      "era": "Early Imperial"
+    },
+    "pseudomenander": {
+      "year": 100,
+      "note": "comp. prob. 1st-2nd c. CE",
+      "era": "Early Imperial"
+    },
+    "pseudoplutarch": {
+      "year": 200,
+      "note": "comp. c. 2nd-3rd c. CE",
+      "era": "Early Imperial"
+    },
+    "pseudoscymnus": {
+      "year": -120,
+      "note": "c. 133-110 BCE",
+      "era": "Hellenistic"
+    },
+    "rufus_of_ephesus": {
+      "year": 100,
+      "note": "fl. c. 100 CE",
+      "era": "Early Imperial"
+    },
+    "rufus_soph": {
+      "year": 150,
+      "note": "prob. 2nd c. CE",
+      "era": "Early Imperial"
+    },
+    "scylax_of_caranda": {
+      "year": -330,
+      "note": "comp. c. 330s BCE (Pseudo-Scylax)",
+      "era": "Classical"
+    },
+    "sextus_empiricus": {
+      "year": 190,
+      "note": "fl. c. 190 CE",
+      "era": "Early Imperial"
+    },
+    "themistocles": {
+      "year": 50,
+      "note": "comp. prob. 1st c. CE (pseudepigraphical)",
+      "era": "Early Imperial"
+    },
+    "tryphon_i_grammaticus": {
+      "year": -40,
+      "note": "c. 60-10 BCE",
+      "era": "Hellenistic"
+    },
+    "zenobius_sophista": {
+      "year": 130,
+      "note": "fl. reign of Hadrian, c. 117-138 CE",
+      "era": "Early Imperial"
     }
   },
   "en": {

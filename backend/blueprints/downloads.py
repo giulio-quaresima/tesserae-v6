@@ -6,7 +6,7 @@ import json
 import zipfile
 import tempfile
 from io import BytesIO
-from flask import Blueprint, send_file, jsonify, Response
+from flask import Blueprint, send_file, jsonify, Response, after_this_request
 
 downloads_bp = Blueprint('downloads', __name__)
 
@@ -50,7 +50,11 @@ def download_texts(language):
 
 @downloads_bp.route('/downloads/embeddings/<language>')
 def download_embeddings(language):
-    """Download all embeddings for a language as a zip file"""
+    """Download all embeddings for a language as a zip file.
+    
+    Streams to a temp file instead of building in memory,
+    because embedding directories can be multiple GB.
+    """
     if language not in ['la', 'grc']:
         return jsonify({'error': 'Invalid language. Use: la, grc'}), 400
     
@@ -59,14 +63,37 @@ def download_embeddings(language):
         return jsonify({'error': f'No embeddings found for {language}'}), 404
     
     try:
-        zip_buffer = create_zip_from_directory(lang_dir, f'embeddings_{language}')
+        tmp = tempfile.NamedTemporaryFile(delete=False, suffix='.zip')
+        tmp_path = tmp.name
+        with zipfile.ZipFile(tmp, 'w', zipfile.ZIP_DEFLATED) as zf:
+            prefix = f'embeddings_{language}'
+            for root, dirs, files in os.walk(lang_dir):
+                for file in files:
+                    file_path = os.path.join(root, file)
+                    arcname = os.path.relpath(file_path, lang_dir)
+                    arcname = os.path.join(prefix, arcname)
+                    zf.write(file_path, arcname)
+        
+        @after_this_request
+        def cleanup(response):
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                pass
+            return response
+        
         return send_file(
-            zip_buffer,
+            tmp_path,
             mimetype='application/zip',
             as_attachment=True,
             download_name=f'tesserae_embeddings_{language}.zip'
         )
     except Exception as e:
+        # Clean up temp file on error too
+        try:
+            os.unlink(tmp_path)
+        except (OSError, UnboundLocalError):
+            pass
         return jsonify({'error': str(e)}), 500
 
 @downloads_bp.route('/downloads/dictionary')
@@ -75,14 +102,20 @@ def download_dictionary():
     try:
         from backend.synonym_dict import get_greek_latin_dict
         
-        greek_latin_dict = get_greek_latin_dict()
+        greek_latin_dict, _ = get_greek_latin_dict()
+        
+        # Convert set values to sorted lists for JSON serialization
+        serializable_dict = {
+            k: sorted(v) if isinstance(v, set) else v
+            for k, v in greek_latin_dict.items()
+        }
         
         dict_data = {
             'description': 'Greek-Latin vocabulary mappings for cross-lingual matching',
             'source': 'Tesserae V6',
             'format': 'Greek lemma -> List of Latin equivalents',
-            'entries': len(greek_latin_dict),
-            'dictionary': greek_latin_dict
+            'entries': len(serializable_dict),
+            'dictionary': serializable_dict
         }
         
         json_str = json.dumps(dict_data, ensure_ascii=False, indent=2)
