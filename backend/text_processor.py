@@ -509,7 +509,8 @@ class TextProcessor:
                 try:
                     token_to_try = stripped_base if stripped_base else token
                     result = self.latin_lemmatizer.lemmatize([token_to_try])
-                    lemma = result[0][1] if result else (stripped_base or norm_token)
+                    raw_lemma = result[0][1] if result else (stripped_base or norm_token)
+                    lemma = re.sub(r'\d+$', '', raw_lemma)
                 except Exception:
                     lemma = stripped_base or norm_token
             
@@ -533,7 +534,7 @@ class TextProcessor:
             try:
                 result = self.latin_lemmatizer.lemmatize([token])
                 if result and len(result) > 0:
-                    lemma = result[0][1]
+                    lemma = re.sub(r'\d+$', '', result[0][1])
                 else:
                     lemma = token
             except Exception:
