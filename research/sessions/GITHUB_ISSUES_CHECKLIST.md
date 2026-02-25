@@ -94,8 +94,9 @@ Generated 2026-02-24. Close issues on GitHub after pushing to production.
 - **Notes:** The underlying issue was #17 (bad lemmatization of *effero* forms). Phrase mode works correctly — combines consecutive lines until sentence-ending punctuation. After #17 fix, phrase mode finds Sil. 6.181–187 ↔ Theb. 6.84–103 with 4 shared lemmata (caput, anguis, astrum, effero). Line mode also now finds Sil. 6.186 ↔ Theb. 6.93 (caput + effero).
 
 ### #19 — Extending line matching?
-- [ ] **Status:** Not started
+- [~] **Status:** DONE. Already implemented across multiple features.
 - **Details:** Implement generic "within X lines/words" option, as in previous versions' multi-line search. Reported by Dr. Krasne.
+- **Notes:** Closed Feb 25. V3 never had a "within X lines" feature. V3 had: (1) phrase mode (combining lines at punctuation boundaries `.;:?`), which V6 already has; (2) max distance in words (within-unit filter, default 10), which V6 already has; (3) V1 had a 6-word sliding window, which V3 dropped. V6's fusion engine already exceeds all of these with its 2-line sliding window pass (Pass 2 in `fusion.py`) that runs 4 channels across adjacent line pairs, catching enjambed allusions automatically. No new feature needed.
 
 ### #20 — Email notifications for site admin list
 - [ ] **Status:** Not started
@@ -131,8 +132,8 @@ Generated 2026-02-24. Close issues on GitHub after pushing to production.
 
 | Status | Count |
 |--------|-------|
-| Not started | 12 |
-| Fixed on dev | 10 |
+| Not started | 11 |
+| Fixed on dev | 11 |
 | Pushed to production | 0 |
 | **Total** | **22** |
 
