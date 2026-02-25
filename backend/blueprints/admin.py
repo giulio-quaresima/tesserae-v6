@@ -474,12 +474,11 @@ def _update_text_provenance(text_id, author, title, language):
 
 
 def _add_to_text_sources(author, work, e_source, e_source_url, print_source, added_by):
-    """Append a new entry to data/text_sources.json for the Sources page."""
+    """Append a new entry to backend/text_sources.json for the Sources page."""
     if not any([e_source, print_source, added_by]):
         return
     try:
-        project_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-        sources_path = os.path.join(project_root, 'data', 'text_sources.json')
+        sources_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'text_sources.json')
         
         if os.path.exists(sources_path):
             with open(sources_path, 'r', encoding='utf-8') as f:
@@ -507,9 +506,8 @@ def _add_to_text_sources(author, work, e_source, e_source_url, print_source, add
 
 
 def _get_sources_path():
-    """Return the path to data/text_sources.json."""
-    project_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-    return os.path.join(project_root, 'data', 'text_sources.json')
+    """Return the path to backend/text_sources.json."""
+    return os.path.join(os.path.dirname(os.path.dirname(__file__)), 'text_sources.json')
 
 
 def _load_sources():
