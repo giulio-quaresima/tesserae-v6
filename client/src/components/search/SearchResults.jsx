@@ -1,15 +1,11 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { Button, LoadingSpinner } from '../common';
 import { formatReference, formatElapsedTime } from '../../utils/formatting';
+import { displayGreekWithFinalSigma } from '../../utils/greekUtils';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js';
 import { Bar } from 'react-chartjs-2';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
-
-const displayGreekWithFinalSigma = (text) => {
-  if (!text) return text;
-  return text.replace(/σ(?=\s|$|[,.;:!?])/g, 'ς');
-};
 
 const SearchResults = ({
   results,

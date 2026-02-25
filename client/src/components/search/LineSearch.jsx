@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { LoadingSpinner } from '../common';
+import { normalizeGreek } from '../../utils/greekUtils';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js';
 import { Bar } from 'react-chartjs-2';
 
@@ -457,11 +458,6 @@ export default function LineSearch({ language }) {
   const highlightMatches = (text, matchedWords) => {
     if (!text) return text;
     if (!matchedWords || matchedWords.length === 0) return text;
-    
-    const normalizeGreek = (s) => {
-      if (!s) return '';
-      return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-    };
     
     const normalizeWord = (s) => {
       if (!s) return '';

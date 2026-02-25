@@ -4,22 +4,9 @@ import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Toolti
 import { Bar } from 'react-chartjs-2';
 import { formatFullCitation } from '../../utils/textNames';
 import { formatElapsedTime } from '../../utils/formatting';
+import { displayGreekWithFinalSigma, normalizeGreek } from '../../utils/greekUtils';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
-
-const displayGreekWithFinalSigma = (text) => {
-  if (!text) return text;
-  return text.replace(/σ(?=\s|$|[,.;:!?])/g, 'ς');
-};
-
-const normalizeGreek = (text) => {
-  if (!text) return '';
-  return text
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .replace(/ς/g, 'σ');
-};
 
 const highlightLemmasInText = (text, lemmas) => {
   if (!text || !lemmas || lemmas.length === 0) return text;
