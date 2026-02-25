@@ -89,8 +89,9 @@ Generated 2026-02-24. Close issues on GitHub after pushing to production.
 - **Notes:** Fixed Feb 25. Three-layer problem: (1) LatinPipe syntax DB produced wrong lemmata for *effero* forms (`extulit`→`extuio`, `extulerat`→`exfero`); (2) CLTK appended sense-disambiguation digits (`effero1`) that broke matching; (3) stale lemma caches preserved bad data. Fix: stripped trailing digits in `text_processor.py`, added 43 missing *effero* paradigm forms to `latin_lemmas.json`, corrected 209 lines in `syntax_latin.db` and `la_index.db`, cleaned 294K cached lemma entries across 1,393 Latin files.
 
 ### #18 — "Phrase" vs "line" as the unit type
-- [ ] **Status:** Not started
+- [~] **Status:** DONE. Fixed on dev (resolved by #17 fix).
 - **Details:** Phrase vs line finds slightly different counts but nothing actually found outside a single line. Test case: Stat. Theb. 6.93 vs Sil. 6.185-6.
+- **Notes:** The underlying issue was #17 (bad lemmatization of *effero* forms). Phrase mode works correctly — combines consecutive lines until sentence-ending punctuation. After #17 fix, phrase mode finds Sil. 6.181–187 ↔ Theb. 6.84–103 with 4 shared lemmata (caput, anguis, astrum, effero). Line mode also now finds Sil. 6.186 ↔ Theb. 6.93 (caput + effero).
 
 ### #19 — Extending line matching?
 - [ ] **Status:** Not started
@@ -130,8 +131,8 @@ Generated 2026-02-24. Close issues on GitHub after pushing to production.
 
 | Status | Count |
 |--------|-------|
-| Not started | 13 |
-| Fixed on dev | 9 |
+| Not started | 12 |
+| Fixed on dev | 10 |
 | Pushed to production | 0 |
 | **Total** | **22** |
 
