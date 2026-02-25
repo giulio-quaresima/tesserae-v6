@@ -824,6 +824,137 @@ def _deduplicate_and_normalize(results):
     return deduplicated
 
 
+def _resolve_line_text(source_text_id, line_ref, language):
+    """Look up a line's text from its .tess file using the reference tag."""
+    lang_dir = os.path.join(TEXTS_DIR, language)
+    source_path = os.path.join(lang_dir, source_text_id)
+    if os.path.exists(source_path):
+        with open(source_path, 'r', encoding='utf-8') as f:
+            for file_line in f:
+                file_line = file_line.strip()
+                if file_line.startswith('<') and '>' in file_line:
+                    end_tag = file_line.index('>')
+                    ref = file_line[1:end_tag].strip()
+                    if ref == line_ref:
+                        return file_line[end_tag+1:].strip()
+    return None
+
+
+def _build_line_search_stopwords(language, corpus_frequencies):
+    """Build stopwords set for line search: default language stops + Zipf elbow detection."""
+    from backend.matcher import DEFAULT_LATIN_STOP_WORDS, DEFAULT_GREEK_STOP_WORDS, DEFAULT_ENGLISH_STOP_WORDS
+    from backend.zipf import find_zipf_elbow
+    from collections import Counter
+
+    if language == 'la':
+        stopwords = set(DEFAULT_LATIN_STOP_WORDS)
+    elif language == 'grc':
+        stopwords = set(DEFAULT_GREEK_STOP_WORDS)
+    else:
+        stopwords = set(DEFAULT_ENGLISH_STOP_WORDS)
+
+    if corpus_frequencies:
+        freq_counter = Counter(corpus_frequencies)
+        zipf_stops = find_zipf_elbow(freq_counter, min_stopwords=10, max_stopwords=50)
+        stopwords = stopwords.union(zipf_stops)
+
+    return stopwords
+
+
+def _evaluate_line_candidate(unit, ref, filename, filtered_source_lemmas, query_text_lower,
+                              source_text_id, line_ref, key_phrases, corpus_frequencies,
+                              total_corpus_words, lang_dates, seen_results, min_matches=2,
+                              index_matching_lemmas=None):
+    """Evaluate a single candidate line against the source line.
+
+    Used by both the index fast path and the fallback scan path in line_search_parallel().
+    Returns a result dict if the candidate passes all filters, or None.
+
+    For the index path, pass index_matching_lemmas (the lemmas the index found).
+    For the fallback path, leave it None to compute shared lemmas directly.
+    """
+    import re as _re
+
+    if not unit:
+        return None
+
+    unit_ref = ref or unit.get('ref', '')
+    result_key = (filename, unit_ref)
+    if result_key in seen_results:
+        return None
+    seen_results.add(result_key)
+
+    target_text = unit.get('text', '').lower().strip()
+
+    # Exclude the exact source line and lines with identical text
+    if filename == source_text_id and unit_ref == line_ref:
+        return None
+    if target_text == query_text_lower:
+        return None
+
+    # Compute shared lemmas (index path verifies against actual lemmas with normalization)
+    target_lemmas_list = unit.get('lemmas', [])
+
+    if index_matching_lemmas is not None:
+        target_lemmas_normalized = {_normalize_latin_lemma(l) for l in target_lemmas_list}
+        source_lemmas_normalized = {_normalize_latin_lemma(l) for l in filtered_source_lemmas}
+        matching_normalized = {_normalize_latin_lemma(l) for l in index_matching_lemmas}
+        shared = matching_normalized & target_lemmas_normalized & source_lemmas_normalized
+    else:
+        target_lemmas = set(target_lemmas_list)
+        shared = filtered_source_lemmas & target_lemmas
+
+    if len(shared) < min_matches:
+        return None
+
+    # Phrase matching — quotation detection
+    target_normalized = _re.sub(r'[^\w\s]', '', target_text)
+    phrase_match_bonus = 1.0
+    for phrase in key_phrases:
+        if phrase in target_normalized:
+            phrase_match_bonus = 1000.0 + len(phrase) * 100
+            break
+
+    # Calculate match positions and distance
+    if index_matching_lemmas is not None:
+        match_positions = [i for i, lem in enumerate(target_lemmas_list)
+                          if _normalize_latin_lemma(lem) in shared]
+    else:
+        match_positions = [i for i, lem in enumerate(target_lemmas_list) if lem in shared]
+
+    if len(match_positions) >= 2:
+        distance = match_positions[-1] - match_positions[0] + 1
+    else:
+        distance = 1
+
+    max_dist = PROSE_MAX_DISTANCE if _is_prose_text(filename) else POETRY_MAX_DISTANCE
+    if distance > max_dist:
+        return None
+
+    score = _score_v3_idf(shared, corpus_frequencies, total_corpus_words,
+                           distance, phrase_match_bonus)
+
+    # Build result
+    parts = filename.replace('.tess', '').split('.')
+    author_key = filename.split('.')[0].lower()
+    author_info = lang_dates.get(author_key, {})
+
+    return {
+        'text_id': filename,
+        'author': parts[0] if parts else '',
+        'work': '.'.join(parts[1:]) if len(parts) > 1 else '',
+        'ref': unit_ref,
+        'text': unit.get('text', ''),
+        'tokens': unit.get('tokens', []),
+        'highlight_indices': match_positions,
+        'matched_lemmas': list(shared),
+        'match_count': len(shared),
+        'score': round(score, 3),
+        'year': author_info.get('year'),
+        'era': author_info.get('era', 'Unknown')
+    }
+
+
 # =============================================================================
 # MAIN SEARCH API ROUTES
 # =============================================================================
@@ -1633,18 +1764,7 @@ def line_search_parallel():
             return jsonify({'error': 'Provide line_text or source_text_id + line_ref'}), 400
         
         if source_text_id and line_ref and not line_text:
-            lang_dir = os.path.join(TEXTS_DIR, language)
-            source_path = os.path.join(lang_dir, source_text_id)
-            if os.path.exists(source_path):
-                with open(source_path, 'r', encoding='utf-8') as f:
-                    for line in f:
-                        line = line.strip()
-                        if line.startswith('<') and '>' in line:
-                            end_tag = line.index('>')
-                            ref = line[1:end_tag].strip()
-                            if ref == line_ref:
-                                line_text = line[end_tag+1:].strip()
-                                break
+            line_text = _resolve_line_text(source_text_id, line_ref, language) or ''
         
         if not line_text:
             return jsonify({'error': 'Could not find the specified line'}), 404
@@ -1656,8 +1776,6 @@ def line_search_parallel():
             return jsonify({'error': 'No lemmas found in the line'}), 400
         
         # Extract key phrases for exact phrase matching
-        # Normalize query: lowercase, strip punctuation for matching
-        import re
         query_normalized = re.sub(r'[^\w\s]', '', line_text.lower())
         query_tokens = query_normalized.split()
         
@@ -1682,25 +1800,8 @@ def line_search_parallel():
         corpus_frequencies = corpus_freq_data.get('frequencies', {}) if corpus_freq_data else {}
         total_corpus_words = sum(corpus_frequencies.values()) if corpus_frequencies else 1
         
-        # USE SAME STOPLIST AS PAIRWISE SEARCH: Default stopwords + Zipf elbow detection
-        # This uses matcher.py logic with DEFAULT_LATIN_STOP_WORDS (70+ words)
-        from backend.matcher import DEFAULT_LATIN_STOP_WORDS, DEFAULT_GREEK_STOP_WORDS, DEFAULT_ENGLISH_STOP_WORDS
-        from backend.zipf import find_zipf_elbow
-        from collections import Counter
-        
-        # Get base stopwords for language (same as pairwise)
-        if language == 'la':
-            stopwords = set(DEFAULT_LATIN_STOP_WORDS)
-        elif language == 'grc':
-            stopwords = set(DEFAULT_GREEK_STOP_WORDS)
-        else:
-            stopwords = set(DEFAULT_ENGLISH_STOP_WORDS)
-        
-        # Add Zipf-detected stopwords from corpus frequencies (same as pairwise)
-        if corpus_frequencies:
-            freq_counter = Counter(corpus_frequencies)
-            zipf_stops = find_zipf_elbow(freq_counter, min_stopwords=10, max_stopwords=50)
-            stopwords = stopwords.union(zipf_stops)
+        # Use same stoplist as pairwise search: default language stops + Zipf elbow detection
+        stopwords = _build_line_search_stopwords(language, corpus_frequencies)
         
         # Filter source lemmas to exclude stopwords AND short words (same as Matcher)
         # Matcher uses len(lemma) > 2 filter
@@ -1712,7 +1813,8 @@ def line_search_parallel():
         all_results = []
         texts_searched = 0
         seen_results = set()
-        
+        query_text_lower = line_text.lower().strip()
+
         # Try to use inverted index for fast lookup
         if use_index and is_index_available(language):
             # FAST PATH: Use inverted index
@@ -1734,12 +1836,7 @@ def line_search_parallel():
             
             for filename, matches in text_candidates.items():
                 filepath = os.path.join(lang_dir, filename)
-                    
-                author_key = filename.split('.')[0].lower()
-                author_info = lang_dates.get(author_key, {})
-                author_year = author_info.get('year')
-                author_era = author_info.get('era', 'Unknown')
-                
+
                 # Get line data - FAST: from index, SLOW: from file
                 refs_needed = set(ref for ref, _, _ in matches)
                 units_by_ref = {}
@@ -1764,96 +1861,14 @@ def line_search_parallel():
                 text_matches = []
                 for ref, matching_lemmas, positions in matches:
                     unit = units_by_ref.get(ref)
-                    if not unit:
-                        continue
-                    
-                    result_key = (filename, ref)
-                    if result_key in seen_results:
-                        continue
-                    seen_results.add(result_key)
-                    
-                    target_text = unit.get('text', '').lower().strip()
-                    query_text = line_text.lower().strip()
-                    
-                    # EXCLUDE the exact source line (same text + same reference)
-                    if filename == source_text_id and ref == line_ref:
-                        continue
-                    
-                    # EXCLUDE lines with identical text (duplicate texts in corpus)
-                    if target_text == query_text:
-                        continue
-                    
-                    # Check for PHRASE matches (key to finding quotations!)
-                    target_normalized = re.sub(r'[^\w\s]', '', target_text)
-                    phrase_match_bonus = 1.0
-                    matched_phrase = None
-                    
-                    # Check for key phrases from query in target
-                    # Phrase matches get OVERWHELMING priority to surface quotations
-                    for phrase in key_phrases:
-                        if phrase in target_normalized:
-                            # Much stronger bonus: 1000+ for any phrase match
-                            phrase_match_bonus = 1000.0 + len(phrase) * 100
-                            matched_phrase = phrase
-                            break
-                    
-                    # CRITICAL: Verify matched lemmas actually exist in target line
-                    # The index may return stale/mismatched data from duplicate refs
-                    target_lemmas_list = unit.get('lemmas', [])
-                    
-                    # Normalize Latin u/v and i/j for comparison (cached may have 'vir', query has 'uir')
-                    target_lemmas_normalized = {_normalize_latin_lemma(l) for l in target_lemmas_list}
-                    source_lemmas_normalized = {_normalize_latin_lemma(l) for l in filtered_source_lemmas}
-                    matching_lemmas_normalized = {_normalize_latin_lemma(l) for l in matching_lemmas}
-                    
-                    # Intersect normalized lemmas
-                    shared_normalized = matching_lemmas_normalized & target_lemmas_normalized & source_lemmas_normalized
-                    if len(shared_normalized) < min_matches:
-                        continue  # Skip if not enough verified matches
-                    
-                    # Use normalized shared set for display
-                    shared = shared_normalized
-                    
-                    match_count = len(shared)
-                    target_length = len(target_lemmas_list) if target_lemmas_list else len(unit.get('tokens', []))
-                    
-                    # Calculate positions from actual target lemmas (more reliable than index)
-                    # Index positions may be stale for duplicate refs
-                    match_positions = [i for i, lem in enumerate(target_lemmas_list) if _normalize_latin_lemma(lem) in shared]
-                    
-                    # Calculate distance (span) between matched words - V3 style
-                    if len(match_positions) >= 2:
-                        distance = match_positions[-1] - match_positions[0] + 1
-                    else:
-                        distance = 1
-                    
-                    # APPLY MAX_DISTANCE FILTER (same as pairwise search)
-                    max_dist = PROSE_MAX_DISTANCE if _is_prose_text(filename) else POETRY_MAX_DISTANCE
-                    if distance > max_dist:
-                        continue
+                    result = _evaluate_line_candidate(
+                        unit, ref, filename, filtered_source_lemmas, query_text_lower,
+                        source_text_id, line_ref, key_phrases, corpus_frequencies,
+                        total_corpus_words, lang_dates, seen_results, min_matches,
+                        index_matching_lemmas=matching_lemmas)
+                    if result:
+                        text_matches.append(result)
 
-                    score = _score_v3_idf(shared, corpus_frequencies, total_corpus_words, distance, phrase_match_bonus)
-                    tokens = unit.get('tokens', [])
-                    
-                    parts = filename.replace('.tess', '').split('.')
-                    author_name = parts[0] if parts else ''
-                    work_name = '.'.join(parts[1:]) if len(parts) > 1 else ''
-                    
-                    text_matches.append({
-                        'text_id': filename,
-                        'author': author_name,
-                        'work': work_name,
-                        'ref': ref,
-                        'text': unit.get('text', ''),
-                        'tokens': tokens,
-                        'highlight_indices': match_positions,
-                        'matched_lemmas': list(shared),
-                        'match_count': match_count,
-                        'score': round(score, 3),
-                        'year': author_year,
-                        'era': author_era
-                    })
-                
                 text_matches.sort(key=lambda x: x['score'], reverse=True)
                 all_results.extend(text_matches[:max_per_text])
         else:
@@ -1864,87 +1879,18 @@ def line_search_parallel():
             
             for filename in text_files:
                 texts_searched += 1
-                filepath = os.path.join(lang_dir, filename)
-                metadata = get_text_metadata(filepath)
-                
-                author_key = filename.split('.')[0].lower()
-                author_info = lang_dates.get(author_key, {})
-                author_year = author_info.get('year')
-                author_era = author_info.get('era', 'Unknown')
-                
                 units = get_processed_units(filename, language, 'line', text_processor)
-                
-                text_matches = []
-                
-                for unit in units:
-                    target_lemmas_list = unit.get('lemmas', [])
-                    target_lemmas = set(target_lemmas_list)
-                    target_length = len(target_lemmas_list)
-                    
-                    shared = filtered_source_lemmas & target_lemmas
-                    match_count = len(shared)
-                    
-                    if match_count >= min_matches:
-                        target_text = unit.get('text', '').lower().strip()
-                        query_text = line_text.lower().strip()
-                        unit_ref = unit.get('ref', '')
-                        
-                        # EXCLUDE the exact source line (same text + same reference)
-                        if filename == source_text_id and unit_ref == line_ref:
-                            continue
-                        
-                        # EXCLUDE lines with identical text (duplicate texts in corpus)
-                        if target_text == query_text:
-                            continue
-                        
-                        # Check for PHRASE matches (key to finding quotations!)
-                        target_normalized = re.sub(r'[^\w\s]', '', target_text)
-                        phrase_match_bonus = 1.0
-                        
-                        # Check for key phrases from query in target
-                        # Phrase matches get OVERWHELMING priority to surface quotations
-                        for phrase in key_phrases:
-                            if phrase in target_normalized:
-                                phrase_match_bonus = 1000.0 + len(phrase) * 100
-                                break
-                        
-                        match_positions = [i for i, lem in enumerate(target_lemmas_list) if lem in shared]
-                        
-                        # Calculate distance (span) between matched words - V3 style
-                        if len(match_positions) >= 2:
-                            distance = match_positions[-1] - match_positions[0] + 1
-                        else:
-                            distance = 1
-                        
-                        # APPLY MAX_DISTANCE FILTER (same as pairwise search)
-                        max_dist = PROSE_MAX_DISTANCE if _is_prose_text(filename) else POETRY_MAX_DISTANCE
-                        if distance > max_dist:
-                            continue
 
-                        score = _score_v3_idf(shared, corpus_frequencies, total_corpus_words, distance, phrase_match_bonus)
-                        
-                        result_key = (filename, unit.get('ref', ''))
-                        if result_key in seen_results:
-                            continue
-                        seen_results.add(result_key)
-                        
-                        tokens = unit.get('tokens', [])
-                        
-                        text_matches.append({
-                            'text_id': filename,
-                            'author': metadata.get('author', ''),
-                            'work': metadata.get('title', ''),
-                            'ref': unit.get('ref', ''),
-                            'text': unit.get('text', ''),
-                            'tokens': tokens,
-                            'highlight_indices': match_positions,
-                            'matched_lemmas': list(shared),
-                            'match_count': len(shared),
-                            'score': round(score, 3),
-                            'year': author_year,
-                            'era': author_era
-                        })
-                
+                text_matches = []
+                for unit in units:
+                    result = _evaluate_line_candidate(
+                        unit, unit.get('ref', ''), filename, filtered_source_lemmas,
+                        query_text_lower, source_text_id, line_ref, key_phrases,
+                        corpus_frequencies, total_corpus_words, lang_dates,
+                        seen_results, min_matches)
+                    if result:
+                        text_matches.append(result)
+
                 text_matches.sort(key=lambda x: x['score'], reverse=True)
                 all_results.extend(text_matches[:max_per_text])
         
