@@ -242,7 +242,7 @@ CHANNEL_CONFIGS = {
     },
     "rare_word": {
         "match_type": "rare_word",
-        "min_matches": 2,
+        "min_matches": 1,
         "language": "la",
         "unbounded_scoring": True,
         "rare_word_max_occurrences": 50,
