@@ -773,6 +773,9 @@ export default function LineSearch({ language }) {
                 {filteredResults.slice(0, displayLimit).map((result, i) => (
                   <div key={i} className="p-4 hover:bg-gray-50">
                     <div className="flex flex-col sm:flex-row sm:items-start gap-2">
+                      <span className="text-xs text-gray-400 min-w-[2.5rem] text-right shrink-0 leading-none" style={{paddingTop: '1px'}}>
+                        {i + 1}.
+                      </span>
                       <div className="sm:w-48 flex-shrink-0">
                         <div className="text-sm font-medium text-gray-900">
                           {result.author}
