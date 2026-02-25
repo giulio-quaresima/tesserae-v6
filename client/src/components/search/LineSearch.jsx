@@ -730,26 +730,32 @@ export default function LineSearch({ language }) {
 
               {showTimeline && deduplicatedResults.some(r => r.era) && (
                 <div className="p-4 border-b bg-gray-50 space-y-6">
-                  <div>
-                    <h4 className="text-sm font-medium text-gray-700 mb-2">Period Timeline</h4>
-                    <div style={{ height: '180px' }}>
-                      <Bar ref={chartRef} data={timelineData} options={chartOptions} />
-                    </div>
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-medium text-gray-700 mb-2">Author Timeline</h4>
-                    <div style={{ height: '180px' }}>
-                      <Bar ref={authorChartRef} data={authorTimelineData} options={authorChartOptions} />
-                    </div>
-                  </div>
-                  <div className="flex justify-end">
-                    <button
-                      onClick={exportTimelineChart}
-                      className="text-xs text-gray-600 hover:text-gray-900"
-                    >
-                      Export PNG
-                    </button>
-                  </div>
+                  {timelineData.labels.length > 0 ? (
+                    <>
+                      <div>
+                        <h4 className="text-sm font-medium text-gray-700 mb-2">Period Timeline</h4>
+                        <div style={{ height: '180px' }}>
+                          <Bar ref={chartRef} data={timelineData} options={chartOptions} />
+                        </div>
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-medium text-gray-700 mb-2">Author Timeline</h4>
+                        <div style={{ height: '180px' }}>
+                          <Bar ref={authorChartRef} data={authorTimelineData} options={authorChartOptions} />
+                        </div>
+                      </div>
+                      <div className="flex justify-end">
+                        <button
+                          onClick={exportTimelineChart}
+                          className="text-xs text-gray-600 hover:text-gray-900"
+                        >
+                          Export PNG
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <p className="text-sm text-gray-500 text-center py-4">No results match the current genre filter.</p>
+                  )}
                 </div>
               )}
 

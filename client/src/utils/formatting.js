@@ -1,3 +1,16 @@
+/**
+ * Format elapsed time in seconds to a human-readable string.
+ * @param {number} seconds - Elapsed time in seconds
+ * @returns {string} Formatted time (e.g., "3.2s" or "2m 15s")
+ */
+export const formatElapsedTime = (seconds) => {
+  if (seconds == null || seconds <= 0) return '';
+  if (seconds < 60) return `${Number(seconds).toFixed(1)}s`;
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.round(seconds % 60);
+  return `${mins}m ${secs}s`;
+};
+
 export const formatDate = (dateString) => {
   if (!dateString) return '';
   const date = new Date(dateString);

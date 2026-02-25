@@ -3,6 +3,7 @@ import { Button } from '../common';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js';
 import { Bar } from 'react-chartjs-2';
 import { formatFullCitation } from '../../utils/textNames';
+import { formatElapsedTime } from '../../utils/formatting';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
@@ -283,7 +284,7 @@ export default function CorpusSearchResults({
           <div className="w-10 h-10 border-4 border-gray-200 border-t-amber-600 rounded-full animate-spin mb-4"></div>
           <p className="text-gray-600">Searching corpus for matching word combinations...</p>
           {elapsedTime > 0 && (
-            <p className="text-sm text-gray-500 mt-2">Elapsed: {elapsedTime}s</p>
+            <p className="text-sm text-gray-500 mt-2">Elapsed: {formatElapsedTime(elapsedTime)}</p>
           )}
         </div>
       </div>
@@ -414,23 +415,29 @@ export default function CorpusSearchResults({
 
           {showTimeline && results.some(r => r.era) && (
             <div className="p-4 border rounded bg-gray-50 mb-4">
-              <div className="mb-4">
-                <h4 className="text-sm font-medium text-gray-700 mb-2">Period Timeline</h4>
-                <div style={{ height: '180px' }}>
-                  <Bar ref={chartRef} data={getTimelineData() || { labels: [], datasets: [] }} options={chartOptions} />
-                </div>
-              </div>
-              <div className="mb-2">
-                <h4 className="text-sm font-medium text-gray-700 mb-2">Author Timeline</h4>
-                <div style={{ height: '180px' }}>
-                  <Bar ref={authorChartRef} data={getAuthorTimelineData() || { labels: [], datasets: [] }} options={authorChartOptions} />
-                </div>
-              </div>
-              <div className="flex justify-end mt-2">
-                <button onClick={exportTimelineChart} className="text-xs text-gray-600 hover:text-gray-900">
-                  Export PNG
-                </button>
-              </div>
+              {getTimelineData() ? (
+                <>
+                  <div className="mb-4">
+                    <h4 className="text-sm font-medium text-gray-700 mb-2">Period Timeline</h4>
+                    <div style={{ height: '180px' }}>
+                      <Bar ref={chartRef} data={getTimelineData()} options={chartOptions} />
+                    </div>
+                  </div>
+                  <div className="mb-2">
+                    <h4 className="text-sm font-medium text-gray-700 mb-2">Author Timeline</h4>
+                    <div style={{ height: '180px' }}>
+                      <Bar ref={authorChartRef} data={getAuthorTimelineData() || { labels: [], datasets: [] }} options={authorChartOptions} />
+                    </div>
+                  </div>
+                  <div className="flex justify-end mt-2">
+                    <button onClick={exportTimelineChart} className="text-xs text-gray-600 hover:text-gray-900">
+                      Export PNG
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <p className="text-sm text-gray-500 text-center py-4">No results match the current genre filter.</p>
+              )}
             </div>
           )}
 

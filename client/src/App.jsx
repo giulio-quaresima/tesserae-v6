@@ -114,7 +114,8 @@ function App() {
     max_results: 0,
     bigram_boost: false,
     stoplist: false,
-    use_meter: true
+    use_meter: true,
+    exclude_proper_nouns: false
   });
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
   
@@ -574,6 +575,7 @@ function App() {
                     <RarePairsSettings
                       settings={settings}
                       setSettings={setSettings}
+                      searchMode={searchMode}
                     />
                   )}
 

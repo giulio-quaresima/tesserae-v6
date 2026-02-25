@@ -95,6 +95,9 @@ STATIC_FOLDER = DIST_FOLDER if os.path.exists(DIST_FOLDER) else LEGACY_FRONTEND
 DEPLOYMENT_ENV = os.environ.get("DEPLOYMENT_ENV", "dev")
 DIRECT_SERVER = os.environ.get("TESSERAE_DIRECT_SERVER", "") == "1"
 API_PREFIX = "/api" if DIRECT_SERVER else ""
+if DEPLOYMENT_ENV == 'marvin' and not DIRECT_SERVER:
+    print("WARNING: DEPLOYMENT_ENV=marvin but TESSERAE_DIRECT_SERVER not set.")
+    print("  If running Flask directly (not behind Apache), set TESSERAE_DIRECT_SERVER=1")
 
 # Create Flask app with static file serving
 app = Flask(__name__, static_folder=STATIC_FOLDER, static_url_path='')
@@ -407,6 +410,7 @@ init_fusion_blueprint(
 # On dev: API_PREFIX="/api" (Flask handles the full URL)
 admin_prefix = f"{API_PREFIX}/admin" if API_PREFIX else "/admin"
 intertext_prefix = f"{API_PREFIX}/intertexts" if API_PREFIX else None  # None = use blueprint's own /intertexts
+batch_prefix = f"{API_PREFIX}/batch" if API_PREFIX else None  # None = use blueprint's own /batch
 
 app.register_blueprint(admin_bp, url_prefix=admin_prefix)
 app.register_blueprint(search_bp, url_prefix=API_PREFIX or None)
@@ -414,7 +418,7 @@ app.register_blueprint(corpus_bp, url_prefix=API_PREFIX or None)
 app.register_blueprint(intertext_bp, url_prefix=intertext_prefix)
 app.register_blueprint(downloads_bp, url_prefix=API_PREFIX or None)
 app.register_blueprint(hapax_bp, url_prefix=API_PREFIX or None)
-app.register_blueprint(batch_bp, url_prefix=API_PREFIX or None)
+app.register_blueprint(batch_bp, url_prefix=batch_prefix)
 app.register_blueprint(api_docs_bp, url_prefix=API_PREFIX or None)
 app.register_blueprint(fusion_bp, url_prefix=API_PREFIX or None)
 

@@ -373,20 +373,26 @@ const WildcardSearch = ({ language }) => {
             </div>
           </div>
 
-          {showTimeline && genreFilteredResults.length > 0 && genreFilteredResults.some(r => r.era) && (
+          {showTimeline && genreFilteredResults.some(r => r.era) && (
             <div className="p-4 border-b bg-gray-50 space-y-6">
-              <div>
-                <h4 className="text-sm font-medium text-gray-700 mb-2">Period Timeline</h4>
-                <div style={{ height: '180px' }}>
-                  <Bar key={`period-${showPoetry}-${showProse}`} ref={chartRef} data={getTimelineData() || { labels: [], datasets: [] }} options={chartOptions} />
-                </div>
-              </div>
-              <div>
-                <h4 className="text-sm font-medium text-gray-700 mb-2">Author Timeline</h4>
-                <div style={{ height: '180px' }}>
-                  <Bar key={`author-${showPoetry}-${showProse}`} ref={authorChartRef} data={getAuthorTimelineData() || { labels: [], datasets: [] }} options={authorChartOptions} />
-                </div>
-              </div>
+              {getTimelineData() ? (
+                <>
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-700 mb-2">Period Timeline</h4>
+                    <div style={{ height: '180px' }}>
+                      <Bar key={`period-${showPoetry}-${showProse}`} ref={chartRef} data={getTimelineData()} options={chartOptions} />
+                    </div>
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-700 mb-2">Author Timeline</h4>
+                    <div style={{ height: '180px' }}>
+                      <Bar key={`author-${showPoetry}-${showProse}`} ref={authorChartRef} data={getAuthorTimelineData() || { labels: [], datasets: [] }} options={authorChartOptions} />
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <p className="text-sm text-gray-500 text-center py-4">No results match the current genre filter.</p>
+              )}
             </div>
           )}
 

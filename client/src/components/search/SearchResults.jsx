@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { Button, LoadingSpinner } from '../common';
-import { formatReference } from '../../utils/formatting';
+import { formatReference, formatElapsedTime } from '../../utils/formatting';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js';
 import { Bar } from 'react-chartjs-2';
 
@@ -406,7 +406,7 @@ const SearchResults = ({
             {pauseUpdates ? 'Resume' : 'Pause'}
           </button>
           <span className={`text-xs ${pauseUpdates ? 'text-amber-500' : 'text-blue-500'} tabular-nums flex-shrink-0`}>
-            {elapsedTime > 0 && `${Math.floor(elapsedTime / 60)}m ${elapsedTime % 60}s`}
+            {elapsedTime > 0 && formatElapsedTime(elapsedTime)}
           </span>
         </div>
       )}
@@ -421,7 +421,7 @@ const SearchResults = ({
           </h3>
           {searchStats && (
             <p className="text-sm text-gray-500">
-              {searchStats.elapsed_time && `Search completed in ${searchStats.elapsed_time.toFixed(2)}s`}
+              {searchStats.elapsed_time && `Search completed in ${formatElapsedTime(searchStats.elapsed_time)}`}
               {searchStats.source_lines && ` | ${searchStats.source_lines} source lines`}
               {searchStats.target_lines && ` | ${searchStats.target_lines} target lines`}
             </p>

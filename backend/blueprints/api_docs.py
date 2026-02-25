@@ -4,13 +4,15 @@ Serves public API documentation at /api/docs
 """
 from flask import Blueprint, jsonify, render_template_string
 
+from backend.app import API_PREFIX
+
 api_docs_bp = Blueprint('api_docs', __name__)
 
 API_DOCUMENTATION = {
     "title": "Tesserae V6 API",
     "version": "6.0",
     "description": "Public API for the Tesserae intertextual analysis platform. Access text parallels, corpus data, and visualization endpoints.",
-    "base_url": "/api",
+    "base_url": API_PREFIX or "/api",
     "endpoints": {
         "Search": [
             {
@@ -423,7 +425,7 @@ def get_api_docs_html():
             <p class="text-gray-300 mt-4">{{ docs.description }}</p>
             <p class="text-gray-500 mt-2">Base URL: <code class="bg-gray-800 px-2 py-1 rounded">{{ docs.base_url }}</code></p>
             <div class="mt-4">
-                <a href="/api/docs.json" class="text-amber-400 hover:text-amber-300">Download JSON specification →</a>
+                <a href="{{ docs.base_url }}/docs.json" class="text-amber-400 hover:text-amber-300">Download JSON specification →</a>
             </div>
         </header>
         
