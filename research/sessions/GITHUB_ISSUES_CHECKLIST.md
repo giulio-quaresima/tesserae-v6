@@ -104,21 +104,22 @@ Generated 2026-02-24. Close issues on GitHub after pushing to production.
 - **Notes:** Investigated Feb 25. Code is fully implemented (`backend/email_notifications.py` — `send_notification()`, `notify_feedback()`, `notify_text_request()`). Both feedback and text request endpoints call the notification functions. Problem: `.env` has no SMTP config (`SMTP_HOST`, `SMTP_USER`, `SMTP_PASSWORD`). Without these, the code silently logs "SMTP not configured" and returns success. Notification email addresses in the DB settings table may also be empty. Needs someone with mail server access to provide credentials. Not a code fix.
 
 ### #21 — Text addition upload not working
-- [x] **Status:** Fixed Feb 25
+- [x] **Status:** DONE. Fixed Feb 25
 - **Details:** Admins not alerted and texts not received when submitted through Help and Support > Upload Your Text > Submit Your Formatted Text.
 - **Notes:** Fixed Feb 25. Root cause: admin blueprint queries 24 columns from `text_requests` but only 13 existed in the DB schema, causing a silent PostgreSQL error. Added 11 missing columns (`text_date`, `approved_filename`, `official_author`, `official_work`, `admin_updated_at`, `author_era`, `author_year`, `e_source`, `e_source_url`, `print_source`, `added_by`) to both the CREATE TABLE DDL and the live database. Also removed duplicate `get_requests()`/`update_request()` endpoints from `app.py` that shadowed the full admin blueprint versions.
 
 ### #22 — Add credits for text edition to the corpus viewer
-- [ ] **Status:** Not started
+- [ ] **Status:** DONE. 
 - **Details:** Update corpus viewer to indicate "Added by" credits, as in the list from Tesserae's former blog.
 
 ### #23 — Assign text addition credits
-- [ ] **Status:** Not started
+- [ ] **Status:** FOR JOHN. DO FROM ADMIN PANEL. Not started
 - **Details:** Assign "Added by" credits on Corpus Viewer page. From V3 Blog corpus list, Carolingian additions, Dr. Coffee, V6 additions.
 
 ### #24 — Main Search Required Fields
-- [ ] **Status:** Not started
+- [x] **Status:** Closed Feb 25 — already implemented
 - **Details:** Make "author" and "work" required fields in main search.
+- **Notes:** Investigated Feb 25. Already enforced by the UI: TextSelector requires picking an author before the work dropdown enables (`disabled={!selectedAuthor}`), and the search button is disabled until both source and target texts are selected (`disabled={!sourceText || !targetText}`). No way to reach "Find Parallels" without selecting author + work for both sides. No code change needed.
 
 ---
 
