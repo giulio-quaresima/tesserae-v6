@@ -74,6 +74,54 @@ GREEK_STOPWORDS = {
 # =============================================================================
 
 
+def _coerce_bool(value):
+    """Coerce a value that may be a string or bool into a Python bool.
+    Handles JSON booleans, string 'true'/'1'/'yes', and passthrough bools."""
+    if isinstance(value, str):
+        return value.lower() in ('true', '1', 'yes')
+    return bool(value)
+
+
+def _parse_search_params(data):
+    """Extract and validate common search parameters from request JSON.
+    Returns (source_id, target_id, language) or raises ValueError on missing texts."""
+    source_id = data.get('source')
+    target_id = data.get('target')
+    language = data.get('language', 'la')
+    if not source_id or not target_id:
+        raise ValueError('Please select both source and target texts')
+    return source_id, target_id, language
+
+
+def _resolve_text_path(text_id, language):
+    """Build the filesystem path for a text and verify it exists.
+    Returns the full path string, or raises FileNotFoundError."""
+    lang_dir = os.path.join(_texts_dir, language)
+    text_path = os.path.join(lang_dir, text_id)
+    if not os.path.exists(text_path):
+        raise FileNotFoundError(f'Text not found: {text_id}')
+    return text_path
+
+
+def _extract_bigram_locations(units, make_bigram_key_fn, language):
+    """Build a dict mapping bigram keys to their occurrence locations from processed text units.
+    Each location entry contains ref, normalized line text, and the two lemma words."""
+    bigram_locations = {}
+    for unit in units:
+        lemmas = unit.get('lemmas', [])
+        for i in range(len(lemmas) - 1):
+            if lemmas[i] and lemmas[i+1]:
+                bg_key = make_bigram_key_fn(lemmas[i], lemmas[i+1])
+                if bg_key not in bigram_locations:
+                    bigram_locations[bg_key] = []
+                bigram_locations[bg_key].append({
+                    'ref': unit.get('ref', ''),
+                    'text': normalize_line_text(unit.get('text', ''), language),
+                    'words': [lemmas[i], lemmas[i+1]]
+                })
+    return bigram_locations
+
+
 def extract_reference_numbers(ref_str):
     """
     Extract numeric parts from CTS reference (e.g., "verg. aen. 1.5" -> (1, 5)).
@@ -1435,19 +1483,15 @@ def hapax_search():
     """
     try:
         data = request.get_json() or {}
-        source_id = data.get('source')
-        target_id = data.get('target')
-        language = data.get('language', 'la')
+        try:
+            source_id, target_id, language = _parse_search_params(data)
+        except ValueError as e:
+            return jsonify({'error': str(e)}), 400
         source_language = data.get('source_language', language)
         target_language = data.get('target_language', language)
         max_occ = int(data.get('max_occurrences', 50))
-        exclude_proper = data.get('exclude_proper_nouns', False)
-        if isinstance(exclude_proper, str):
-            exclude_proper = exclude_proper.lower() in ('true', '1', 'yes')
-        
-        if not source_id or not target_id:
-            return jsonify({'error': 'Please select both source and target texts'}), 400
-        
+        exclude_proper = _coerce_bool(data.get('exclude_proper_nouns', False))
+
         source_lemmas = get_text_lemmas(source_id, source_language)
         target_lemmas = get_text_lemmas(target_id, target_language)
         
@@ -1595,73 +1639,44 @@ def rare_bigram_search():
             is_bigram_cache_available, load_bigram_cache,
             extract_bigrams, get_bigram_rarity_score, make_bigram_key
         )
-        
+
         data = request.get_json() or {}
-        source_id = data.get('source')
-        target_id = data.get('target')
-        language = data.get('language', 'la')
+        try:
+            source_id, target_id, language = _parse_search_params(data)
+        except ValueError as e:
+            return jsonify({'error': str(e)}), 400
         min_rarity = float(data.get('min_rarity', 0.9))
         limit = int(data.get('limit', 100))
-        
+
         stoplist_basis = data.get('stoplist_basis', 'source_target')
         stoplist_size = int(data.get('stoplist_size', 0))
-        use_stoplist = data.get('stoplist', False)
-        if isinstance(use_stoplist, str):
-            use_stoplist = use_stoplist.lower() in ('true', '1', 'yes')
+        use_stoplist = _coerce_bool(data.get('stoplist', False))
         if stoplist_basis == 'none':
             use_stoplist = False
         elif stoplist_basis in ('source_target', 'source', 'target', 'corpus'):
             use_stoplist = True
-        
-        if not source_id or not target_id:
-            return jsonify({'error': 'Please select both source and target texts'}), 400
-        
+
         if not is_bigram_cache_available(language):
             return jsonify({
                 'error': f'Bigram index not built for {language}. Please build it in Admin → Cache Management.'
             }), 400
-        
+
         load_bigram_cache(language)
-        
-        lang_dir = os.path.join(_texts_dir, language)
-        source_path = os.path.join(lang_dir, source_id)
-        target_path = os.path.join(lang_dir, target_id)
-        
-        if not os.path.exists(source_path):
+
+        try:
+            source_path = _resolve_text_path(source_id, language)
+        except FileNotFoundError:
             return jsonify({'error': f'Source text not found: {source_id}'}), 404
-        if not os.path.exists(target_path):
+        try:
+            target_path = _resolve_text_path(target_id, language)
+        except FileNotFoundError:
             return jsonify({'error': f'Target text not found: {target_id}'}), 404
-        
+
         source_units = _text_processor.process_file(source_path, language, unit_type='line')
         target_units = _text_processor.process_file(target_path, language, unit_type='line')
-        
-        source_bigram_locations = {}
-        for unit in source_units:
-            lemmas = unit.get('lemmas', [])
-            for i in range(len(lemmas) - 1):
-                if lemmas[i] and lemmas[i+1]:
-                    bg_key = make_bigram_key(lemmas[i], lemmas[i+1])
-                    if bg_key not in source_bigram_locations:
-                        source_bigram_locations[bg_key] = []
-                    source_bigram_locations[bg_key].append({
-                        'ref': unit.get('ref', ''),
-                        'text': normalize_line_text(unit.get('text', ''), language),
-                        'words': [lemmas[i], lemmas[i+1]]
-                    })
-        
-        target_bigram_locations = {}
-        for unit in target_units:
-            lemmas = unit.get('lemmas', [])
-            for i in range(len(lemmas) - 1):
-                if lemmas[i] and lemmas[i+1]:
-                    bg_key = make_bigram_key(lemmas[i], lemmas[i+1])
-                    if bg_key not in target_bigram_locations:
-                        target_bigram_locations[bg_key] = []
-                    target_bigram_locations[bg_key].append({
-                        'ref': unit.get('ref', ''),
-                        'text': normalize_line_text(unit.get('text', ''), language),
-                        'words': [lemmas[i], lemmas[i+1]]
-                    })
+
+        source_bigram_locations = _extract_bigram_locations(source_units, make_bigram_key, language)
+        target_bigram_locations = _extract_bigram_locations(target_units, make_bigram_key, language)
         
         dynamic_stopwords = set()
         if use_stoplist and stoplist_size > 0:
