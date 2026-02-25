@@ -778,6 +778,16 @@ def _normalize_latin_lemma(lem):
     return lem.replace('v', 'u').replace('j', 'i')
 
 
+def _normalize_lemma(lem, language='la'):
+    """Normalize a lemma for index lookup. Handles Latin u/v/j/i and Greek diacritics."""
+    if language == 'grc':
+        import unicodedata
+        decomposed = unicodedata.normalize('NFD', lem)
+        stripped = ''.join(c for c in decomposed if unicodedata.category(c) != 'Mn')
+        return stripped.lower().replace('ς', 'σ')
+    return _normalize_latin_lemma(lem)
+
+
 def _score_v3_idf(shared_lemmas, corpus_frequencies, total_corpus_words,
                    distance, phrase_match_bonus=1.0):
     """V3-style scoring: sum(IDF) * distance_factor * phrase_bonus.
@@ -1429,11 +1439,11 @@ def line_search():
                 query_tokens = query.lower().split()
                 for token in query_tokens:
                     lemmas = text_processor.lemmatize_word(token, language)
-                    query_lemmas.update(_normalize_latin_lemma(l) for l in lemmas)
+                    query_lemmas.update(_normalize_lemma(l, language) for l in lemmas)
                 if not query_lemmas:
-                    query_lemmas = set(_normalize_latin_lemma(t) for t in query_tokens)
+                    query_lemmas = set(_normalize_lemma(t, language) for t in query_tokens)
             else:
-                query_lemmas = set(_normalize_latin_lemma(t) for t in query.lower().split())
+                query_lemmas = set(_normalize_lemma(t, language) for t in query.lower().split())
             
             # Filter out stopwords from query lemmas (like pairwise search)
             filtered_query_lemmas = query_lemmas - stopwords
@@ -1795,6 +1805,8 @@ def line_search_parallel():
         
         # Filter source lemmas to exclude stopwords AND short words (same as Matcher)
         # Matcher uses len(lemma) > 2 filter
+        # Normalize lemmas for index lookup (Greek diacritics, Latin u/v)
+        source_lemmas = {_normalize_lemma(l, language) for l in source_lemmas}
         filtered_source_lemmas = {l for l in source_lemmas if l not in stopwords and len(l) > 2}
         if len(filtered_source_lemmas) < min_matches:
             # Fallback: include longer stopwords if too few content words
@@ -1932,8 +1944,10 @@ def corpus_search():
         
         if not is_index_available(language):
             return jsonify({'error': 'Index not available for this language'}), 400
-        
-        matches = find_co_occurring_lemmas(lemmas, language, min_matches=min(2, len(lemmas)))
+
+        # Normalize lemmas for index lookup (strip Greek diacritics, Latin u/v)
+        normalized_lemmas = [_normalize_lemma(l, language) for l in lemmas]
+        matches = find_co_occurring_lemmas(normalized_lemmas, language, min_matches=min(2, len(normalized_lemmas)))
         
         results = []
         text_matches = {}

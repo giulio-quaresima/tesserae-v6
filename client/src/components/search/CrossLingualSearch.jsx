@@ -383,11 +383,11 @@ export default function CrossLingualSearch() {
                   }
                 }
               }}
-              disabled={true}
-              title="Coming soon - AI semantic matching will be available in a future update"
-              className={`px-4 py-2 rounded text-sm bg-gray-100 text-gray-400 cursor-not-allowed`}
+              disabled={searchLoading}
+              title="Finds semantic parallels using SPhilBERTa cross-lingual embeddings"
+              className={`px-4 py-2 rounded text-sm ${matchMode === 'ai' ? 'bg-red-700 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'} disabled:opacity-50`}
             >
-              AI Semantic (Coming Soon)
+              AI Semantic
             </button>
             <button
               onClick={() => {
