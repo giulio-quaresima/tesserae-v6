@@ -1753,6 +1753,18 @@ def rare_bigram_search():
 
         load_bigram_cache(language)
 
+        # Adapt min_rarity for small corpora: with N docs, a shared bigram
+        # (doc_freq >= 2) has max rarity = 1 - 2/N. The default 0.9 threshold
+        # is calibrated for Latin/Greek (~2100 texts) and is impossible for
+        # small corpora like English (14 texts, max rarity = 0.857).
+        from backend.bigram_frequency import _bigram_cache
+        cached = _bigram_cache.get(language, {})
+        total_docs = cached.get('total_docs', 1)
+        max_possible_rarity = 1.0 - (2.0 / max(total_docs, 2))
+        if min_rarity > max_possible_rarity:
+            min_rarity = max(0.5, max_possible_rarity - 0.05)
+            logger.info(f"Adapted min_rarity to {min_rarity:.3f} for {language} corpus ({total_docs} docs, max possible {max_possible_rarity:.3f})")
+
         try:
             source_path = _resolve_text_path(source_id, language)
         except FileNotFoundError:

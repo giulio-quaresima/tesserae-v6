@@ -10,6 +10,7 @@ export const useSearch = () => {
   const [elapsedTime, setElapsedTime] = useState(0);
   const [searchStats, setSearchStats] = useState(null);
   const [fusionProgress, setFusionProgress] = useState(null);
+  const [hasSearched, setHasSearched] = useState(false);
   const abortController = useRef(null);
   const timerRef = useRef(null);
   const startTimeRef = useRef(null);
@@ -100,6 +101,7 @@ export const useSearch = () => {
     } finally {
       setLoading(false);
       setFusionProgress(null);
+      setHasSearched(true);
     }
   }, []);
 
@@ -122,6 +124,7 @@ export const useSearch = () => {
       }
     } finally {
       setLoading(false);
+      setHasSearched(true);
     }
   }, []);
 
@@ -144,6 +147,7 @@ export const useSearch = () => {
       }
     } finally {
       setLoading(false);
+      setHasSearched(true);
     }
   }, []);
 
@@ -151,11 +155,11 @@ export const useSearch = () => {
     if (abortController.current) {
       abortController.current.abort();
     }
-    
+
     abortController.current = new AbortController();
     setLoading(true);
     setError(null);
-    
+
     try {
       const data = await searchBigrams(params, abortController.current.signal);
       if (data.error) {
@@ -171,6 +175,7 @@ export const useSearch = () => {
       }
     } finally {
       setLoading(false);
+      setHasSearched(true);
     }
   }, []);
 
@@ -188,6 +193,7 @@ export const useSearch = () => {
   const clearResults = useCallback(() => {
     setResults([]);
     setError(null);
+    setHasSearched(false);
   }, []);
 
   return {
@@ -199,6 +205,7 @@ export const useSearch = () => {
     elapsedTime,
     searchStats,
     fusionProgress,
+    hasSearched,
     search,
     searchCrossLingual,
     searchRareWords,
