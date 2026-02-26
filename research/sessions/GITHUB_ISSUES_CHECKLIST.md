@@ -13,7 +13,7 @@ Generated 2026-02-24. Close issues on GitHub after pushing to production.
 ## Issues
 
 ### #3 — Enable HTTPS on Marvin production server
-- [ ] **Status:** ON VOLUNTEER LIST
+- [ ] **Status:** DONE. ON VOLUNTEER LIST
 - **Labels:** CS Student, Tesserae Fellow
 - **Details:** Marvin serves over HTTP, causing security issues, browser compatibility problems (DuckDuckGo blocks HTTP API requests), and "Not Secure" warnings. Steps: obtain SSL certificate, install on Marvin, configure Apache VirtualHost for port 443, add HTTP→HTTPS redirect, verify no hardcoded `http://` URLs in frontend.
 
