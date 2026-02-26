@@ -254,8 +254,8 @@ function App() {
         defaultSourceId = 'shakespeare.hamlet.tess';
         defaultTargetId = 'cowper.task.tess';
       } else {
-        defaultSourceId = 'vergil.aeneid.tess';
-        defaultTargetId = 'lucan.bellum_civile.tess';
+        defaultSourceId = 'vergil.aeneid.part.1.tess';
+        defaultTargetId = 'lucan.bellum_civile.part.1.tess';
       }
       
       const defaultSource = corpus.find(t => t.id === defaultSourceId) || corpus[0];
