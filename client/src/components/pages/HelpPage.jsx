@@ -348,6 +348,11 @@ export default function HelpPage() {
                   <p className="text-gray-600 text-sm mt-1">
                     Search for parallels to a specific line across the entire corpus. Select a line from any text,
                     or type/paste Latin or Greek text directly. For Greek, you can enter text with or without diacritics.
+                    Three match types are available: <strong>Lemma</strong> (matches dictionary forms), <strong>Exact</strong> (identical
+                    surface forms only), and <strong>Regular expression</strong> (pattern matching — see{' '}
+                    <button onClick={() => setActiveSection('match-types')} className="text-red-600 hover:underline">
+                      Match Types
+                    </button>{' '}for details and examples).
                   </p>
                   <p className="text-gray-500 text-sm mt-2">
                     <strong>Use for:</strong> Finding all passages in the corpus that share vocabulary with a specific line of interest.
@@ -497,6 +502,33 @@ export default function HelpPage() {
               <p className="text-gray-600 text-sm mt-4">
                 <strong>Tip:</strong> When running individual channels, Sound and Edit Distance can also be enabled as feature boosts under Advanced Settings.
               </p>
+
+              <div className="mt-6 border-t pt-4" id="regex-help">
+                <h4 className="font-medium text-gray-900 mb-2">Regular Expressions (Line Search)</h4>
+                <p className="text-gray-600 text-sm mb-3">
+                  In Line Search mode, the <strong>Regular expression</strong> option lets you search with patterns instead of
+                  literal text. A regular expression (or "regex") is a sequence of characters that defines a search pattern.
+                  This is a powerful tool for finding words with variant spellings, partial forms, or structural patterns.
+                </p>
+                <div className="bg-gray-50 p-4 rounded-lg text-sm space-y-2">
+                  <p className="font-medium text-gray-800">Common patterns:</p>
+                  <table className="w-full text-left">
+                    <tbody className="divide-y divide-gray-200">
+                      <tr><td className="py-1 pr-4 font-mono text-red-700 whitespace-nowrap">arm.</td><td className="py-1 text-gray-600">Matches "arma", "arms", "army" — the dot matches any single character</td></tr>
+                      <tr><td className="py-1 pr-4 font-mono text-red-700 whitespace-nowrap">amor|bellum</td><td className="py-1 text-gray-600">Matches lines containing "amor" OR "bellum"</td></tr>
+                      <tr><td className="py-1 pr-4 font-mono text-red-700 whitespace-nowrap">ferr[aeiou]</td><td className="py-1 text-gray-600">Matches "ferra", "ferre", "ferri", "ferro", "ferru" — brackets match any one character listed</td></tr>
+                      <tr><td className="py-1 pr-4 font-mono text-red-700 whitespace-nowrap">^arma</td><td className="py-1 text-gray-600">Matches "arma" only at the start of a line</td></tr>
+                      <tr><td className="py-1 pr-4 font-mono text-red-700 whitespace-nowrap">cano$</td><td className="py-1 text-gray-600">Matches "cano" only at the end of a line</td></tr>
+                      <tr><td className="py-1 pr-4 font-mono text-red-700 whitespace-nowrap">reg(is|em|i|e)</td><td className="py-1 text-gray-600">Matches "regis", "regem", "regi", "rege" — parentheses group alternatives</td></tr>
+                      <tr><td className="py-1 pr-4 font-mono text-red-700 whitespace-nowrap">.*pietas.*arma.*</td><td className="py-1 text-gray-600">Matches any line containing "pietas" followed later by "arma" — <code>.*</code> means "any characters"</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+                <p className="text-gray-500 text-sm mt-2">
+                  Regex search checks each line in the corpus for a match against your pattern.
+                  It does not use lemmatization — patterns match against the actual text as it appears.
+                </p>
+              </div>
             </div>
           )}
 

@@ -564,9 +564,15 @@ export default function LineSearch({ language }) {
                 >
                   <option value="lemma">Lemma (dictionary form)</option>
                   <option value="exact">Exact match</option>
-                  <option value="regex">Regular expression</option>
+                  <option value="regex">Regular expression (pattern)</option>
                 </select>
               </div>
+              {searchType === 'regex' && (
+                <p className="mt-1 text-xs text-gray-500">
+                  Pattern matching: use <code className="bg-gray-100 px-1 rounded">.</code> for any character, <code className="bg-gray-100 px-1 rounded">|</code> for OR, <code className="bg-gray-100 px-1 rounded">[aei]</code> for character sets,
+                  {' '}<code className="bg-gray-100 px-1 rounded">.*</code> for any sequence. Example: <code className="bg-gray-100 px-1 rounded">amor|bellum</code> finds lines with either word. See Help & Support for more.
+                </p>
+              )}
               {sourceInfo && (
                 <div className="mt-2 flex items-center justify-between text-sm text-gray-600 bg-gray-50 rounded px-3 py-2">
                   <span>
@@ -952,26 +958,34 @@ export default function LineSearch({ language }) {
             </div>
           </div>
 
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <label className="text-sm text-gray-600">Match type:</label>
-              <select
-                value={searchType}
-                onChange={e => setSearchType(e.target.value)}
-                className="border rounded px-2 py-1.5 text-sm"
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <label className="text-sm text-gray-600">Match type:</label>
+                <select
+                  value={searchType}
+                  onChange={e => setSearchType(e.target.value)}
+                  className="border rounded px-2 py-1.5 text-sm"
+                >
+                  <option value="lemma">Lemma (dictionary form)</option>
+                  <option value="exact">Exact match</option>
+                  <option value="regex">Regular expression (pattern)</option>
+                </select>
+              </div>
+              <button
+                onClick={handleBrowseLines}
+                disabled={!selectedAuthor || !selectedWork || browseLoading}
+                className="px-4 py-2 bg-red-700 text-white rounded hover:bg-red-800 disabled:opacity-50"
               >
-                <option value="lemma">Lemma (dictionary form)</option>
-                <option value="exact">Exact match</option>
-                <option value="regex">Regular expression</option>
-              </select>
+                {browseLoading ? 'Loading...' : 'Load Lines'}
+              </button>
             </div>
-            <button
-              onClick={handleBrowseLines}
-              disabled={!selectedAuthor || !selectedWork || browseLoading}
-              className="px-4 py-2 bg-red-700 text-white rounded hover:bg-red-800 disabled:opacity-50"
-            >
-              {browseLoading ? 'Loading...' : 'Load Lines'}
-            </button>
+            {searchType === 'regex' && (
+              <p className="text-xs text-gray-500">
+                Pattern matching: use <code className="bg-gray-100 px-1 rounded">.</code> for any character, <code className="bg-gray-100 px-1 rounded">|</code> for OR, <code className="bg-gray-100 px-1 rounded">[aei]</code> for character sets,
+                {' '}<code className="bg-gray-100 px-1 rounded">.*</code> for any sequence. Example: <code className="bg-gray-100 px-1 rounded">amor|bellum</code> finds lines with either word. See Help & Support for more.
+              </p>
+            )}
           </div>
 
           {browseLoading && <LoadingSpinner text="Loading lines..." />}
