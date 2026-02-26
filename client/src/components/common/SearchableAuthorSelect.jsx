@@ -1,10 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 
-const isTouchDevice = () => {
-  if (typeof window === 'undefined') return false;
-  return window.matchMedia('(pointer: coarse)').matches;
-};
-
 const SearchableAuthorSelect = ({
   value,
   onChange,
@@ -54,46 +49,45 @@ const SearchableAuthorSelect = ({
     setIsEditing(false);
   };
 
-  // On touch devices, use native <select> for reliable mobile support
-  if (isTouchDevice()) {
-    return (
+  return (
+    <>
+      {/* Mobile: native select (hidden on sm+ screens) */}
       <select
         value={value}
         onChange={e => onChange(e.target.value)}
-        className="w-full border rounded px-2 py-2 text-sm"
+        className="sm:hidden w-full border rounded px-2 py-2 text-sm"
       >
         <option value="">Select author...</option>
         {safeAuthors.map(a => (
           <option key={a.author_key} value={a.author_key}>{a.author}</option>
         ))}
       </select>
-    );
-  }
 
-  return (
-    <div ref={containerRef} className="relative">
-      <input
-        ref={inputRef}
-        type="text"
-        placeholder="Type to search..."
-        value={displayValue}
-        onChange={e => { setFilter(e.target.value); setShowDropdown(true); setIsEditing(true); }}
-        onFocus={() => { setShowDropdown(true); setIsEditing(true); setFilter(''); }}
-        onBlur={() => { if (!showDropdown) { setIsEditing(false); setFilter(''); } }}
-        className="w-full border rounded px-2 py-2 text-sm"
-      />
-      {showDropdown && (
-        <div className="absolute z-50 w-full mt-1 bg-white border rounded shadow-lg max-h-48 overflow-y-auto">
-          {filteredAuthors.length > 0 ? filteredAuthors.map(a => (
-            <button key={a.author_key} type="button"
-              onPointerDown={(e) => { e.preventDefault(); handleSelect(a.author_key); }}
-              className={`w-full text-left px-3 py-1.5 text-sm hover:bg-gray-100 cursor-pointer ${value === a.author_key ? 'bg-gray-50 font-medium' : ''}`}>
-              {a.author}
-            </button>
-          )) : <div className="px-3 py-2 text-sm text-gray-500">No matches</div>}
-        </div>
-      )}
-    </div>
+      {/* Desktop: searchable dropdown (hidden below sm) */}
+      <div ref={containerRef} className="relative hidden sm:block">
+        <input
+          ref={inputRef}
+          type="text"
+          placeholder="Type to search..."
+          value={displayValue}
+          onChange={e => { setFilter(e.target.value); setShowDropdown(true); setIsEditing(true); }}
+          onFocus={() => { setShowDropdown(true); setIsEditing(true); setFilter(''); }}
+          onBlur={() => { if (!showDropdown) { setIsEditing(false); setFilter(''); } }}
+          className="w-full border rounded px-2 py-2 text-sm"
+        />
+        {showDropdown && (
+          <div className="absolute z-50 w-full mt-1 bg-white border rounded shadow-lg max-h-48 overflow-y-auto">
+            {filteredAuthors.length > 0 ? filteredAuthors.map(a => (
+              <button key={a.author_key} type="button"
+                onPointerDown={(e) => { e.preventDefault(); handleSelect(a.author_key); }}
+                className={`w-full text-left px-3 py-1.5 text-sm hover:bg-gray-100 cursor-pointer ${value === a.author_key ? 'bg-gray-50 font-medium' : ''}`}>
+                {a.author}
+              </button>
+            )) : <div className="px-3 py-2 text-sm text-gray-500">No matches</div>}
+          </div>
+        )}
+      </div>
+    </>
   );
 };
 
