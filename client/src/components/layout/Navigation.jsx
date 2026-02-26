@@ -6,8 +6,7 @@ const mainTabs = [
   // { code: 'visualizations', label: 'Visualize' },
   { code: 'downloads', label: 'Downloads' },
   { code: 'about', label: 'About' },
-  { code: 'help', label: 'Help & Support' },
-  { code: 'admin', label: 'Admin' }
+  { code: 'help', label: 'Help & Support' }
 ];
 
 const languageTabs = [
