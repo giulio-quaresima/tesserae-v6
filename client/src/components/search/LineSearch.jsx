@@ -20,11 +20,6 @@ const ERA_COLORS = {
   'Unknown': 'rgba(128, 128, 128, 0.7)'
 };
 
-const isTouchDevice = () => {
-  if (typeof window === 'undefined') return false;
-  return window.matchMedia('(pointer: coarse)').matches;
-};
-
 export default function LineSearch({ language }) {
   const [mode, setMode] = useState('browse');
   const [query, setQuery] = useState('');
@@ -527,28 +522,23 @@ export default function LineSearch({ language }) {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
-        <div className="flex items-center gap-2 bg-gray-100 p-1 rounded-lg inline-flex">
-          <button
-            onClick={() => setMode('browse')}
-            className={`px-3 py-1.5 text-sm font-medium rounded ${
-              mode === 'browse' ? 'bg-white shadow text-red-700' : 'text-gray-600 hover:text-gray-800'
-            }`}
-          >
-            Find Text to Search
-          </button>
-          <button
-            onClick={() => setMode('search')}
-            className={`px-3 py-1.5 text-sm font-medium rounded ${
-              mode === 'search' ? 'bg-white shadow text-red-700' : 'text-gray-600 hover:text-gray-800'
-            }`}
-          >
-            Input Search Text
-          </button>
-        </div>
-        <p className="text-xs text-gray-500">
-          Single-line search: finds matching lines across the entire {getLanguageName(language)} corpus by shared lemmas, exact tokens, or regex. For multi-channel intertext detection between two texts, use Text Pair mode.
-        </p>
+      <div className="flex items-center gap-2 bg-gray-100 p-1 rounded-lg inline-flex">
+        <button
+          onClick={() => setMode('browse')}
+          className={`px-3 py-1.5 text-sm font-medium rounded ${
+            mode === 'browse' ? 'bg-white shadow text-red-700' : 'text-gray-600 hover:text-gray-800'
+          }`}
+        >
+          Find Text to Search
+        </button>
+        <button
+          onClick={() => setMode('search')}
+          className={`px-3 py-1.5 text-sm font-medium rounded ${
+            mode === 'search' ? 'bg-white shadow text-red-700' : 'text-gray-600 hover:text-gray-800'
+          }`}
+        >
+          Input Search Text
+        </button>
       </div>
 
       {mode === 'search' ? (
@@ -831,64 +821,47 @@ export default function LineSearch({ language }) {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="relative">
               <label className="block text-sm font-medium text-gray-700 mb-1">Author</label>
-              {isTouchDevice() ? (
-                <select
+              {/* Mobile: native select */}
+              <select
+                value={selectedAuthor}
+                onChange={e => {
+                  setSelectedAuthor(e.target.value);
+                  setSelectedWork('');
+                  setSelectedWorkLabel('');
+                  setBrowseLines([]);
+                }}
+                className="sm:hidden w-full border rounded px-3 py-2"
+                disabled={loadingTexts}
+              >
+                <option value="">Select author...</option>
+                {authors.map(author => (
+                  <option key={author} value={author}>{author}</option>
+                ))}
+              </select>
+              {/* Desktop: searchable input */}
+              <div className="hidden sm:block">
+                <input
+                  type="text"
                   value={selectedAuthor}
                   onChange={e => {
                     setSelectedAuthor(e.target.value);
                     setSelectedWork('');
                     setSelectedWorkLabel('');
                     setBrowseLines([]);
+                    setShowAuthorDropdown(true);
                   }}
+                  onFocus={() => setShowAuthorDropdown(true)}
+                  onBlur={() => setTimeout(() => setShowAuthorDropdown(false), 300)}
+                  placeholder="Type to search authors..."
                   className="w-full border rounded px-3 py-2"
                   disabled={loadingTexts}
-                >
-                  <option value="">Select author...</option>
-                  {authors.map(author => (
-                    <option key={author} value={author}>{author}</option>
-                  ))}
-                </select>
-              ) : (
-                <>
-                  <input
-                    type="text"
-                    value={selectedAuthor}
-                    onChange={e => {
-                      setSelectedAuthor(e.target.value);
-                      setSelectedWork('');
-                      setSelectedWorkLabel('');
-                      setBrowseLines([]);
-                      setShowAuthorDropdown(true);
-                    }}
-                    onFocus={() => setShowAuthorDropdown(true)}
-                    onBlur={() => setTimeout(() => setShowAuthorDropdown(false), 300)}
-                    placeholder="Type to search authors..."
-                    className="w-full border rounded px-3 py-2"
-                    disabled={loadingTexts}
-                  />
-                  {showAuthorDropdown && selectedAuthor !== '' && (
-                    <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                      {authors
-                        .filter(a => a.toLowerCase().includes(selectedAuthor.toLowerCase()))
-                        .slice(0, 20)
-                        .map(author => (
-                          <button
-                            key={author}
-                            type="button"
-                            className="w-full text-left px-3 py-2 hover:bg-amber-50 cursor-pointer text-sm"
-                            onPointerDown={() => { setSelectedAuthor(author); setShowAuthorDropdown(false); }}
-                          >
-                            {author}
-                          </button>
-                        ))}
-                      {authors.filter(a => a.toLowerCase().includes(selectedAuthor.toLowerCase())).length === 0 && (
-                        <div className="px-3 py-2 text-gray-500 text-sm">No authors found</div>
-                      )}
-                    </div>
-                  )}
-                  {showAuthorDropdown && selectedAuthor === '' && (
-                    <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                      {authors.slice(0, 20).map(author => (
+                />
+                {showAuthorDropdown && selectedAuthor !== '' && (
+                  <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                    {authors
+                      .filter(a => a.toLowerCase().includes(selectedAuthor.toLowerCase()))
+                      .slice(0, 20)
+                      .map(author => (
                         <button
                           key={author}
                           type="button"
@@ -898,73 +871,100 @@ export default function LineSearch({ language }) {
                           {author}
                         </button>
                       ))}
-                    </div>
-                  )}
-                </>
-              )}
+                    {authors.filter(a => a.toLowerCase().includes(selectedAuthor.toLowerCase())).length === 0 && (
+                      <div className="px-3 py-2 text-gray-500 text-sm">No authors found</div>
+                    )}
+                  </div>
+                )}
+                {showAuthorDropdown && selectedAuthor === '' && (
+                  <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                    {authors.slice(0, 20).map(author => (
+                      <button
+                        key={author}
+                        type="button"
+                        className="w-full text-left px-3 py-2 hover:bg-amber-50 cursor-pointer text-sm"
+                        onPointerDown={() => { setSelectedAuthor(author); setShowAuthorDropdown(false); }}
+                      >
+                        {author}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="relative">
               <label className="block text-sm font-medium text-gray-700 mb-1">Work</label>
-              {isTouchDevice() ? (
-                <select
-                  value={selectedWork}
+              {/* Mobile: native select */}
+              <select
+                value={selectedWork}
+                onChange={e => {
+                  setSelectedWork(e.target.value);
+                  const work = works.find(w => w.id === e.target.value);
+                  setSelectedWorkLabel(work ? work.label : '');
+                  setBrowseLines([]);
+                }}
+                className="sm:hidden w-full border rounded px-3 py-2"
+                disabled={!selectedAuthor || loadingTexts}
+              >
+                <option value="">{selectedAuthor ? 'Select work...' : 'Select author first'}</option>
+                {works.map(work => (
+                  <option key={work.id} value={work.id}>{work.label}</option>
+                ))}
+              </select>
+              {/* Desktop: searchable input */}
+              <div className="hidden sm:block">
+                <input
+                  type="text"
+                  value={selectedWorkLabel}
                   onChange={e => {
-                    setSelectedWork(e.target.value);
-                    const work = works.find(w => w.id === e.target.value);
-                    setSelectedWorkLabel(work ? work.label : '');
+                    setSelectedWorkLabel(e.target.value);
+                    setSelectedWork('');
                     setBrowseLines([]);
+                    setShowWorkDropdown(true);
                   }}
+                  onFocus={() => setShowWorkDropdown(true)}
+                  onBlur={() => setTimeout(() => setShowWorkDropdown(false), 300)}
+                  placeholder={selectedAuthor ? "Type to search works..." : "Select author first"}
                   className="w-full border rounded px-3 py-2"
                   disabled={!selectedAuthor || loadingTexts}
-                >
-                  <option value="">{selectedAuthor ? 'Select work...' : 'Select author first'}</option>
-                  {works.map(work => (
-                    <option key={work.id} value={work.id}>{work.label}</option>
-                  ))}
-                </select>
-              ) : (
-                <>
-                  <input
-                    type="text"
-                    value={selectedWorkLabel}
-                    onChange={e => {
-                      setSelectedWorkLabel(e.target.value);
-                      setSelectedWork('');
-                      setBrowseLines([]);
-                      setShowWorkDropdown(true);
-                    }}
-                    onFocus={() => setShowWorkDropdown(true)}
-                    onBlur={() => setTimeout(() => setShowWorkDropdown(false), 300)}
-                    placeholder={selectedAuthor ? "Type to search works..." : "Select author first"}
-                    className="w-full border rounded px-3 py-2"
-                    disabled={!selectedAuthor || loadingTexts}
-                  />
-                  {showWorkDropdown && selectedAuthor && (
-                    <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                      {works
-                        .filter(w => w.label.toLowerCase().includes(selectedWorkLabel.toLowerCase()))
-                        .map(work => (
-                          <button
-                            key={work.id}
-                            type="button"
-                            className="w-full text-left px-3 py-2 hover:bg-amber-50 cursor-pointer text-sm"
-                            onPointerDown={() => { setSelectedWork(work.id); setSelectedWorkLabel(work.label); setShowWorkDropdown(false); }}
-                          >
-                            {work.label}
-                          </button>
-                        ))}
-                      {works.filter(w => w.label.toLowerCase().includes(selectedWorkLabel.toLowerCase())).length === 0 && (
-                        <div className="px-3 py-2 text-gray-500 text-sm">No works found</div>
-                      )}
-                    </div>
-                  )}
-                </>
-              )}
+                />
+                {showWorkDropdown && selectedAuthor && (
+                  <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                    {works
+                      .filter(w => w.label.toLowerCase().includes(selectedWorkLabel.toLowerCase()))
+                      .map(work => (
+                        <button
+                          key={work.id}
+                          type="button"
+                          className="w-full text-left px-3 py-2 hover:bg-amber-50 cursor-pointer text-sm"
+                          onPointerDown={() => { setSelectedWork(work.id); setSelectedWorkLabel(work.label); setShowWorkDropdown(false); }}
+                        >
+                          {work.label}
+                        </button>
+                      ))}
+                    {works.filter(w => w.label.toLowerCase().includes(selectedWorkLabel.toLowerCase())).length === 0 && (
+                      <div className="px-3 py-2 text-gray-500 text-sm">No works found</div>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
-          <div className="flex justify-end">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <label className="text-sm text-gray-600">Match type:</label>
+              <select
+                value={searchType}
+                onChange={e => setSearchType(e.target.value)}
+                className="border rounded px-2 py-1.5 text-sm"
+              >
+                <option value="lemma">Lemma (dictionary form)</option>
+                <option value="exact">Exact match</option>
+                <option value="regex">Regular expression</option>
+              </select>
+            </div>
             <button
               onClick={handleBrowseLines}
               disabled={!selectedAuthor || !selectedWork || browseLoading}
