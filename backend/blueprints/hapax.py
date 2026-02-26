@@ -29,11 +29,28 @@ import os
 import json
 
 from backend.logging_config import get_logger
-from backend.frequency_cache import load_frequency_cache, get_corpus_frequencies
-from backend.inverted_index import get_connection, is_index_available
+from backend.frequency_cache import load_frequency_cache
+from backend.inverted_index import get_connection
 from backend.text_processor import get_latin_lemma_table, get_greek_lemma_table
 
 logger = get_logger('hapax')
+
+# Greek display forms: normalized lemma -> accented form for display
+_greek_display_forms = None
+def get_greek_display_forms():
+    """Load cached Greek display forms (normalized → accented) from JSON.
+    Returns dict mapping stripped lemma keys to proper dictionary forms."""
+    global _greek_display_forms
+    if _greek_display_forms is None:
+        display_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
+                                     'data', 'lemma_tables', 'greek_display_forms.json')
+        if os.path.exists(display_path):
+            with open(display_path, 'r', encoding='utf-8') as f:
+                _greek_display_forms = json.load(f)
+            logger.info(f"Loaded {len(_greek_display_forms)} Greek display forms")
+        else:
+            _greek_display_forms = {}
+    return _greek_display_forms
 
 
 # =============================================================================
@@ -55,6 +72,54 @@ GREEK_STOPWORDS = {
 # =============================================================================
 # HELPER FUNCTIONS
 # =============================================================================
+
+
+def _coerce_bool(value):
+    """Coerce a value that may be a string or bool into a Python bool.
+    Handles JSON booleans, string 'true'/'1'/'yes', and passthrough bools."""
+    if isinstance(value, str):
+        return value.lower() in ('true', '1', 'yes')
+    return bool(value)
+
+
+def _parse_search_params(data):
+    """Extract and validate common search parameters from request JSON.
+    Returns (source_id, target_id, language) or raises ValueError on missing texts."""
+    source_id = data.get('source')
+    target_id = data.get('target')
+    language = data.get('language', 'la')
+    if not source_id or not target_id:
+        raise ValueError('Please select both source and target texts')
+    return source_id, target_id, language
+
+
+def _resolve_text_path(text_id, language):
+    """Build the filesystem path for a text and verify it exists.
+    Returns the full path string, or raises FileNotFoundError."""
+    lang_dir = os.path.join(_texts_dir, language)
+    text_path = os.path.join(lang_dir, text_id)
+    if not os.path.exists(text_path):
+        raise FileNotFoundError(f'Text not found: {text_id}')
+    return text_path
+
+
+def _extract_bigram_locations(units, make_bigram_key_fn, language):
+    """Build a dict mapping bigram keys to their occurrence locations from processed text units.
+    Each location entry contains ref, normalized line text, and the two lemma words."""
+    bigram_locations = {}
+    for unit in units:
+        lemmas = unit.get('lemmas', [])
+        for i in range(len(lemmas) - 1):
+            if lemmas[i] and lemmas[i+1]:
+                bg_key = make_bigram_key_fn(lemmas[i], lemmas[i+1])
+                if bg_key not in bigram_locations:
+                    bigram_locations[bg_key] = []
+                bigram_locations[bg_key].append({
+                    'ref': unit.get('ref', ''),
+                    'text': normalize_line_text(unit.get('text', ''), language),
+                    'words': [lemmas[i], lemmas[i+1]]
+                })
+    return bigram_locations
 
 
 def extract_reference_numbers(ref_str):
@@ -161,15 +226,16 @@ _latin_lemma_table = {}
 _greek_lemma_table = {}
 _latin_valid_lemmas = set()
 _greek_valid_lemmas = set()
-_greek_display_forms = {}
 _greek_text_forms = {}
 
 
 def load_greek_display_forms():
-    """Load mapping from normalized Greek to proper dictionary forms with diacritics"""
+    """Build Greek display form lookup from corpus data files.
+    Loads normalized → accented form mapping from greek_display_forms.json
+    and text form fallback from greek_text_forms.json."""
     global _greek_display_forms, _greek_text_forms
-    
-    if _greek_display_forms:
+
+    if _greek_display_forms is not None:
         return
     
     base_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
@@ -194,7 +260,8 @@ def load_greek_display_forms():
 
 
 def normalize_to_greek(text):
-    """Convert Latin lookalike characters to Greek equivalents"""
+    """Normalize string for Greek display form lookup.
+    Converts Latin lookalike characters (a→α, b→β, etc.) to Greek equivalents."""
     latin_to_greek = {
         'a': 'α', 'b': 'β', 'e': 'ε', 'h': 'η', 'i': 'ι', 'k': 'κ',
         'm': 'μ', 'n': 'ν', 'o': 'ο', 'p': 'ρ', 't': 'τ', 'u': 'υ',
@@ -574,7 +641,8 @@ def get_original_word_form(text_id, ref, position, language):
 
 
 def strip_punctuation(word):
-    """Remove trailing/leading punctuation from a word"""
+    """Remove leading/trailing punctuation from a token, preserving Greek diacritics.
+    Also strips stray combining marks at word boundaries."""
     import re
     import unicodedata
     # Strip common punctuation and combining marks at word boundaries
@@ -588,14 +656,15 @@ def strip_punctuation(word):
 
 
 def fix_final_sigma(word):
-    """Convert medial sigma at word end to final sigma for Greek"""
+    """Convert medial sigma (σ) at word end to final sigma (ς) for Greek display."""
     if word and word[-1] == 'σ':
         return word[:-1] + 'ς'
     return word
 
 
 def fix_greek_combining(word):
-    """Fix malformed Greek where combining marks come before base letters"""
+    """Fix malformed Greek where combining marks appear before base letters.
+    Reorders so combining diacritics follow their base character (NFC-like)."""
     import unicodedata
     if not word:
         return word
@@ -619,44 +688,229 @@ def fix_greek_combining(word):
     return ''.join(result)
 
 
+def strip_latin_enclitics(word):
+    """Strip common Latin enclitics (-que, -ne, -ve/-ue) from a word.
+    Conservative: only strips -que (most common and unambiguous).
+    -ne and -ve are too often part of the stem (e.g., omne, nave)."""
+    if not word or len(word) < 6:
+        return word
+    lower = word.lower().replace('v', 'u')
+    # Words where -que is part of the stem, not an enclitic
+    _que_whole_words = {
+        'usque', 'quoque', 'ubique', 'undique', 'utrique', 'utroque',
+        'neque', 'atque', 'absque', 'itaque', 'namque', 'quisque',
+        'quinque', 'denique', 'plerumque', 'plerique', 'cumque',
+        'quandoque', 'quacumque', 'quocumque', 'quoscumque'
+    }
+    if lower.endswith('que'):
+        if lower not in _que_whole_words:
+            return word[:-3]
+    return word
+
+
+def clean_lemma_key(lemma):
+    """Clean up lemma notation for display and matching.
+    Removes prefix separators (de_-suesco -> desuesco, ad-pello -> adpello)
+    and trailing homograph numbers (eo1 -> eo, edo1 -> edo)."""
+    import re
+    if not lemma:
+        return lemma
+    # Remove prefix separators: _- or single -
+    cleaned = lemma.replace('_-', '')
+    # Only remove hyphens that separate prefix from stem (not in Greek or if hyphen is the whole thing)
+    if '-' in cleaned and len(cleaned) > 2:
+        cleaned = cleaned.replace('-', '')
+    # Remove trailing homograph disambiguation numbers
+    cleaned = re.sub(r'\d+$', '', cleaned)
+    return cleaned or lemma
+
+
+def word_matches_lemma(word, lemma, language):
+    """Check if a surface word plausibly matches a lemma (for position validation).
+    Handles Latin u/v and i/j normalization, enclitics, prefix notation,
+    Greek diacritics, and stem matching."""
+    import unicodedata as _ucd
+    if not word or not lemma:
+        return False
+    w = word.lower()
+    # Clean lemma: remove prefix separators and trailing numbers
+    l = clean_lemma_key(lemma).lower()
+    if language == 'la':
+        w = w.replace('v', 'u').replace('j', 'i')
+        l = l.replace('v', 'u').replace('j', 'i')
+        if w == l:
+            return True
+        # Try after stripping enclitics
+        w_stripped = strip_latin_enclitics(word).lower().replace('v', 'u').replace('j', 'i')
+        if w_stripped != w and w_stripped == l:
+            return True
+        # Stem match: shared prefix of at least 4 chars (Latin inflection)
+        min_stem = min(4, len(l))
+        if len(l) >= 3:
+            if len(w) >= min_stem and w[:min_stem] == l[:min_stem]:
+                return True
+            if len(w_stripped) >= min_stem and w_stripped[:min_stem] == l[:min_stem]:
+                return True
+    elif language == 'grc':
+        # Strip diacritics and normalize sigma for comparison
+        w_base = ''.join(c for c in _ucd.normalize('NFD', w) if not _ucd.combining(c))
+        l_base = ''.join(c for c in _ucd.normalize('NFD', l) if not _ucd.combining(c))
+        w_base = w_base.replace('ς', 'σ')
+        l_base = l_base.replace('ς', 'σ')
+        if w_base == l_base:
+            return True
+        min_stem = min(4, len(l_base))
+        if len(l_base) >= 3 and len(w_base) >= min_stem and w_base[:min_stem] == l_base[:min_stem]:
+            return True
+    else:
+        # English
+        if w == l:
+            return True
+        min_stem = min(4, len(l))
+        if len(l) >= 3 and len(w) >= min_stem and w[:min_stem] == l[:min_stem]:
+            return True
+    return False
+
+
+def _find_lemma_token_in_text(text, lemma, language):
+    """Search line text for a token matching the lemma. Returns (token, index) or (None, -1).
+    Strips enclitics from the returned token for clean display.
+    This is a fallback when index positions are misaligned."""
+    if not text:
+        return None, -1
+    tokens = text.split()
+    for idx, token in enumerate(tokens):
+        clean = strip_punctuation(token)
+        if clean and word_matches_lemma(clean, lemma, language):
+            # Strip enclitics for clean display
+            if language == 'la':
+                clean = strip_latin_enclitics(clean)
+            return clean, idx
+    return None, -1
+
+
 def get_display_form(lemma, language, locations):
-    """Get a display form with diacritics by sampling from locations"""
+    """Get a display form with diacritics by sampling from locations.
+    Validates that the word at the indexed position actually matches the lemma;
+    falls back to searching the line text if positions are misaligned."""
     import unicodedata
-    
+
     display = None
     if locations:
-        for loc in locations[:3]:
+        for loc in locations[:5]:
             positions = loc.get('positions', [])
+            # Try position-based lookup first (fast path)
             if positions:
                 word = get_original_word_form(loc['text_id'], loc['ref'], positions[0], language)
                 if word:
                     word = strip_punctuation(word)
+                    if word and word_matches_lemma(word, lemma, language):
+                        if language == 'la':
+                            word = strip_latin_enclitics(word)
+                        if language == 'grc':
+                            word = fix_greek_combining(word)
+                            display = unicodedata.normalize('NFC', word)
+                        else:
+                            display = word
+                        break
+            # Fallback: search through line text for a matching token
+            if not display:
+                token, _ = _find_lemma_token_in_text(loc.get('text', ''), lemma, language)
+                if token:
                     if language == 'grc':
-                        # Fix malformed combining character order, then normalize to NFC
-                        word = fix_greek_combining(word)
-                        display = unicodedata.normalize('NFC', word)
+                        token = fix_greek_combining(token)
+                        display = unicodedata.normalize('NFC', token)
                     else:
-                        # For Latin, lowercase and handle u/v normalization
-                        display = word.lower()
+                        display = token
                     break
-    
+
     # Fallback to Morpheus lookup if Greek and no location found
     if not display and language == 'grc':
         display = get_greek_display_form(lemma)
-    
-    # If still no display, use the lemma itself
+
+    # If still no display, use the lemma itself (cleaned up)
     if not display:
-        display = lemma
-    
+        display = clean_lemma_key(lemma)
+
     # Convert trailing medial sigma to final sigma for Greek
     if language == 'grc' and display and display.endswith('σ'):
         display = display[:-1] + 'ς'
-    
+
     return display
 
 
+def is_proper_noun(lemma, language, locations):
+    """
+    Determine if a word is a proper noun by checking capitalization patterns
+    across multiple corpus occurrences.
+
+    Instead of trusting index positions (which may be misaligned), searches
+    the actual line text for tokens matching the lemma and checks their case.
+
+    Uses ratio-based detection: if >= 50% of non-line-initial occurrences
+    are capitalized, the word is a proper noun. This tolerates prose authors
+    who sometimes lowercase proper adjectives (e.g., Pliny) while catching
+    borderline cases like Caspia (57%) and Hesperidum (50%).
+
+    Works for Latin, Greek, and English.
+    """
+    if not locations:
+        return False
+
+    uppercase_non_initial = 0
+    lowercase_non_initial = 0
+    uppercase_initial = 0
+    lowercase_initial = 0
+
+    for loc in locations[:20]:
+        text = loc.get('text', '')
+        if not text:
+            continue
+        tokens = text.split()
+        for idx, token in enumerate(tokens):
+            clean = strip_punctuation(token)
+            if not clean:
+                continue
+            if not word_matches_lemma(clean, lemma, language):
+                continue
+
+            is_upper = clean[0].isupper()
+            is_line_initial = (idx == 0)
+
+            if is_line_initial:
+                if is_upper:
+                    uppercase_initial += 1
+                else:
+                    lowercase_initial += 1
+            else:
+                if is_upper:
+                    uppercase_non_initial += 1
+                else:
+                    lowercase_non_initial += 1
+            break  # Only count first match per line to avoid double-counting
+
+    # Use ratio-based detection for non-initial positions
+    total_non_initial = uppercase_non_initial + lowercase_non_initial
+    if total_non_initial > 0:
+        uppercase_ratio = uppercase_non_initial / total_non_initial
+        # >= 50% uppercase in non-initial positions -> proper noun
+        # Catches borderline cases (Caspia 57%, Hesperidum 50%)
+        if uppercase_ratio >= 0.5:
+            return True
+        return False
+
+    # Only line-initial evidence available — use as tie-breaker
+    # If always uppercase at line start and never lowercase, likely proper noun
+    # But this is weak evidence, so require multiple occurrences
+    if uppercase_initial >= 2 and lowercase_initial == 0:
+        return True
+
+    return False
+
+
 def init_hapax_blueprint(texts_dir, text_processor, author_dates):
-    """Initialize blueprint with required dependencies"""
+    """Initialize hapax blueprint with shared dependencies (texts dir, processor, dates).
+    Called once at app startup to inject references needed by route handlers."""
     global _texts_dir, _text_processor, _author_dates
     _texts_dir = texts_dir
     _text_processor = text_processor
@@ -707,17 +961,92 @@ def get_line_text_from_file(text_id, language, ref):
 
 
 def get_rare_words_from_cache(language, max_occurrences=10):
-    """Get lemmas with corpus frequency between 1 and max_occurrences"""
+    """Get lemmas with corpus frequency between 1 and max_occurrences.
+    NOTE: This uses token frequency. For hapax search, prefer
+    get_document_frequency() which counts how many TEXTS contain a lemma."""
     cached = load_frequency_cache(language)
     if not cached or 'frequencies' not in cached:
         return {}
-    
+
     rare_words = {}
     for lemma, count in cached['frequencies'].items():
         if 1 <= count <= max_occurrences:
             rare_words[lemma] = count
-    
+
     return rare_words
+
+
+def get_document_frequency(lemma, language):
+    """Get the number of distinct texts that contain this lemma (document frequency).
+    Uses the inverted index for accurate corpus-wide rarity measurement."""
+    conn = get_connection(language)
+    if not conn:
+        return 0
+
+    try:
+        cursor = conn.cursor()
+        # Expand to u/v and i/j variants for Latin
+        expanded = {lemma}
+        if language == 'la':
+            expanded.add(lemma.replace('u', 'v'))
+            expanded.add(lemma.replace('v', 'u'))
+            expanded.add(lemma.replace('i', 'j'))
+            expanded.add(lemma.replace('j', 'i'))
+
+        placeholders = ','.join(['?' for _ in expanded])
+        cursor.execute(
+            f'SELECT COUNT(DISTINCT text_id) FROM postings WHERE lemma IN ({placeholders})',
+            list(expanded)
+        )
+        return cursor.fetchone()[0]
+    except Exception as e:
+        logger.error(f"Document frequency lookup error for '{lemma}': {e}")
+        return 0
+
+
+def get_document_frequencies_batch(lemmas, language):
+    """Get document frequencies for a batch of lemmas efficiently.
+    Returns dict mapping lemma -> number of texts containing it."""
+    conn = get_connection(language)
+    if not conn:
+        return {}
+
+    try:
+        cursor = conn.cursor()
+        result = {}
+
+        # Process in batches to avoid huge SQL queries
+        lemma_list = list(lemmas)
+        batch_size = 500
+        for i in range(0, len(lemma_list), batch_size):
+            batch = lemma_list[i:i + batch_size]
+
+            # Build expanded set with u/v variants
+            expanded_map = {}  # expanded_form -> original_lemma
+            for lemma in batch:
+                variants = {lemma}
+                if language == 'la':
+                    variants.add(lemma.replace('u', 'v'))
+                    variants.add(lemma.replace('v', 'u'))
+                for v in variants:
+                    expanded_map[v] = lemma
+
+            all_variants = list(expanded_map.keys())
+            placeholders = ','.join(['?' for _ in all_variants])
+            cursor.execute(
+                f'SELECT lemma, COUNT(DISTINCT text_id) FROM postings WHERE lemma IN ({placeholders}) GROUP BY lemma',
+                all_variants
+            )
+
+            # Aggregate counts back to original lemma
+            for row_lemma, count in cursor.fetchall():
+                original = expanded_map.get(row_lemma, row_lemma)
+                result[original] = result.get(original, 0) + count
+
+        return result
+    except Exception as e:
+        logger.error(f"Batch document frequency error: {e}")
+        return {}
 
 
 def lookup_lemma_locations(lemma, language):
@@ -790,6 +1119,96 @@ def get_text_lemmas(text_id, language):
         return set()
 
 
+def find_rare_word_matches_direct(source_units, target_units, language='la',
+                                   max_occurrences=50):
+    """Find matches based on shared rare lemmas between source and target units.
+
+    Uses an inverted-index approach (like the dictionary channel): collects all
+    lemmas, batch-queries document frequencies, filters to rare words, then
+    builds a target index for fast pair lookup.
+
+    Called by the fusion engine (backend/fusion.py) for the rare_word channel.
+
+    Args:
+        source_units: List of dicts with 'lemmas' field
+        target_units: List of dicts with 'lemmas' field
+        language: Language code ('la', 'grc', 'en')
+        max_occurrences: Maximum corpus doc frequency to count as "rare"
+
+    Returns:
+        List of match dicts: [{'source_idx', 'target_idx', 'matched_lemmas'}, ...]
+    """
+    from collections import defaultdict
+
+    # Collect unique lemmas per unit
+    source_lemma_sets = []
+    all_source_lemmas = set()
+    for unit in source_units:
+        lemmas = set(l.lower() for l in unit.get('lemmas', []) if len(l) > 2)
+        source_lemma_sets.append(lemmas)
+        all_source_lemmas.update(lemmas)
+
+    target_lemma_sets = []
+    all_target_lemmas = set()
+    for unit in target_units:
+        lemmas = set(l.lower() for l in unit.get('lemmas', []) if len(l) > 2)
+        target_lemma_sets.append(lemmas)
+        all_target_lemmas.update(lemmas)
+
+    # Only query doc freqs for lemmas that appear in both source and target
+    shared_lemmas = all_source_lemmas & all_target_lemmas
+    if not shared_lemmas:
+        logger.info("[RARE_WORD] No shared lemmas between source and target")
+        return []
+
+    # Batch document-frequency lookup
+    doc_freqs = get_document_frequencies_batch(shared_lemmas, language)
+
+    # Filter to rare: 1 <= doc_freq <= max_occurrences
+    rare_lemmas = set()
+    for lemma in shared_lemmas:
+        df = doc_freqs.get(lemma, 0)
+        if 1 <= df <= max_occurrences:
+            rare_lemmas.add(lemma)
+
+    if not rare_lemmas:
+        logger.info(f"[RARE_WORD] No rare lemmas (max_occ={max_occurrences}) "
+                     f"among {len(shared_lemmas)} shared lemmas")
+        return []
+
+    logger.info(f"[RARE_WORD] {len(rare_lemmas)} rare lemmas "
+                f"(from {len(shared_lemmas)} shared, max_occ={max_occurrences})")
+
+    # Build target index: rare_lemma -> set of target line indices
+    target_index = defaultdict(set)
+    for tgt_idx, lemma_set in enumerate(target_lemma_sets):
+        for lemma in lemma_set:
+            if lemma in rare_lemmas:
+                target_index[lemma].add(tgt_idx)
+
+    # For each source unit, find target units sharing rare lemmas via index
+    matches = []
+    for src_idx, src_lemmas in enumerate(source_lemma_sets):
+        # tgt_idx -> set of shared rare lemmas
+        pair_shared = defaultdict(set)
+        for lemma in src_lemmas:
+            if lemma in target_index:
+                for tgt_idx in target_index[lemma]:
+                    pair_shared[tgt_idx].add(lemma)
+
+        for tgt_idx, shared_rare in pair_shared.items():
+            if len(shared_rare) >= 1:
+                matches.append({
+                    'source_idx': src_idx,
+                    'target_idx': tgt_idx,
+                    'matched_lemmas': list(shared_rare),
+                })
+
+    logger.info(f"[RARE_WORD] Found {len(matches)} matches "
+                f"(source={len(source_units)}, target={len(target_units)})")
+    return matches
+
+
 @hapax_bp.route('/rare-lemmata', methods=['GET'])
 def get_rare_lemmata():
     """
@@ -810,15 +1229,25 @@ def get_rare_lemmata():
         include_locations = request.args.get('include_locations', 'false').lower() == 'true'
         
         rare_words = get_rare_words_from_cache(language, max_occ)
-        
-        filtered = {k: v for k, v in rare_words.items() if v >= min_occ}
-        
-        sorted_words = sorted(filtered.items(), key=lambda x: (x[1], x[0]))[:limit]
-        
+
+        # Strip leading/trailing whitespace from lemma keys
+        cleaned = {}
+        for k, v in rare_words.items():
+            clean_k = k.strip()
+            if clean_k and v >= min_occ:
+                cleaned[clean_k] = cleaned.get(clean_k, 0) + v
+
+        sorted_words = sorted(cleaned.items(), key=lambda x: (x[1], x[0]))[:limit]
+
+        # Load Greek display forms for accented display
+        display_forms = get_greek_display_forms() if language == 'grc' else {}
+
         results = []
         for lemma, count in sorted_words:
+            display = display_forms.get(lemma, lemma) if display_forms else lemma
             entry = {
                 'lemma': lemma,
+                'display': display,
                 'count': count,
                 'language': language
             }
@@ -828,7 +1257,7 @@ def get_rare_lemmata():
         
         return jsonify({
             'language': language,
-            'total_rare_words': len(filtered),
+            'total_rare_words': len(cleaned),
             'returned': len(results),
             'max_occurrences': max_occ,
             'min_occurrences': min_occ,
@@ -916,6 +1345,8 @@ def regenerate_rare_words_cache(language):
                 if normalized not in _greek_valid_lemmas:
                     continue
                 display = get_greek_display_form(normalized)
+                # Ensure proper NFC normalization (combining marks after base chars)
+                display = unicodedata.normalize('NFC', display)
                 rare_words.append({'lemma': normalized, 'display': display, 'count': count})
     
     elif language == 'en':
@@ -960,7 +1391,15 @@ def regenerate_rare_words_cache(language):
         except Exception as e:
             logger.debug(f"Could not look up location for {lemma}: {e}")
     
-    unique_rare = sorted(seen.values(), key=lambda x: x.get('display', x.get('lemma', '')).lower().lstrip('*'))
+    def greek_sort_key(x):
+        """Sort by base letter form so accented and unaccented entries interleave"""
+        display = x.get('display', x.get('lemma', '')).lower().lstrip('*')
+        # Normalize to base characters for sorting (Ἀ sorts with α, not after ω)
+        normalized = unicodedata.normalize('NFD', display)
+        base = ''.join(c for c in normalized if not unicodedata.combining(c))
+        return base
+
+    unique_rare = sorted(seen.values(), key=greek_sort_key)
     
     cache_dir = os.path.join('cache', 'rare_words')
     os.makedirs(cache_dir, exist_ok=True)
@@ -1008,12 +1447,15 @@ def get_rare_lemmata_full():
         filtered = matching[:limit]
         
         # Format response using pre-computed display forms
+        import unicodedata as _ucd
         results = []
         for w in filtered:
             display = w.get('display', w.get('lemma', ''))
             # Strip leading asterisks (denote reconstructed forms in linguistics)
             if display.startswith('*'):
                 display = display[1:]
+            # Ensure proper NFC normalization for consistent browser rendering
+            display = _ucd.normalize('NFC', display)
             results.append({
                 'lemma': display,
                 'count': w['count'],
@@ -1127,19 +1569,19 @@ def hapax_search():
         source_language: source text language (for cross-lingual)
         target_language: target text language (for cross-lingual)
         max_occurrences: max corpus frequency to consider rare (default: 10)
+        exclude_proper_nouns: filter out proper nouns like names/places (default: false)
     """
     try:
         data = request.get_json() or {}
-        source_id = data.get('source')
-        target_id = data.get('target')
-        language = data.get('language', 'la')
+        try:
+            source_id, target_id, language = _parse_search_params(data)
+        except ValueError as e:
+            return jsonify({'error': str(e)}), 400
         source_language = data.get('source_language', language)
         target_language = data.get('target_language', language)
         max_occ = int(data.get('max_occurrences', 50))
-        
-        if not source_id or not target_id:
-            return jsonify({'error': 'Please select both source and target texts'}), 400
-        
+        exclude_proper = _coerce_bool(data.get('exclude_proper_nouns', False))
+
         source_lemmas = get_text_lemmas(source_id, source_language)
         target_lemmas = get_text_lemmas(target_id, target_language)
         
@@ -1149,17 +1591,17 @@ def hapax_search():
             return jsonify({'error': f'Could not process target text: {target_id}'}), 400
         
         shared_lemmas = source_lemmas & target_lemmas
-        
-        source_rare = get_rare_words_from_cache(source_language, max_occ)
-        target_rare = get_rare_words_from_cache(target_language, max_occ)
-        
-        all_rare = set(source_rare.keys()) | set(target_rare.keys())
-        
-        shared_rare = shared_lemmas & all_rare
-        
+
+        # Use document frequency (how many texts contain the lemma) for rarity,
+        # not token frequency. A word in 3 texts is rare; a word in 500 is not.
+        doc_freqs = get_document_frequencies_batch(shared_lemmas, source_language)
+
+        shared_rare = {l for l in shared_lemmas
+                       if 1 <= doc_freqs.get(l, 0) <= max_occ}
+
         results = []
         for lemma in shared_rare:
-            corpus_count = source_rare.get(lemma, target_rare.get(lemma, 0))
+            corpus_count = doc_freqs.get(lemma, 0)
             
             source_locations = []
             target_locations = []
@@ -1208,27 +1650,52 @@ def hapax_search():
                         target_locations.append(loc)
             
             display_form = get_display_form(lemma, source_language, source_locations + target_locations)
-            
+
             if len(source_locations) > 0 and len(target_locations) > 0:
+                # Check if this word is a proper noun — corpus-wide OR local context
+                # Local context catches names like Achates that are always capitalized
+                # in the source/target but have lowercase homographs elsewhere in corpus
+                word_is_pn = (is_proper_noun(lemma, source_language, all_locations) or
+                              is_proper_noun(lemma, source_language, source_locations + target_locations))
+
+                # Lowercase display_form for non-proper-nouns that got capitalized
+                # from line-initial sampling (e.g., "Fatalem" at start of a line)
+                if not word_is_pn and display_form and display_form[0].isupper():
+                    display_form = display_form[0].lower() + display_form[1:]
+
                 results.append({
                     'lemma': lemma,
                     'display_form': display_form,
                     'corpus_count': corpus_count,
+                    'is_proper_noun': word_is_pn,
                     'source_occurrences': len(source_locations),
                     'target_occurrences': len(target_locations),
                     'source_locations': source_locations,
                     'target_locations': target_locations,
                     'all_corpus_locations': all_locations
                 })
-        
+
+        # Apply proper noun filter if requested
+        proper_nouns_excluded = 0
+        if exclude_proper:
+            filtered = []
+            for r in results:
+                if r['is_proper_noun']:
+                    proper_nouns_excluded += 1
+                else:
+                    filtered.append(r)
+            results = filtered
+
         results.sort(key=lambda x: (x['corpus_count'], x['lemma']))
-        
+
         return jsonify({
             'source': source_id,
             'target': target_id,
             'source_language': source_language,
             'target_language': target_language,
             'max_occurrences': max_occ,
+            'exclude_proper_nouns': exclude_proper,
+            'proper_nouns_excluded': proper_nouns_excluded,
             'source_total_lemmas': len(source_lemmas),
             'target_total_lemmas': len(target_lemmas),
             'shared_lemmas': len(shared_lemmas),
@@ -1262,73 +1729,56 @@ def rare_bigram_search():
             is_bigram_cache_available, load_bigram_cache,
             extract_bigrams, get_bigram_rarity_score, make_bigram_key
         )
-        
+
         data = request.get_json() or {}
-        source_id = data.get('source')
-        target_id = data.get('target')
-        language = data.get('language', 'la')
+        try:
+            source_id, target_id, language = _parse_search_params(data)
+        except ValueError as e:
+            return jsonify({'error': str(e)}), 400
         min_rarity = float(data.get('min_rarity', 0.9))
         limit = int(data.get('limit', 100))
-        
+
         stoplist_basis = data.get('stoplist_basis', 'source_target')
         stoplist_size = int(data.get('stoplist_size', 0))
-        use_stoplist = data.get('stoplist', False)
-        if isinstance(use_stoplist, str):
-            use_stoplist = use_stoplist.lower() in ('true', '1', 'yes')
+        use_stoplist = _coerce_bool(data.get('stoplist', False))
         if stoplist_basis == 'none':
             use_stoplist = False
         elif stoplist_basis in ('source_target', 'source', 'target', 'corpus'):
             use_stoplist = True
-        
-        if not source_id or not target_id:
-            return jsonify({'error': 'Please select both source and target texts'}), 400
-        
+
         if not is_bigram_cache_available(language):
             return jsonify({
                 'error': f'Bigram index not built for {language}. Please build it in Admin → Cache Management.'
             }), 400
-        
+
         load_bigram_cache(language)
-        
-        lang_dir = os.path.join(_texts_dir, language)
-        source_path = os.path.join(lang_dir, source_id)
-        target_path = os.path.join(lang_dir, target_id)
-        
-        if not os.path.exists(source_path):
+
+        # Adapt min_rarity for small corpora: with N docs, a shared bigram
+        # (doc_freq >= 2) has max rarity = 1 - 2/N. The default 0.9 threshold
+        # is calibrated for Latin/Greek (~2100 texts) and is impossible for
+        # small corpora like English (14 texts, max rarity = 0.857).
+        from backend.bigram_frequency import _bigram_cache
+        cached = _bigram_cache.get(language, {})
+        total_docs = cached.get('total_docs', 1)
+        max_possible_rarity = 1.0 - (2.0 / max(total_docs, 2))
+        if min_rarity > max_possible_rarity:
+            min_rarity = max(0.5, max_possible_rarity - 0.05)
+            logger.info(f"Adapted min_rarity to {min_rarity:.3f} for {language} corpus ({total_docs} docs, max possible {max_possible_rarity:.3f})")
+
+        try:
+            source_path = _resolve_text_path(source_id, language)
+        except FileNotFoundError:
             return jsonify({'error': f'Source text not found: {source_id}'}), 404
-        if not os.path.exists(target_path):
+        try:
+            target_path = _resolve_text_path(target_id, language)
+        except FileNotFoundError:
             return jsonify({'error': f'Target text not found: {target_id}'}), 404
-        
+
         source_units = _text_processor.process_file(source_path, language, unit_type='line')
         target_units = _text_processor.process_file(target_path, language, unit_type='line')
-        
-        source_bigram_locations = {}
-        for unit in source_units:
-            lemmas = unit.get('lemmas', [])
-            for i in range(len(lemmas) - 1):
-                if lemmas[i] and lemmas[i+1]:
-                    bg_key = make_bigram_key(lemmas[i], lemmas[i+1])
-                    if bg_key not in source_bigram_locations:
-                        source_bigram_locations[bg_key] = []
-                    source_bigram_locations[bg_key].append({
-                        'ref': unit.get('ref', ''),
-                        'text': normalize_line_text(unit.get('text', ''), language),
-                        'words': [lemmas[i], lemmas[i+1]]
-                    })
-        
-        target_bigram_locations = {}
-        for unit in target_units:
-            lemmas = unit.get('lemmas', [])
-            for i in range(len(lemmas) - 1):
-                if lemmas[i] and lemmas[i+1]:
-                    bg_key = make_bigram_key(lemmas[i], lemmas[i+1])
-                    if bg_key not in target_bigram_locations:
-                        target_bigram_locations[bg_key] = []
-                    target_bigram_locations[bg_key].append({
-                        'ref': unit.get('ref', ''),
-                        'text': normalize_line_text(unit.get('text', ''), language),
-                        'words': [lemmas[i], lemmas[i+1]]
-                    })
+
+        source_bigram_locations = _extract_bigram_locations(source_units, make_bigram_key, language)
+        target_bigram_locations = _extract_bigram_locations(target_units, make_bigram_key, language)
         
         dynamic_stopwords = set()
         if use_stoplist and stoplist_size > 0:

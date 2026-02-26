@@ -1,20 +1,16 @@
-import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { Button, LoadingSpinner } from '../common';
-import { formatReference } from '../../utils/formatting';
+import { formatReference, formatElapsedTime } from '../../utils/formatting';
+import { displayGreekWithFinalSigma } from '../../utils/greekUtils';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js';
 import { Bar } from 'react-chartjs-2';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
-const displayGreekWithFinalSigma = (text) => {
-  if (!text) return text;
-  return text.replace(/σ(?=\s|$|[,.;:!?])/g, 'ς');
-};
-
-const SearchResults = ({ 
-  results, 
-  loading, 
-  error, 
+const SearchResults = ({
+  results,
+  loading,
+  error,
   displayLimit,
   setDisplayLimit,
   onRegister,
@@ -22,36 +18,43 @@ const SearchResults = ({
   sortBy,
   setSortBy,
   searchStats,
+  language,
   sourceTextInfo,
   targetTextInfo,
   elapsedTime = 0,
   progressText = '',
-  matchType = 'lemma'
+  matchType = 'lemma',
+  fusionProgress = null
 }) => {
   const [expandedResults, setExpandedResults] = useState({});
   const [showDistributionChart, setShowDistributionChart] = useState(false);
   const [distributionChartView, setDistributionChartView] = useState('target');
   const [chartFilter, setChartFilter] = useState(null);
   const chartRef = useRef(null);
+  const [pauseUpdates, setPauseUpdates] = useState(false);
+  const [frozenResults, setFrozenResults] = useState(null);
 
-  // Sort results based on sortBy prop
-  const sortedResults = useMemo(() => {
-    if (!Array.isArray(results)) return [];
-    return [...results].sort((a, b) => {
-      if (sortBy === 'score') return (b.score || b.overall_score || 0) - (a.score || a.overall_score || 0);
-      if (sortBy === 'source_locus') {
-        const aLoc = a.source_locus || a.source?.ref || '';
-        const bLoc = b.source_locus || b.source?.ref || '';
-        return aLoc.localeCompare(bLoc, undefined, { numeric: true });
+  // Auto-unpause when search completes
+  useEffect(() => {
+    if (!loading) {
+      setPauseUpdates(false);
+      setFrozenResults(null);
+    }
+  }, [loading]);
+
+  // Freeze/unfreeze results on pause toggle
+  const handlePauseToggle = useCallback(() => {
+    setPauseUpdates(prev => {
+      if (!prev) {
+        // Pausing: snapshot current results
+        setFrozenResults([...results]);
+      } else {
+        // Unpausing: show live results again
+        setFrozenResults(null);
       }
-      if (sortBy === 'target_locus') {
-        const aLoc = a.target_locus || a.target?.ref || '';
-        const bLoc = b.target_locus || b.target?.ref || '';
-        return aLoc.localeCompare(bLoc, undefined, { numeric: true });
-      }
-      return 0;
+      return !prev;
     });
-  }, [results, sortBy]);
+  }, [results]);
 
   const toggleExpand = (index) => {
     setExpandedResults(prev => ({
@@ -62,7 +65,7 @@ const SearchResults = ({
 
   const exportCSV = useCallback(() => {
     if (!results || results.length === 0) return;
-    
+
     const headers = ['Source Locus', 'Source Text', 'Target Locus', 'Target Text', 'Score', 'Matched Words'];
     const rows = results.map(r => [
       r.source_locus || r.source?.ref || '',
@@ -72,7 +75,7 @@ const SearchResults = ({
       (r.score ?? r.overall_score)?.toFixed(3) || '',
       (r.matched_words || []).map(w => typeof w === 'object' ? (w.lemma || w.word || '') : w).join('; ')
     ]);
-    
+
     const csv = [headers.join(','), ...rows.map(r => r.map(c => `"${c}"`).join(','))].join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
@@ -87,7 +90,7 @@ const SearchResults = ({
     if (!chartRef.current) return;
     const canvas = chartRef.current.canvas;
     if (!canvas) return;
-    
+
     const link = document.createElement('a');
     const isSourceView = distributionChartView === 'source';
     const textInfo = isSourceView ? sourceTextInfo : targetTextInfo;
@@ -100,35 +103,35 @@ const SearchResults = ({
 
   const getDistributionData = useCallback(() => {
     if (!results || results.length === 0) return null;
-    
+
     const bookData = {};
     const isSourceView = distributionChartView === 'source';
-    
+
     results.forEach(r => {
-      const locus = isSourceView 
-        ? (r.source_locus || r.source?.ref || '') 
+      const locus = isSourceView
+        ? (r.source_locus || r.source?.ref || '')
         : (r.target_locus || r.target?.ref || '');
-      
-      const bookMatch = locus.match(/book\s*(\d+)/i) || 
+
+      const bookMatch = locus.match(/book\s*(\d+)/i) ||
                         locus.match(/(\d+)\.\d+/) ||
                         locus.match(/^([^.]+)/);
-      
+
       const book = bookMatch ? bookMatch[1] : 'Other';
       const bookLabel = `Book ${book}`;
-      
+
       if (!bookData[bookLabel]) {
         bookData[bookLabel] = { count: 0, totalScore: 0 };
       }
       bookData[bookLabel].count++;
       bookData[bookLabel].totalScore += (r.score ?? r.overall_score ?? 0);
     });
-    
+
     const sortedBooks = Object.keys(bookData).sort((a, b) => {
       const numA = parseInt(a.replace(/\D/g, '')) || 0;
       const numB = parseInt(b.replace(/\D/g, '')) || 0;
       return numA - numB;
     });
-    
+
     return {
       labels: sortedBooks,
       datasets: [{
@@ -162,8 +165,8 @@ const SearchResults = ({
       x: {
         title: {
           display: true,
-          text: distributionChartView === 'source' 
-            ? (sourceTextInfo?.title || 'Source') 
+          text: distributionChartView === 'source'
+            ? (sourceTextInfo?.title || 'Source')
             : (targetTextInfo?.title || 'Target'),
           font: { size: 12 }
         }
@@ -194,18 +197,18 @@ const SearchResults = ({
 
   const renderHighlightedText = (textData, language = null, matchedWords = [], isSource = true, otherTextData = null) => {
     if (!textData) return '';
-    
+
     if (typeof textData === 'string') return textData;
-    
+
     const { text, tokens, highlight_indices } = textData;
-    
+
     if (!text) return '';
-    
+
     // Build set of words to highlight from multiple sources
     const wordsToHighlight = new Set();
     // For sound matching: n-grams to search for within words
     const soundNgrams = new Set();
-    
+
     // 1. From highlight_indices (if available)
     if (tokens && highlight_indices && highlight_indices.length > 0) {
       highlight_indices.forEach(i => {
@@ -213,7 +216,7 @@ const SearchResults = ({
         if (token) wordsToHighlight.add(token);
       });
     }
-    
+
     // 2. From matched_words (for semantic and sound matches)
     if (matchedWords && matchedWords.length > 0) {
       matchedWords.forEach(m => {
@@ -221,12 +224,11 @@ const SearchResults = ({
         const word = isSource ? m.source_word : m.target_word;
         if (word) wordsToHighlight.add(word.toLowerCase());
         // Also add the lemma (handles cases where lemma differs from token)
-        if (m.lemma && !m.lemma.includes('≈') && m.lemma !== 'semantic') {
-          // Check if this looks like a sound n-gram match (e.g., "[φά]", "φρον~εὐφρον")
+        if (m.lemma && !m.lemma.includes('\u2248') && m.lemma !== 'semantic') {
+          // Check if this looks like a sound n-gram match (e.g., "[ngram]", "source~target")
           const lemmaStr = String(m.lemma);
           if (lemmaStr.includes('[') || lemmaStr.includes('~')) {
             // Extract n-grams from sound match format
-            // Format: "[ngram1], [ngram2]" or "source~target"
             const ngrams = lemmaStr.split(/[\[\],~\s]+/).filter(s => s.length >= 2);
             ngrams.forEach(ng => soundNgrams.add(ng.toLowerCase()));
           } else {
@@ -243,14 +245,14 @@ const SearchResults = ({
         }
       });
     }
-    
+
     // 3. Find common word stems between source and target (ONLY for semantic matches)
     // For exact/lemma matches, we trust the backend highlight_indices which respect the stoplist
     const isSemanticMatch = matchedWords?.some(m => m.similarity !== undefined || m.lemma === 'semantic');
     if (isSemanticMatch && otherTextData && otherTextData.tokens && tokens) {
       const thisTokens = new Set(tokens.map(t => t?.toLowerCase()).filter(Boolean));
       const otherTokens = new Set(otherTextData.tokens.map(t => t?.toLowerCase()).filter(Boolean));
-      
+
       // Find tokens that share a common stem (first 4+ chars) - catches hasta/hastam
       thisTokens.forEach(token => {
         if (token.length >= 4) {
@@ -263,12 +265,12 @@ const SearchResults = ({
         }
       });
     }
-    
+
     // Helper to check if a word matches any highlight word or contains sound n-grams
     const shouldHighlight = (word) => {
-      const normalized = word.toLowerCase().replace(/[.,;:!?'"()—–-]+$/, '').replace(/^[.,;:!?'"()—–-]+/, '');
+      const normalized = word.toLowerCase().replace(/[.,;:!?'"()\u2014\u2013-]+$/, '').replace(/^[.,;:!?'"()\u2014\u2013-]+/, '');
       if (wordsToHighlight.has(normalized)) return true;
-      
+
       // For sound matching: check if word contains any of the matched n-grams
       if (soundNgrams.size > 0) {
         for (const ngram of soundNgrams) {
@@ -279,7 +281,7 @@ const SearchResults = ({
           if (normalizedNoAccents.includes(ngramNoAccents)) return true;
         }
       }
-      
+
       // For Latin, also check u/v equivalence
       if (language === 'la') {
         const uvNormalized = normalized.replace(/[uv]/g, 'u');
@@ -289,9 +291,9 @@ const SearchResults = ({
       }
       return false;
     };
-    
+
     if (wordsToHighlight.size === 0 && soundNgrams.size === 0) return text;
-    
+
     // Split text preserving whitespace and punctuation
     const parts = text.split(/(\s+)/);
     const result = parts.map(part => {
@@ -301,7 +303,7 @@ const SearchResults = ({
       }
       return part;
     }).join('');
-    
+
     return result;
   };
 
@@ -324,21 +326,29 @@ const SearchResults = ({
   };
 
   if (loading) {
-    const isSlowSearch = matchType === 'sound' || matchType === 'edit_distance';
-    return (
-      <div className="flex flex-col items-center justify-center py-12">
-        {isSlowSearch && (
-          <div className="text-sm text-gray-600 mb-4 text-center">
-            Initial sound or edit distance searches on large texts typically take several minutes.
-          </div>
-        )}
-        <LoadingSpinner 
-          size="lg" 
-          text="Searching for parallels..." 
-          elapsedTime={elapsedTime}
-        />
-      </div>
-    );
+    // Progressive streaming: if we have intermediate fusion results, show them
+    // with a progress banner instead of just a spinner
+    if (fusionProgress && results && results.length > 0) {
+      // Fall through to render results below — the banner is added in the JSX
+    } else {
+      const isSlowSearch = matchType === 'sound' || matchType === 'edit_distance' || matchType === 'fusion';
+      return (
+        <div className="flex flex-col items-center justify-center py-12">
+          {isSlowSearch && (
+            <div className="text-sm text-gray-600 mb-4 text-center">
+              {matchType === 'fusion'
+                ? 'Fusion search runs all 9 channels \u2014 results will appear as channels complete.'
+                : 'Initial sound or edit distance searches on large texts typically take several minutes.'}
+            </div>
+          )}
+          <LoadingSpinner
+            size="lg"
+            text={progressText || "Searching for parallels..."}
+            elapsedTime={elapsedTime}
+          />
+        </div>
+      );
+    }
   }
 
   if (error) {
@@ -349,36 +359,65 @@ const SearchResults = ({
     );
   }
 
-  if (!results || results.length === 0) {
+  if ((!results || results.length === 0) && (!frozenResults || frozenResults.length === 0)) {
     return null;
   }
 
-  const filteredResults = chartFilter 
-    ? sortedResults.filter(r => {
-        const locus = chartFilter.view === 'source' 
-          ? (r.source_locus || r.source?.ref || '') 
+  // Use frozen snapshot when paused, live results otherwise
+  const activeResults = (pauseUpdates && frozenResults) ? frozenResults : results;
+
+  const filteredResults = chartFilter
+    ? activeResults.filter(r => {
+        const locus = chartFilter.view === 'source'
+          ? (r.source_locus || r.source?.ref || '')
           : (r.target_locus || r.target?.ref || '');
-        const bookMatch = locus.match(/book\s*(\d+)/i) || 
+        const bookMatch = locus.match(/book\s*(\d+)/i) ||
                           locus.match(/(\d+)\.\d+/) ||
                           locus.match(/^([^.]+)/);
         const book = bookMatch ? `Book ${bookMatch[1]}` : 'Other';
         return book === chartFilter.book;
       })
-    : sortedResults;
+    : activeResults;
 
   const displayedResults = filteredResults.slice(0, displayLimit);
 
   return (
     <div className="space-y-4">
+      {loading && fusionProgress && (
+        <div className={`${pauseUpdates ? 'bg-amber-50 border-amber-200' : 'bg-blue-50 border-blue-200'} border rounded-lg p-3 flex items-center gap-3`}>
+          {!pauseUpdates && (
+            <div className="w-5 h-5 border-2 border-blue-200 border-t-blue-600 rounded-full animate-spin flex-shrink-0" />
+          )}
+          <span className={`text-sm font-medium ${pauseUpdates ? 'text-amber-800' : 'text-blue-800'} flex-1 min-w-0`}>
+            {pauseUpdates ? 'Display paused \u2014 search continues in background' : (progressText || 'Searching...')}
+          </span>
+          <button
+            onClick={handlePauseToggle}
+            className={`text-xs px-3 py-1 rounded font-medium flex-shrink-0 ${
+              pauseUpdates
+                ? 'bg-amber-600 text-white hover:bg-amber-700'
+                : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+            }`}
+          >
+            {pauseUpdates ? 'Resume' : 'Pause'}
+          </button>
+          <span className={`text-xs ${pauseUpdates ? 'text-amber-500' : 'text-blue-500'} tabular-nums flex-shrink-0`}>
+            {elapsedTime > 0 && formatElapsedTime(elapsedTime)}
+          </span>
+        </div>
+      )}
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mb-4">
         <div>
           <h3 className="text-lg font-semibold text-gray-900">
-            {results.length} Parallel{results.length !== 1 ? 's' : ''} Found
+            {searchStats?.total_matches && searchStats.total_matches > activeResults.length
+              ? `Top ${activeResults.length.toLocaleString()} of ${searchStats.total_matches.toLocaleString()} Parallels`
+              : `${activeResults.length} Parallel${activeResults.length !== 1 ? 's' : ''} Found`}
+            {loading && fusionProgress && (pauseUpdates ? ' (paused)' : ' (partial)')}
             {chartFilter && ` (${filteredResults.length} in ${chartFilter.book})`}
           </h3>
           {searchStats && (
             <p className="text-sm text-gray-500">
-              {searchStats.elapsed_time && `Search completed in ${searchStats.elapsed_time.toFixed(2)}s`}
+              {searchStats.elapsed_time && `Search completed in ${formatElapsedTime(searchStats.elapsed_time)}`}
               {searchStats.source_lines && ` | ${searchStats.source_lines} source lines`}
               {searchStats.target_lines && ` | ${searchStats.target_lines} target lines`}
             </p>
@@ -394,7 +433,7 @@ const SearchResults = ({
             </button>
             <button
               onClick={exportCSV}
-              className="text-xs bg-green-600 text-white px-3 py-1.5 rounded hover:bg-green-700 whitespace-nowrap"
+              className="text-xs bg-amber-600 text-white px-3 py-1.5 rounded hover:bg-amber-700 whitespace-nowrap"
             >
               Export CSV
             </button>
@@ -419,13 +458,13 @@ const SearchResults = ({
           <div className="flex flex-wrap items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <span className="text-sm font-medium text-gray-700">View:</span>
-              <button 
+              <button
                 onClick={() => { setDistributionChartView('source'); setChartFilter(null); }}
                 className={`text-xs px-3 py-1 rounded ${distributionChartView === 'source' ? 'bg-red-700 text-white' : 'bg-red-100 text-red-600 hover:bg-red-200'}`}
               >
                 Source
               </button>
-              <button 
+              <button
                 onClick={() => { setDistributionChartView('target'); setChartFilter(null); }}
                 className={`text-xs px-3 py-1 rounded ${distributionChartView === 'target' ? 'bg-amber-600 text-white' : 'bg-amber-100 text-amber-600 hover:bg-amber-200'}`}
               >
@@ -462,26 +501,31 @@ const SearchResults = ({
 
       <div className="space-y-3">
         {displayedResults.map((r, i) => (
-          <div 
-            key={i} 
+          <div
+            key={i}
             className="bg-white border rounded-lg p-4 hover:shadow-md transition-shadow"
           >
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="flex gap-3">
+              <span className="text-xs text-gray-400 min-w-[2.5rem] text-right shrink-0 leading-none" style={{paddingTop: '1px'}}>
+                {i + 1}.
+              </span>
+              <div className="flex-1">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <div className="text-xs text-gray-500 mb-1">Source</div>
-                <div className="font-medium text-gray-900">{formatReference(r.source_locus || r.source?.ref, sourceTextInfo?.language)}</div>
-                <div 
+                <div className="text-xs text-gray-500 mb-1 leading-none">Source</div>
+                <div className="font-medium text-gray-900">{formatReference(r.source_locus || r.source?.ref, language)}</div>
+                <div
                   className="text-gray-700 mt-1"
-                  dangerouslySetInnerHTML={{ __html: r.source_text || r.source_snippet || renderHighlightedText(r.source, sourceTextInfo?.language, r.matched_words, true, r.target) }}
+                  dangerouslySetInnerHTML={{ __html: r.source_text || r.source_snippet || renderHighlightedText(r.source, language, r.matched_words, true, r.target) }}
                 />
                 {r.features?.source_scansion && renderScansion(r.features.source_scansion)}
               </div>
               <div>
                 <div className="text-xs text-gray-500 mb-1">Target</div>
-                <div className="font-medium text-gray-900">{formatReference(r.target_locus || r.target?.ref, targetTextInfo?.language)}</div>
-                <div 
+                <div className="font-medium text-gray-900">{formatReference(r.target_locus || r.target?.ref, language)}</div>
+                <div
                   className="text-gray-700 mt-1"
-                  dangerouslySetInnerHTML={{ __html: r.target_text || r.target_snippet || renderHighlightedText(r.target, targetTextInfo?.language, r.matched_words, false, r.source) }}
+                  dangerouslySetInnerHTML={{ __html: r.target_text || r.target_snippet || renderHighlightedText(r.target, language, r.matched_words, false, r.source) }}
                 />
                 {r.features?.target_scansion && renderScansion(r.features.target_scansion)}
               </div>
@@ -489,8 +533,13 @@ const SearchResults = ({
 
             <div className="flex flex-wrap items-center gap-2 mt-3 pt-3 border-t">
               <span className="text-sm text-gray-600">
-                Score: <span className="font-medium">{(r.score ?? r.overall_score)?.toFixed(2) || '-'}</span>
+                Score: <span className="font-medium">{(r.fused_score ?? r.score ?? r.overall_score)?.toFixed(2) || '-'}</span>
               </span>
+              {r.channels && r.channels.length > 0 && (
+                <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">
+                  {r.channels.length}/9 channels
+                </span>
+              )}
               {r.features?.meter_score > 0 && (
                 <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded">
                   Metrical: {(r.features.meter_score * 100).toFixed(0)}%
@@ -506,10 +555,19 @@ const SearchResults = ({
                   </span>
                 </span>
               )}
+              {r.channels && r.channels.length > 0 && (
+                <div className="flex flex-wrap gap-1 ml-1">
+                  {r.channels.map(ch => (
+                    <span key={ch} className="text-xs bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded">
+                      {ch}
+                    </span>
+                  ))}
+                </div>
+              )}
               <div className="flex-1"></div>
-              {r.match_basis !== 'semantic' && r.match_basis !== 'edit_distance' && onCorpusSearch && (
-                <Button 
-                  variant="tertiary" 
+              {r.match_basis !== 'semantic' && onCorpusSearch && (
+                <Button
+                  variant="tertiary"
                   size="sm"
                   onClick={() => onCorpusSearch(r)}
                   title="Find these words together in other texts"
@@ -518,8 +576,8 @@ const SearchResults = ({
                 </Button>
               )}
               {onRegister && (
-                <Button 
-                  variant="secondary" 
+                <Button
+                  variant="secondary"
                   size="sm"
                   onClick={() => onRegister(r)}
                   title="Save this parallel to the Repository"
@@ -528,6 +586,8 @@ const SearchResults = ({
                 </Button>
               )}
             </div>
+            </div>{/* flex-1 */}
+            </div>{/* flex row-number wrapper */}
           </div>
         ))}
       </div>

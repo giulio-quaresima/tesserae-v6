@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { LoadingSpinner } from '../common';
+import { normalizeGreek } from '../../utils/greekUtils';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js';
 import { Bar } from 'react-chartjs-2';
 
@@ -458,11 +459,6 @@ export default function LineSearch({ language }) {
     if (!text) return text;
     if (!matchedWords || matchedWords.length === 0) return text;
     
-    const normalizeGreek = (s) => {
-      if (!s) return '';
-      return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-    };
-    
     const normalizeWord = (s) => {
       if (!s) return '';
       let normalized = s.toLowerCase();
@@ -568,9 +564,15 @@ export default function LineSearch({ language }) {
                 >
                   <option value="lemma">Lemma (dictionary form)</option>
                   <option value="exact">Exact match</option>
-                  <option value="regex">Regular expression</option>
+                  <option value="regex">Regular expression (pattern)</option>
                 </select>
               </div>
+              {searchType === 'regex' && (
+                <p className="mt-1 text-xs text-gray-500">
+                  Pattern matching: use <code className="bg-gray-100 px-1 rounded">.</code> for any character, <code className="bg-gray-100 px-1 rounded">|</code> for OR, <code className="bg-gray-100 px-1 rounded">[aei]</code> for character sets,
+                  {' '}<code className="bg-gray-100 px-1 rounded">.*</code> for any sequence. Example: <code className="bg-gray-100 px-1 rounded">amor|bellum</code> finds lines with either word. See Help & Support for more.
+                </p>
+              )}
               {sourceInfo && (
                 <div className="mt-2 flex items-center justify-between text-sm text-gray-600 bg-gray-50 rounded px-3 py-2">
                   <span>
@@ -730,26 +732,32 @@ export default function LineSearch({ language }) {
 
               {showTimeline && deduplicatedResults.some(r => r.era) && (
                 <div className="p-4 border-b bg-gray-50 space-y-6">
-                  <div>
-                    <h4 className="text-sm font-medium text-gray-700 mb-2">Period Timeline</h4>
-                    <div style={{ height: '180px' }}>
-                      <Bar ref={chartRef} data={timelineData} options={chartOptions} />
-                    </div>
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-medium text-gray-700 mb-2">Author Timeline</h4>
-                    <div style={{ height: '180px' }}>
-                      <Bar ref={authorChartRef} data={authorTimelineData} options={authorChartOptions} />
-                    </div>
-                  </div>
-                  <div className="flex justify-end">
-                    <button
-                      onClick={exportTimelineChart}
-                      className="text-xs text-gray-600 hover:text-gray-900"
-                    >
-                      Export PNG
-                    </button>
-                  </div>
+                  {timelineData.labels.length > 0 ? (
+                    <>
+                      <div>
+                        <h4 className="text-sm font-medium text-gray-700 mb-2">Period Timeline</h4>
+                        <div style={{ height: '180px' }}>
+                          <Bar ref={chartRef} data={timelineData} options={chartOptions} />
+                        </div>
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-medium text-gray-700 mb-2">Author Timeline</h4>
+                        <div style={{ height: '180px' }}>
+                          <Bar ref={authorChartRef} data={authorTimelineData} options={authorChartOptions} />
+                        </div>
+                      </div>
+                      <div className="flex justify-end">
+                        <button
+                          onClick={exportTimelineChart}
+                          className="text-xs text-gray-600 hover:text-gray-900"
+                        >
+                          Export PNG
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <p className="text-sm text-gray-500 text-center py-4">No results match the current genre filter.</p>
+                  )}
                 </div>
               )}
 
@@ -771,6 +779,9 @@ export default function LineSearch({ language }) {
                 {filteredResults.slice(0, displayLimit).map((result, i) => (
                   <div key={i} className="p-4 hover:bg-gray-50">
                     <div className="flex flex-col sm:flex-row sm:items-start gap-2">
+                      <span className="text-xs text-gray-400 min-w-[2.5rem] text-right shrink-0 leading-none" style={{paddingTop: '1px'}}>
+                        {i + 1}.
+                      </span>
                       <div className="sm:w-48 flex-shrink-0">
                         <div className="text-sm font-medium text-gray-900">
                           {result.author}
@@ -816,102 +827,165 @@ export default function LineSearch({ language }) {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="relative">
               <label className="block text-sm font-medium text-gray-700 mb-1">Author</label>
-              <input
-                type="text"
+              {/* Mobile: native select */}
+              <select
                 value={selectedAuthor}
-                onChange={e => { 
-                  setSelectedAuthor(e.target.value); 
+                onChange={e => {
+                  setSelectedAuthor(e.target.value);
                   setSelectedWork('');
                   setSelectedWorkLabel('');
-                  setBrowseLines([]); 
-                  setShowAuthorDropdown(true);
+                  setBrowseLines([]);
                 }}
-                onFocus={() => setShowAuthorDropdown(true)}
-                onBlur={() => setTimeout(() => setShowAuthorDropdown(false), 200)}
-                placeholder="Type to search authors..."
-                className="w-full border rounded px-3 py-2"
+                className="sm:hidden w-full border rounded px-3 py-2"
                 disabled={loadingTexts}
-              />
-              {showAuthorDropdown && selectedAuthor !== '' && (
-                <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                  {authors
-                    .filter(a => a.toLowerCase().includes(selectedAuthor.toLowerCase()))
-                    .slice(0, 20)
-                    .map(author => (
-                      <div
+              >
+                <option value="">Select author...</option>
+                {authors.map(author => (
+                  <option key={author} value={author}>{author}</option>
+                ))}
+              </select>
+              {/* Desktop: searchable input */}
+              <div className="hidden sm:block">
+                <input
+                  type="text"
+                  value={selectedAuthor}
+                  onChange={e => {
+                    setSelectedAuthor(e.target.value);
+                    setSelectedWork('');
+                    setSelectedWorkLabel('');
+                    setBrowseLines([]);
+                    setShowAuthorDropdown(true);
+                  }}
+                  onFocus={() => setShowAuthorDropdown(true)}
+                  onBlur={() => setTimeout(() => setShowAuthorDropdown(false), 300)}
+                  placeholder="Type to search authors..."
+                  className="w-full border rounded px-3 py-2"
+                  disabled={loadingTexts}
+                />
+                {showAuthorDropdown && selectedAuthor !== '' && (
+                  <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                    {authors
+                      .filter(a => a.toLowerCase().includes(selectedAuthor.toLowerCase()))
+                      .slice(0, 20)
+                      .map(author => (
+                        <button
+                          key={author}
+                          type="button"
+                          className="w-full text-left px-3 py-2 hover:bg-amber-50 cursor-pointer text-sm"
+                          onPointerDown={() => { setSelectedAuthor(author); setShowAuthorDropdown(false); }}
+                        >
+                          {author}
+                        </button>
+                      ))}
+                    {authors.filter(a => a.toLowerCase().includes(selectedAuthor.toLowerCase())).length === 0 && (
+                      <div className="px-3 py-2 text-gray-500 text-sm">No authors found</div>
+                    )}
+                  </div>
+                )}
+                {showAuthorDropdown && selectedAuthor === '' && (
+                  <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                    {authors.slice(0, 20).map(author => (
+                      <button
                         key={author}
-                        className="px-3 py-2 hover:bg-amber-50 cursor-pointer text-sm"
-                        onMouseDown={() => { setSelectedAuthor(author); setShowAuthorDropdown(false); }}
+                        type="button"
+                        className="w-full text-left px-3 py-2 hover:bg-amber-50 cursor-pointer text-sm"
+                        onPointerDown={() => { setSelectedAuthor(author); setShowAuthorDropdown(false); }}
                       >
                         {author}
-                      </div>
+                      </button>
                     ))}
-                  {authors.filter(a => a.toLowerCase().includes(selectedAuthor.toLowerCase())).length === 0 && (
-                    <div className="px-3 py-2 text-gray-500 text-sm">No authors found</div>
-                  )}
-                </div>
-              )}
-              {showAuthorDropdown && selectedAuthor === '' && (
-                <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                  {authors.slice(0, 20).map(author => (
-                    <div
-                      key={author}
-                      className="px-3 py-2 hover:bg-amber-50 cursor-pointer text-sm"
-                      onMouseDown={() => { setSelectedAuthor(author); setShowAuthorDropdown(false); }}
-                    >
-                      {author}
-                    </div>
-                  ))}
-                </div>
-              )}
+                  </div>
+                )}
+              </div>
             </div>
-            
+
             <div className="relative">
               <label className="block text-sm font-medium text-gray-700 mb-1">Work</label>
-              <input
-                type="text"
-                value={selectedWorkLabel}
-                onChange={e => { 
-                  setSelectedWorkLabel(e.target.value); 
-                  setSelectedWork('');
-                  setBrowseLines([]); 
-                  setShowWorkDropdown(true);
+              {/* Mobile: native select */}
+              <select
+                value={selectedWork}
+                onChange={e => {
+                  setSelectedWork(e.target.value);
+                  const work = works.find(w => w.id === e.target.value);
+                  setSelectedWorkLabel(work ? work.label : '');
+                  setBrowseLines([]);
                 }}
-                onFocus={() => setShowWorkDropdown(true)}
-                onBlur={() => setTimeout(() => setShowWorkDropdown(false), 200)}
-                placeholder={selectedAuthor ? "Type to search works..." : "Select author first"}
-                className="w-full border rounded px-3 py-2"
+                className="sm:hidden w-full border rounded px-3 py-2"
                 disabled={!selectedAuthor || loadingTexts}
-              />
-              {showWorkDropdown && selectedAuthor && (
-                <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                  {works
-                    .filter(w => w.label.toLowerCase().includes(selectedWorkLabel.toLowerCase()))
-                    .map(work => (
-                      <div
-                        key={work.id}
-                        className="px-3 py-2 hover:bg-amber-50 cursor-pointer text-sm"
-                        onMouseDown={() => { setSelectedWork(work.id); setSelectedWorkLabel(work.label); setShowWorkDropdown(false); }}
-                      >
-                        {work.label}
-                      </div>
-                    ))}
-                  {works.filter(w => w.label.toLowerCase().includes(selectedWorkLabel.toLowerCase())).length === 0 && (
-                    <div className="px-3 py-2 text-gray-500 text-sm">No works found</div>
-                  )}
-                </div>
-              )}
+              >
+                <option value="">{selectedAuthor ? 'Select work...' : 'Select author first'}</option>
+                {works.map(work => (
+                  <option key={work.id} value={work.id}>{work.label}</option>
+                ))}
+              </select>
+              {/* Desktop: searchable input */}
+              <div className="hidden sm:block">
+                <input
+                  type="text"
+                  value={selectedWorkLabel}
+                  onChange={e => {
+                    setSelectedWorkLabel(e.target.value);
+                    setSelectedWork('');
+                    setBrowseLines([]);
+                    setShowWorkDropdown(true);
+                  }}
+                  onFocus={() => setShowWorkDropdown(true)}
+                  onBlur={() => setTimeout(() => setShowWorkDropdown(false), 300)}
+                  placeholder={selectedAuthor ? "Type to search works..." : "Select author first"}
+                  className="w-full border rounded px-3 py-2"
+                  disabled={!selectedAuthor || loadingTexts}
+                />
+                {showWorkDropdown && selectedAuthor && (
+                  <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                    {works
+                      .filter(w => w.label.toLowerCase().includes(selectedWorkLabel.toLowerCase()))
+                      .map(work => (
+                        <button
+                          key={work.id}
+                          type="button"
+                          className="w-full text-left px-3 py-2 hover:bg-amber-50 cursor-pointer text-sm"
+                          onPointerDown={() => { setSelectedWork(work.id); setSelectedWorkLabel(work.label); setShowWorkDropdown(false); }}
+                        >
+                          {work.label}
+                        </button>
+                      ))}
+                    {works.filter(w => w.label.toLowerCase().includes(selectedWorkLabel.toLowerCase())).length === 0 && (
+                      <div className="px-3 py-2 text-gray-500 text-sm">No works found</div>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
-          <div className="flex justify-end">
-            <button
-              onClick={handleBrowseLines}
-              disabled={!selectedAuthor || !selectedWork || browseLoading}
-              className="px-4 py-2 bg-red-700 text-white rounded hover:bg-red-800 disabled:opacity-50"
-            >
-              {browseLoading ? 'Loading...' : 'Load Lines'}
-            </button>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <label className="text-sm text-gray-600">Match type:</label>
+                <select
+                  value={searchType}
+                  onChange={e => setSearchType(e.target.value)}
+                  className="border rounded px-2 py-1.5 text-sm"
+                >
+                  <option value="lemma">Lemma (dictionary form)</option>
+                  <option value="exact">Exact match</option>
+                  <option value="regex">Regular expression (pattern)</option>
+                </select>
+              </div>
+              <button
+                onClick={handleBrowseLines}
+                disabled={!selectedAuthor || !selectedWork || browseLoading}
+                className="px-4 py-2 bg-red-700 text-white rounded hover:bg-red-800 disabled:opacity-50"
+              >
+                {browseLoading ? 'Loading...' : 'Load Lines'}
+              </button>
+            </div>
+            {searchType === 'regex' && (
+              <p className="text-xs text-gray-500">
+                Pattern matching: use <code className="bg-gray-100 px-1 rounded">.</code> for any character, <code className="bg-gray-100 px-1 rounded">|</code> for OR, <code className="bg-gray-100 px-1 rounded">[aei]</code> for character sets,
+                {' '}<code className="bg-gray-100 px-1 rounded">.*</code> for any sequence. Example: <code className="bg-gray-100 px-1 rounded">amor|bellum</code> finds lines with either word. See Help & Support for more.
+              </p>
+            )}
           </div>
 
           {browseLoading && <LoadingSpinner text="Loading lines..." />}

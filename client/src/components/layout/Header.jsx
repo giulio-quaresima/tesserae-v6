@@ -209,7 +209,7 @@ const Header = ({ user, setUser, onLogoClick }) => {
                               href={`https://orcid.org/${user.orcid}`}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="text-green-600 hover:underline text-xs"
+                              className="text-amber-600 hover:underline text-xs"
                             >
                               {user.orcid}
                             </a>
@@ -311,7 +311,7 @@ const Header = ({ user, setUser, onLogoClick }) => {
                 <button
                   onClick={linkOrcid}
                   disabled={orcidLinking}
-                  className="flex-1 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 text-sm"
+                  className="flex-1 px-4 py-2 bg-amber-600 text-white rounded hover:bg-amber-700 disabled:opacity-50 text-sm"
                 >
                   {orcidLinking ? 'Linking...' : 'Link ORCID'}
                 </button>

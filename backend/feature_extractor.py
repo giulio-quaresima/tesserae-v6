@@ -319,31 +319,58 @@ class FeatureExtractor:
         
         return min(total_similarity / count, 1.0)
     
-    def calculate_syntax_score(self, source_unit, target_unit, matched_lemmas, language='la'):
+    def calculate_syntax_score(self, source_unit, target_unit, matched_lemmas, language='la', source_id='', target_id=''):
         """
         Calculate syntactic similarity between source and target units.
-        Uses Universal Dependencies treebank data when available.
+        Uses syntax_latin.db when available (Latin), else treebank data.
         Returns 0-1 score based on dependency pattern matching + syntax info.
         """
         try:
             from backend.syntax_parser import get_syntax_matcher
         except ImportError:
-            from syntax_parser import get_syntax_matcher
+            try:
+                from syntax_parser import get_syntax_matcher
+            except ImportError:
+                return 0.0, None, None
         
         src_text = source_unit.get('text', '')
         tgt_text = target_unit.get('text', '')
+        src_ref = source_unit.get('ref', '')
+        tgt_ref = target_unit.get('ref', '')
         
         if not src_text or not tgt_text:
             return 0.0, None, None
         
         syntax_matcher = get_syntax_matcher()
-        # Only use treebank data - Stanza is unreliable for classical poetry
+        
+        # Try syntax_latin.db first when we have (filename, ref) for Latin
+        if source_id and target_id and src_ref and tgt_ref and language == 'la':
+            score, src_sent, tgt_sent, from_db = syntax_matcher.get_syntax_score_by_ref(
+                source_id, src_ref, target_id, tgt_ref, language, matched_lemmas
+            )
+            if from_db:
+                # Build info dicts for response
+                src_info = {
+                    'structure': list(src_sent.get_structure_signature()),
+                    'roles': {k: v['deprel'] for k, v in src_sent.get_lemma_roles().items()},
+                    'word_roles': {k: v['deprel'] for k, v in src_sent.get_all_word_roles().items()},
+                    'roles_set': list(src_sent.get_roles_set()),
+                    'from_treebank': True
+                } if src_sent else None
+                tgt_info = {
+                    'structure': list(tgt_sent.get_structure_signature()),
+                    'roles': {k: v['deprel'] for k, v in tgt_sent.get_lemma_roles().items()},
+                    'word_roles': {k: v['deprel'] for k, v in tgt_sent.get_all_word_roles().items()},
+                    'roles_set': list(tgt_sent.get_roles_set()),
+                    'from_treebank': True
+                } if tgt_sent else None
+                return score, src_info, tgt_info
+        
+        # Fallback: treebank lookup (limited coverage)
         score, src_sent, tgt_sent, from_treebank = syntax_matcher.get_syntax_score(
             src_text, tgt_text, language, matched_lemmas, treebank_only=True
         )
         
-        # If not from verified treebank data, don't return syntax info
-        # This prevents showing unreliable Stanza parses
         if not from_treebank:
             return 0.0, None, None
         
@@ -497,7 +524,8 @@ class FeatureExtractor:
         
         if use_syntax and matched_lemmas:
             syntax_score, src_syntax, tgt_syntax = self.calculate_syntax_score(
-                source_unit, target_unit, matched_lemmas, language
+                source_unit, target_unit, matched_lemmas, language,
+                source_id=source_id, target_id=target_id
             )
             features['syntax_score'] = syntax_score
             features['source_syntax'] = src_syntax
@@ -555,10 +583,14 @@ class FeatureExtractor:
         if use_meter and features.get('meter_score', 0) > 0.4:
             boost += 0.2 * features['meter_score']
         
-        if use_syntax and features.get('syntax_score', 0) > 0.4:
-            boost += 0.25 * features['syntax_score']
+        # Syntax boost: multiplicative, only when 2+ lemmas match (pairwise phrase lemma matching)
+        if use_syntax and features.get('lemma_count', 0) >= 2 and features.get('syntax_score', 0) > 0:
+            syntax_weight = self.weights.get('syntax', 0.3)
+            boost *= (1.0 + syntax_weight * features['syntax_score'])
         
         result = base_score * boost
+        if settings.get('unbounded_scoring', False):
+            return result
         return min(result, 1.0)
 
 

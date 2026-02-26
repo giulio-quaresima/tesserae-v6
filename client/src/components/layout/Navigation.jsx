@@ -27,7 +27,7 @@ const Navigation = ({
   setShowDownloads
 }) => {
   const handleLanguageClick = (tabCode) => {
-    if (activeTab === tabCode && onLanguageReset) {
+    if (onLanguageReset) {
       onLanguageReset();
     }
     setActiveTab(tabCode);

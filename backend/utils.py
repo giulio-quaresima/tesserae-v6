@@ -92,46 +92,218 @@ def clean_cts_reference(ref):
     
     return ref
 
-PROSE_WORKS = [
+# --- Unified text type classification (5-tier cascade) ---
+#
+# Tier 1: Manual overrides (text_metadata_overrides.json)
+# Tier 2: POETRY_WORKS — explicit known-poetry edge cases that the content
+#          heuristic would misclassify (e.g., long .tess lines = multi-verse entries)
+# Tier 3: PROSE_WORKS — consolidated list from all detection systems
+# Tier 4: Content heuristic — median line length >100 chars = prose
+# Tier 5: Default to "poetry" (backward compatible)
+
+POETRY_WORKS = [
+    # Dante's Divina Comedia — Latin hexameter verse, but .tess lines are long
+    # (~120+ chars) because each entry = one terzina (multiple verses)
+    'dante', 'divina_comedia', 'divina_commedia', 'divine_comedy', 'commedia',
+    # Sedulius's Carmen Paschale — verse, distinct from his prose Opus Paschale
+    'carmen_paschale',
+    # Augustine's Psalmus contra partem Donati — rare verse work by a prose author
+    'psalmus_contra_partem_donati',
+]
+
+PROSE_AUTHORS = [
+    # Latin prose authors
+    # NOTE: Authors who wrote BOTH prose and verse (cyprian, hilary, lactantius,
+    # petronius, florus) are intentionally omitted — the content heuristic (Tier 4)
+    # correctly handles them. Only unambiguous prose authors belong here.
+    'cicero', 'caesar.', 'livy', 'sallust', 'tacitus', 'suetonius',
+    'nepos', 'quintilian', 'pliny', 'apuleius',
+    'augustine', 'jerome', 'ambrose', 'seneca_prose', 'ammianus',
+    'curtius', 'valerius_maximus', 'gellius', 'macrobius', 'boethius',
+    'cassiodorus', 'isidore', 'bede', 'hegesippus',
+    'cassian', 'tertullian.', 'minucius',
+    'arnobius', 'firmicus', 'sulpicius', 'orosius', 'salvian',
+    'eutropius', 'justinus', 'frontinus', 'eugippius',
+    'salutati', 'petrarch', 'boccaccio', 'poggio',
+    'bruni', 'valla', 'ficino', 'poliziano', 'erasmus',
+    'vitruvius', 'celsus', 'columella', 'adamnan',
+    'scriptores_historiae_augustae',
+    # Latin abbreviations (only for unambiguous prose authors)
+    'cic.', 'caes.', 'liv.', 'sall.', 'tac.', 'suet.', 'nep.',
+    'quint.', 'plin.', 'apul.', 'aug.', 'hier.', 'ambr.',
+    'amm.', 'curt.', 'val.max.', 'gell.', 'macr.', 'boeth.', 'cass.',
+    'isid.', 'bed.', 'oros.', 'eutr.',
+    # Greek prose authors
+    # NOTE: 'dio' removed (3-char substring matches inside Latin words like
+    # 'herediolo', 'exordio'). 'strabo' removed (matches walafrid_strabo, a poet).
+    # Both are correctly handled by the content heuristic.
+    'epictetus', 'plato', 'aristotle', 'xenophon', 'thucydides', 'herodotus',
+    'plutarch', 'lucian', 'demosthenes', 'isocrates', 'lysias', 'polybius',
+    'diodorus', 'pausanias', 'appian', 'arrian',
+    'diogenes_laertius', 'athenaeus', 'aelian', 'philostratus', 'plotinus',
+    'porphyry', 'iamblichus', 'proclus', 'longinus', 'galen', 'hippocrates',
+    'josephus', 'philo_judaeus', 'clement', 'origen', 'eusebius', 'basil', 'gregory',
+    'chrysostom', 'theodoret', 'procopius', 'agathias',
+    'achilles_tatius', 'dio_chrysostom', 'marcus_aurelius',
+    'theophrastus', 'sextus_empiricus', 'archimedes',
+    'aelius_aristides', 'aeschines',
+    # Greek abbreviations
+    'plat.', 'arist.', 'thuc.', 'hdt.', 'xen.', 'dem.',
+    'lys.', 'isoc.', 'plut.', 'diod.', 'polyb.', 'strab.',
+    # English prose authors
+    'defoe', 'richardson', 'fielding', 'austen', 'dickens',
+    'bacon', 'locke', 'hume', 'mill',
+    'addison', 'steele', 'johnson',
+    'gibbon', 'macaulay', 'carlyle', 'burke', 'paine', 'wollstonecraft',
+]
+
+PROSE_MARKERS = [
+    # Work titles that unambiguously indicate prose
+    # NOTE: Generic markers like 'annales', 'historiae', 'panegyricus', 'contra_',
+    # 'fabulae', 'de_spectaculis', 'apologeticum' were removed — they match verse
+    # works (Ennius Annales, Claudian panegyrics, Prudentius Contra Symmachum,
+    # Phaedrus Fabulae, Martial De Spectaculis, Commodian Carmen Apologeticum).
+    # The content heuristic correctly handles all prose works with these titles.
+    'epistulae', 'letters', 'de_officiis', 'de_oratore',
+    'de_finibus', 'de_natura', 'tusculan', 'bellum_gallicum',
+    'agricola', 'germania',
+    'dialogus', 'satyricon', 'confessiones', 'de_civitate',
+    'res_gestae', 'rerum_gestarum', 'orationes', 'in_catilinam',
+    'adversus_',
+    # Cicero speeches and other specific Latin prose markers
     'epistulae_ad_familiares', 'epistulae_ad_atticum', 'epistulae_morales',
     'letters_to_atticus', 'letters_to_brutus', 'letters_to_quintus', 'letters_to_friends',
-    'de_oratore', 'de_officiis', 'de_finibus', 'de_natura_deorum',
-    'de_republica', 'de_legibus', 'de_amicitia', 'de_senectute',
-    'tusculanae', 'academica', 'brutus', 'orator',
-    'pro_milone', 'pro_caelio', 'pro_murena', 'pro_archia', 'pro_sestio',
-    'in_catilinam', 'in_verrem', 'philippicae',
-    'bellum_gallicum', 'bellum_civile_caesar', 'bellum_africum', 'bellum_hispaniense',
-    'annales_tacitus', 'historiae_tacitus', 'agricola', 'germania',
+    'de_natura_deorum', 'de_republica', 'de_legibus', 'de_amicitia', 'de_senectute',
+    'academica', 'pro_milone', 'pro_caelio', 'pro_murena', 'pro_archia', 'pro_sestio',
+    'in_verrem', 'philippicae',
+    'bellum_civile_caesar', 'bellum_africum', 'bellum_hispaniense',
+    'annales_tacitus', 'historiae_tacitus',
     'ab_urbe_condita', 'periochae',
-    'naturalis_historia', 'panegyricus',
+    'naturalis_historia',
     'institutio_oratoria', 'controversiae', 'suasoriae',
-    'confessiones', 'de_civitate_dei',
+    'de_civitate_dei',
+    # Greek prose work markers
     'apology', 'symposium', 'phaedo', 'republic', 'laws', 'timaeus',
     'ethics', 'politics', 'rhetoric', 'metaphysics', 'poetics_aristotle',
     'histories_herodotus', 'peloponnesian', 'anabasis', 'hellenica', 'memorabilia',
-    'lives', 'moralia', 'leucippe', 'varia_historia', 'fabulae', 'epitome',
-    'against_ctesiphon', 'against_timarchus', 'on_the_embassy', 'orationes',
-    'bible', 'vulgate', 'gospel', 'genesis', 'exodus', 'psalms', 'acts', 'romans',
-    'metamorphoses', 'asinus_aureus', 'golden_ass', 'florida', 'apologia'
+    'discourses', 'enchiridion',
+    'lives', 'moralia', 'leucippe', 'varia_historia', 'epitome',
+    'against_ctesiphon', 'against_timarchus', 'on_the_embassy',
+    'meditations', 'progymnasmata', 'ars_rhetorica',
+    # Bible / religious prose
+    'bible', 'vulgate', 'gospel',
+    # Apuleius prose (distinct from Ovid's Metamorphoses via author check)
+    'asinus_aureus', 'golden_ass', 'florida', 'apologia',
+    # Late antique / medieval prose markers
+    'excidio', 'hierosolymitano', 'tractatus', 'super_psalmos',
+    'conlationes', 'institutionum', 'divinarum',
+    'adversus_marcionem',
+    'opus_paschale', 'de_laboribus',
+    'confucius', 'sinarum', 'philosophus',
+    # English prose markers
+    'robinson', 'crusoe', 'pamela', 'clarissa', 'tom_jones', 'joseph_andrews',
+    'pride', 'prejudice', 'sensibility', 'emma', 'mansfield',
+    'oliver', 'twist', 'expectations', 'copperfield', 'tale_two',
+    'essays', 'liberty', 'spectator', 'rambler',
+    'decline', 'fall',
 ]
 
-def detect_text_type(filename, content=None):
-    """Detect if text is poetry or prose based on filename
-    
-    Default to poetry (line-based) since most classical texts in the corpus are poetic.
-    Only mark as prose when confidently identified.
-    Checks metadata overrides first.
+# Combined list for backward compatibility
+PROSE_WORKS = PROSE_AUTHORS + PROSE_MARKERS
+
+
+def _resolve_text_filepath(filename, language=None):
+    """Find the .tess file path for a text ID by checking text directories."""
+    texts_root = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'texts')
+    if language:
+        langs = [language]
+    else:
+        langs = ['la', 'grc', 'en']
+    for lang in langs:
+        lang_dir = os.path.join(texts_root, lang)
+        if not os.path.isdir(lang_dir):
+            continue
+        candidate = os.path.join(lang_dir, filename)
+        if os.path.isfile(candidate):
+            return candidate
+        # Try with .tess extension
+        if not filename.endswith('.tess'):
+            candidate = os.path.join(lang_dir, filename + '.tess')
+            if os.path.isfile(candidate):
+                return candidate
+    return None
+
+
+def _estimate_text_type_from_content(filepath):
+    """Classify by median line length. >100 chars = prose, ≤100 = poetry.
+
+    Classical poetry lines are 30-55 chars (hexameter, lyric, drama).
+    Prose lines are 150-250+ chars. The 100-char threshold cleanly separates
+    the two with near-zero overlap.
+
+    Reads up to 200 lines, strips <reference> tags, computes median text length.
     """
+    import statistics as _stats
+
+    lengths = []
+    try:
+        with open(filepath, 'r', encoding='utf-8', errors='replace') as f:
+            for i, line in enumerate(f):
+                if i >= 200:
+                    break
+                line = line.strip()
+                if not line:
+                    continue
+                # Strip <reference> tag at start of line
+                text = re.sub(r'^<[^>]+>\s*', '', line).strip()
+                if text:
+                    lengths.append(len(text))
+    except Exception:
+        return None
+
+    if not lengths:
+        return None
+
+    median = _stats.median(lengths)
+    return 'prose' if median > 100 else 'poetry'
+
+
+def detect_text_type(filename, content=None, filepath=None, language=None):
+    """Detect if text is poetry or prose using a 5-tier cascade.
+
+    Tier 1: Manual overrides (text_metadata_overrides.json) — highest priority
+    Tier 2: POETRY_WORKS — explicit known-poetry edge cases
+    Tier 3: PROSE_WORKS — consolidated prose author/marker list
+    Tier 4: Content heuristic — median line length (if filepath available)
+    Tier 5: Default to "poetry" — backward compatible
+    """
+    # Tier 1: Manual overrides
     override = get_override(filename)
     if 'text_type' in override:
         return override['text_type']
-    
+
     name_lower = filename.lower().replace('.tess', '')
-    
-    for work in PROSE_WORKS:
-        if work in name_lower:
+
+    # Tier 2: POETRY_WORKS — known-poetry edge cases (checked before prose)
+    for marker in POETRY_WORKS:
+        if marker in name_lower:
+            return 'poetry'
+
+    # Tier 3: PROSE_WORKS — consolidated prose authors + markers
+    for marker in PROSE_AUTHORS + PROSE_MARKERS:
+        if marker in name_lower:
             return 'prose'
-    
+
+    # Tier 4: Content heuristic — median line length
+    resolved = filepath
+    if not resolved:
+        resolved = _resolve_text_filepath(filename, language)
+    if resolved and os.path.isfile(resolved):
+        result = _estimate_text_type_from_content(resolved)
+        if result:
+            return result
+
+    # Tier 5: Default to poetry (backward compatible)
     return 'poetry'
 
 DISPLAY_NAMES = {
@@ -283,7 +455,7 @@ def get_text_metadata(filepath):
     else:
         title = work
     
-    text_type = detect_text_type(filename)
+    text_type = detect_text_type(filename, filepath=filepath)
     
     override = get_override(filename)
     if 'display_author' in override:

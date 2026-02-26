@@ -145,8 +145,8 @@ export default function AboutPage({ onNavigate }) {
               <div className="text-3xl font-bold text-amber-700">650+</div>
               <div className="text-sm text-gray-600">Greek Texts</div>
             </div>
-            <div className="text-center p-4 bg-green-50 rounded-lg">
-              <div className="text-3xl font-bold text-green-700">14+</div>
+            <div className="text-center p-4 bg-amber-50 rounded-lg">
+              <div className="text-3xl font-bold text-amber-700">14+</div>
               <div className="text-sm text-gray-600">English Texts</div>
             </div>
           </div>
@@ -186,14 +186,14 @@ export default function AboutPage({ onNavigate }) {
           </ul>
         </section>
 
-        <section className="bg-green-50 border border-green-200 rounded-lg p-5">
-          <h3 className="text-lg font-semibold text-green-900 mb-4">Grant Support & Acknowledgments</h3>
+        <section className="bg-amber-50 border border-amber-200 rounded-lg p-5">
+          <h3 className="text-lg font-semibold text-amber-900 mb-4">Grant Support & Acknowledgments</h3>
           <p className="text-gray-700 mb-4">
             The Tesserae Project has been made possible by the generous support of the following organizations:
           </p>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-            <div className="bg-white p-4 rounded-lg border border-green-100">
+            <div className="bg-white p-4 rounded-lg border border-amber-200">
               <a 
                 href="https://www.neh.gov/divisions/odh" 
                 target="_blank" 
@@ -214,7 +214,7 @@ export default function AboutPage({ onNavigate }) {
               </a>
             </div>
             
-            <div className="bg-white p-4 rounded-lg border border-green-100">
+            <div className="bg-white p-4 rounded-lg border border-amber-200">
               <a 
                 href="https://arts-sciences.buffalo.edu/classics.html" 
                 target="_blank" 
@@ -234,7 +234,7 @@ export default function AboutPage({ onNavigate }) {
               </a>
             </div>
             
-            <div className="bg-white p-4 rounded-lg border border-green-100">
+            <div className="bg-white p-4 rounded-lg border border-amber-200">
               <a 
                 href="https://www.snf.ch/en" 
                 target="_blank" 
@@ -254,7 +254,7 @@ export default function AboutPage({ onNavigate }) {
               </a>
             </div>
             
-            <div className="bg-white p-4 rounded-lg border border-green-100">
+            <div className="bg-white p-4 rounded-lg border border-amber-200">
               <a 
                 href="https://www.fmsh.fr/" 
                 target="_blank" 
@@ -274,7 +274,7 @@ export default function AboutPage({ onNavigate }) {
               </a>
             </div>
             
-            <div className="bg-white p-4 rounded-lg border border-green-100">
+            <div className="bg-white p-4 rounded-lg border border-amber-200">
               <a 
                 href="https://aws.amazon.com/" 
                 target="_blank" 
@@ -292,7 +292,7 @@ export default function AboutPage({ onNavigate }) {
               </a>
             </div>
             
-            <div className="bg-white p-4 rounded-lg border border-green-100">
+            <div className="bg-white p-4 rounded-lg border border-amber-200">
               <a 
                 href="https://www.buffalo.edu/humanities-institute.html" 
                 target="_blank" 

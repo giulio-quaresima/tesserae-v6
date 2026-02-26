@@ -236,88 +236,124 @@ class TextProcessor:
         else:
             # Latin/English: period, semicolon, question mark, exclamation (NOT colon)
             phrase_delimiters = r'[.;?!]'
-        
+
         phrases = re.split(phrase_delimiters, text)
         phrases = [p.strip() for p in phrases if p.strip() and len(p.strip().split()) >= 2]
         return phrases
+
+    def _ends_sentence(self, text, language='la'):
+        """Check if text ends with sentence-ending punctuation."""
+        text = text.rstrip()
+        if not text:
+            return False
+        if language == 'grc':
+            return text[-1] in '.;·?!'
+        else:
+            return text[-1] in '.;?!'
     
+    def _tokenize_and_lemmatize(self, text, language):
+        """Helper: tokenize and lemmatize text for any language."""
+        if language == 'grc':
+            original_tokens, tokens = self.tokenize_greek(text, preserve_case=True)
+            lemmas = self._greek_lemmatize(tokens)
+        elif language == 'en':
+            original_tokens, tokens = self.tokenize_english(text, preserve_case=True)
+            lemmas = self._english_lemmatize(tokens)
+        else:
+            original_tokens, tokens = self.tokenize_latin(text, preserve_case=True)
+            lemmas = self._latin_lemmatize(tokens)
+        pos_tags = self._get_pos_tags(tokens, language)
+        return original_tokens, tokens, lemmas, pos_tags
+
     def process_file(self, filepath, language='la', unit_type='line'):
         """Process a .tess file and return list of text units
-        
+
         Args:
             filepath: Path to .tess file
             language: 'la', 'grc', or 'en'
             unit_type: 'line' for poetic lines, 'phrase' for sentences/phrases
         """
         units = []
-        
+
+        if unit_type == 'phrase':
+            # Accumulate consecutive lines into sentence units.
+            # A sentence ends when a line ends with sentence-ending punctuation (.;?!).
+            # The ref for a multi-line sentence is "first_ref-last_ref".
+            raw_lines = []
+            with open(filepath, 'r', encoding='utf-8') as f:
+                for line in f:
+                    line = line.strip()
+                    if not line or line.startswith('#'):
+                        continue
+                    match = re.match(r'^<([^>]+)>\s*(.+)$', line)
+                    if match:
+                        raw_lines.append((match.group(1), match.group(2)))
+
+            # Accumulate into sentences
+            buf_refs = []
+            buf_texts = []
+            for ref, text in raw_lines:
+                buf_refs.append(ref)
+                buf_texts.append(text)
+                if self._ends_sentence(text, language):
+                    # Emit accumulated sentence
+                    combined_text = ' '.join(buf_texts)
+                    if len(buf_refs) == 1:
+                        combined_ref = buf_refs[0]
+                    else:
+                        combined_ref = f"{buf_refs[0]}-{buf_refs[-1]}"
+                    original_tokens, tokens, lemmas, pos_tags = self._tokenize_and_lemmatize(combined_text, language)
+                    units.append({
+                        'ref': combined_ref,
+                        'text': combined_text,
+                        'tokens': tokens,
+                        'original_tokens': original_tokens,
+                        'lemmas': lemmas,
+                        'pos_tags': pos_tags,
+                        'line_refs': list(buf_refs),
+                    })
+                    buf_refs = []
+                    buf_texts = []
+
+            # Flush any remaining lines (no sentence-ending punctuation at end of file)
+            if buf_texts:
+                combined_text = ' '.join(buf_texts)
+                if len(buf_refs) == 1:
+                    combined_ref = buf_refs[0]
+                else:
+                    combined_ref = f"{buf_refs[0]}-{buf_refs[-1]}"
+                original_tokens, tokens, lemmas, pos_tags = self._tokenize_and_lemmatize(combined_text, language)
+                units.append({
+                    'ref': combined_ref,
+                    'text': combined_text,
+                    'tokens': tokens,
+                    'original_tokens': original_tokens,
+                    'lemmas': lemmas,
+                    'pos_tags': pos_tags,
+                    'line_refs': list(buf_refs),
+                })
+
+            return units
+
         with open(filepath, 'r', encoding='utf-8') as f:
             for line in f:
                 line = line.strip()
                 if not line or line.startswith('#'):
                     continue
-                
+
                 match = re.match(r'^<([^>]+)>\s*(.+)$', line)
                 if match:
                     ref = match.group(1)
                     text = match.group(2)
-                    
-                    if unit_type == 'phrase':
-                        phrases = self.split_into_phrases(text, language)
-                        if not phrases:
-                            phrases = [text]
-                        
-                        for i, phrase in enumerate(phrases):
-                            # Use clearer phrase reference format: "1.306 (a)" instead of "1.306.1"
-                            if len(phrases) > 1:
-                                phrase_letter = chr(ord('a') + i)  # a, b, c, etc.
-                                phrase_ref = f"{ref} ({phrase_letter})"
-                            else:
-                                phrase_ref = ref
-                            
-                            if language == 'grc':
-                                original_tokens, tokens = self.tokenize_greek(phrase, preserve_case=True)
-                                lemmas = self._greek_lemmatize(tokens)
-                                pos_tags = self._get_pos_tags(tokens, language)
-                            elif language == 'en':
-                                original_tokens, tokens = self.tokenize_english(phrase, preserve_case=True)
-                                lemmas = self._english_lemmatize(tokens)
-                                pos_tags = self._get_pos_tags(tokens, language)
-                            else:
-                                original_tokens, tokens = self.tokenize_latin(phrase, preserve_case=True)
-                                lemmas = self._latin_lemmatize(tokens)
-                                pos_tags = self._get_pos_tags(tokens, language)
-                            
-                            units.append({
-                                'ref': phrase_ref,
-                                'text': phrase,
-                                'tokens': tokens,
-                                'original_tokens': original_tokens,
-                                'lemmas': lemmas,
-                                'pos_tags': pos_tags
-                            })
-                    else:
-                        if language == 'grc':
-                            original_tokens, tokens = self.tokenize_greek(text, preserve_case=True)
-                            lemmas = self._greek_lemmatize(tokens)
-                            pos_tags = self._get_pos_tags(tokens, language)
-                        elif language == 'en':
-                            original_tokens, tokens = self.tokenize_english(text, preserve_case=True)
-                            lemmas = self._english_lemmatize(tokens)
-                            pos_tags = self._get_pos_tags(tokens, language)
-                        else:
-                            original_tokens, tokens = self.tokenize_latin(text, preserve_case=True)
-                            lemmas = self._latin_lemmatize(tokens)
-                            pos_tags = self._get_pos_tags(tokens, language)
-                        
-                        units.append({
-                            'ref': ref,
-                            'text': text,
-                            'tokens': tokens,
-                            'original_tokens': original_tokens,
-                            'lemmas': lemmas,
-                            'pos_tags': pos_tags
-                        })
+                    original_tokens, tokens, lemmas, pos_tags = self._tokenize_and_lemmatize(text, language)
+                    units.append({
+                        'ref': ref,
+                        'text': text,
+                        'tokens': tokens,
+                        'original_tokens': original_tokens,
+                        'lemmas': lemmas,
+                        'pos_tags': pos_tags
+                    })
         
         return units
     
@@ -473,7 +509,8 @@ class TextProcessor:
                 try:
                     token_to_try = stripped_base if stripped_base else token
                     result = self.latin_lemmatizer.lemmatize([token_to_try])
-                    lemma = result[0][1] if result else (stripped_base or norm_token)
+                    raw_lemma = result[0][1] if result else (stripped_base or norm_token)
+                    lemma = re.sub(r'\d+$', '', raw_lemma)
                 except Exception:
                     lemma = stripped_base or norm_token
             
@@ -497,7 +534,7 @@ class TextProcessor:
             try:
                 result = self.latin_lemmatizer.lemmatize([token])
                 if result and len(result) > 0:
-                    lemma = result[0][1]
+                    lemma = re.sub(r'\d+$', '', result[0][1])
                 else:
                     lemma = token
             except Exception:

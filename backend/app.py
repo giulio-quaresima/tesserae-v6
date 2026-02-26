@@ -26,7 +26,7 @@ See docs/DEVELOPER.md for setup and architecture details.
 # IMPORTS
 # =============================================================================
 # Flask and web framework dependencies
-from flask import Flask, send_from_directory, jsonify, request, session, make_response
+from flask import Flask, send_from_directory, jsonify, request, session
 from flask_cors import CORS
 from flask_login import current_user
 from werkzeug.middleware.proxy_fix import ProxyFix
@@ -40,8 +40,8 @@ from datetime import datetime
 
 # Application modules
 from backend.logging_config import setup_logging, get_logger
-from backend.db_utils import DatabaseError, get_db_cursor
-from backend.services import get_client_ip, get_user_location, log_search
+from backend.db_utils import get_db_cursor
+from backend.services import get_user_location, log_search
 
 # =============================================================================
 # LOGGING SETUP
@@ -60,7 +60,7 @@ def natural_sort_key(s):
 from backend.text_processor import TextProcessor
 from backend.matcher import Matcher
 from backend.scorer import Scorer
-from backend.utils import get_text_metadata, build_text_hierarchy, clean_cts_reference, safe_listdir
+from backend.utils import get_text_metadata, build_text_hierarchy, clean_cts_reference
 from backend.cache import (
     get_cached_results, save_cached_results, 
     get_cache_stats, clear_cache
@@ -102,9 +102,30 @@ DIST_FOLDER = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'dist')
 LEGACY_FRONTEND = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'frontend')
 STATIC_FOLDER = DIST_FOLDER if os.path.exists(DIST_FOLDER) else LEGACY_FRONTEND
 
+# API prefix handling:
+# - Behind Apache (production): WSGIScriptAlias /api strips the prefix, so Flask
+#   routes don't need it. API_PREFIX = ""
+# - Direct Flask server (dev): Flask gets the full /api/... URL from the browser,
+#   so routes need the /api prefix. API_PREFIX = "/api"
+# main.py sets TESSERAE_DIRECT_SERVER=1 when running Flask directly.
+DEPLOYMENT_ENV = os.environ.get("DEPLOYMENT_ENV", "dev")
+DIRECT_SERVER = os.environ.get("TESSERAE_DIRECT_SERVER", "") == "1"
+API_PREFIX = "/api" if DIRECT_SERVER else ""
+if DEPLOYMENT_ENV == 'marvin' and not DIRECT_SERVER:
+    print("WARNING: DEPLOYMENT_ENV=marvin but TESSERAE_DIRECT_SERVER not set.")
+    print("  If running Flask directly (not behind Apache), set TESSERAE_DIRECT_SERVER=1")
+
 # Create Flask app with static file serving
 app = Flask(__name__, static_folder=STATIC_FOLDER, static_url_path='')
 CORS(app, supports_credentials=True)  # Enable cross-origin requests
+
+
+def api_route(path, **kwargs):
+    """Decorator for API routes that auto-prepends API_PREFIX.
+    On Marvin (behind Apache), prefix is empty. On dev, prefix is /api."""
+    full_path = f"{API_PREFIX}{path}" if path != "/" else API_PREFIX or "/"
+    return app.route(full_path, **kwargs)
+
 
 # Application configuration
 app.secret_key = os.environ.get("SESSION_SECRET")
@@ -139,24 +160,6 @@ SQLALCHEMY_DATABASE_URI = _ensure_sqlite_path(SQLALCHEMY_DATABASE_URI)
 app.config["SQLALCHEMY_DATABASE_URI"] = SQLALCHEMY_DATABASE_URI
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {'pool_pre_ping': True, "pool_recycle": 300}
-
-# =============================================================================
-# ENVIRONMENT-BASED ROUTE PREFIX
-# =============================================================================
-# On Marvin (Apache+WSGI), the /api prefix is handled by Apache's WSGIScriptAlias,
-# so Flask routes should NOT include /api. On Replit, Flask handles everything
-# directly, so routes need the /api prefix.
-# Set DEPLOYMENT_ENV=marvin in .env on Marvin server to use empty prefix.
-DEPLOYMENT_ENV = os.environ.get("DEPLOYMENT_ENV", "replit")
-API_PREFIX = "" if DEPLOYMENT_ENV == "marvin" else "/api"
-
-def api_route(path, **kwargs):
-    """Decorator factory for API routes that handles environment-based prefixes.
-    
-    Usage: @api_route('/health') instead of @api_route('/health')
-    """
-    full_path = f"{API_PREFIX}{path}" if path != "/" else API_PREFIX or "/"
-    return app.route(full_path, **kwargs)
 
 # =============================================================================
 # DATABASE INITIALIZATION
@@ -286,7 +289,18 @@ def init_db():
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     reviewed_at TIMESTAMP,
                     reviewed_by VARCHAR(255),
-                    admin_notes TEXT
+                    admin_notes TEXT,
+                    text_date TEXT,
+                    approved_filename VARCHAR(255),
+                    official_author VARCHAR(255),
+                    official_work VARCHAR(255),
+                    admin_updated_at TIMESTAMP,
+                    author_era VARCHAR(100),
+                    author_year INTEGER,
+                    e_source VARCHAR(255),
+                    e_source_url TEXT,
+                    print_source TEXT,
+                    added_by VARCHAR(255)
                 )
             ''')
             cur.execute('''
@@ -409,6 +423,7 @@ from backend.blueprints.downloads import downloads_bp
 from backend.blueprints.hapax import hapax_bp, init_hapax_blueprint
 from backend.blueprints.batch import batch_bp, init_batch_blueprint
 from backend.blueprints.api_docs import api_docs_bp
+from backend.blueprints.fusion import fusion_bp, init_fusion_blueprint
 from backend.email_notifications import notify_text_request, notify_feedback
 
 author_dates_path = os.path.join(os.path.dirname(__file__), 'author_dates.json')
@@ -454,21 +469,32 @@ init_batch_blueprint(
     author_dates=AUTHOR_DATES
 )
 
-# Register blueprints with environment-based URL prefix
-# On Marvin: no prefix (Apache handles /api)
-# On Replit: /api prefix added here
-# Note: admin_bp has its own /admin prefix, so we combine them
+init_fusion_blueprint(
+    matcher=matcher,
+    scorer=scorer,
+    text_processor=text_processor,
+    texts_dir=TEXTS_DIR,
+    get_processed_units_fn=get_processed_units,
+)
+
+# Register blueprints with environment-aware prefix.
+# On Marvin: API_PREFIX="" (Apache strips /api via WSGIScriptAlias)
+# On dev: API_PREFIX="/api" (Flask handles the full URL)
 admin_prefix = f"{API_PREFIX}/admin" if API_PREFIX else "/admin"
+intertext_prefix = f"{API_PREFIX}/intertexts" if API_PREFIX else None  # None = use blueprint's own /intertexts
+batch_prefix = f"{API_PREFIX}/batch" if API_PREFIX else None  # None = use blueprint's own /batch
+
 app.register_blueprint(admin_bp, url_prefix=admin_prefix)
 app.register_blueprint(search_bp, url_prefix=API_PREFIX or None)
 app.register_blueprint(corpus_bp, url_prefix=API_PREFIX or None)
-app.register_blueprint(intertext_bp, url_prefix=API_PREFIX or None)
+app.register_blueprint(intertext_bp, url_prefix=intertext_prefix)
 app.register_blueprint(downloads_bp, url_prefix=API_PREFIX or None)
 app.register_blueprint(hapax_bp, url_prefix=API_PREFIX or None)
-app.register_blueprint(batch_bp, url_prefix=API_PREFIX or None)
+app.register_blueprint(batch_bp, url_prefix=batch_prefix)
 app.register_blueprint(api_docs_bp, url_prefix=API_PREFIX or None)
+app.register_blueprint(fusion_bp, url_prefix=API_PREFIX or None)
 
-app_logger.info("Blueprints registered.")
+app_logger.info(f"Blueprints registered (API_PREFIX='{API_PREFIX}', env={DEPLOYMENT_ENV})")
 
 
 # =============================================================================
@@ -498,11 +524,13 @@ def add_header(response):
 @app.route('/')
 def index():
     static_folder = app.static_folder or '../frontend'
-    response = make_response(send_from_directory(static_folder, 'index.html'))
-    response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
-    response.headers['Pragma'] = 'no-cache'
-    response.headers['Expires'] = '0'
-    return response
+    return send_from_directory(static_folder, 'index.html')
+
+@app.route('/static/downloads/<path:filepath>')
+def serve_static_downloads(filepath):
+    """Serve static download files (benchmarks, etc.)"""
+    downloads_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'static', 'downloads')
+    return send_from_directory(downloads_dir, filepath)
 
 @app.route('/legacy')
 def legacy_frontend():
@@ -510,23 +538,14 @@ def legacy_frontend():
     legacy_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'frontend')
     return send_from_directory(legacy_path, 'index.html')
 
-@app.route('/static/downloads/<path:filename>')
-def serve_downloads(filename):
-    """Serve downloadable files from static/downloads/"""
-    downloads_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'static', 'downloads')
-    return send_from_directory(downloads_path, filename)
-
 @app.errorhandler(404)
 def page_not_found(e):
     """Handle 404 errors by serving the SPA for client-side routing"""
-    if request.path.startswith('/api/'):
+    api_path = f"{API_PREFIX}/" if API_PREFIX else "/api/"
+    if request.path.startswith(api_path):
         return jsonify({'error': 'Not found'}), 404
     static_folder = app.static_folder or '../frontend'
-    response = make_response(send_from_directory(static_folder, 'index.html'))
-    response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
-    response.headers['Pragma'] = 'no-cache'
-    response.headers['Expires'] = '0'
-    return response
+    return send_from_directory(static_folder, 'index.html')
 
 
 # =============================================================================
@@ -733,7 +752,7 @@ def get_texts():
         return jsonify([])
     
     texts = []
-    for filename in sorted(safe_listdir(lang_dir)):
+    for filename in sorted(os.listdir(lang_dir)):
         if filename.endswith('.tess'):
             metadata = get_text_metadata(os.path.join(lang_dir, filename))
             texts.append(metadata)
@@ -751,7 +770,7 @@ def get_authors():
         return jsonify([])
     
     authors = {}
-    for filename in safe_listdir(lang_dir):
+    for filename in os.listdir(lang_dir):
         if filename.endswith('.tess'):
             metadata = get_text_metadata(os.path.join(lang_dir, filename))
             author = metadata['author']
@@ -783,7 +802,7 @@ def get_texts_hierarchy():
         return jsonify({'authors': []})
     
     texts = []
-    for filename in safe_listdir(lang_dir):
+    for filename in os.listdir(lang_dir):
         if filename.endswith('.tess'):
             metadata = get_text_metadata(os.path.join(lang_dir, filename))
             texts.append(metadata)
@@ -809,6 +828,206 @@ def get_texts_hierarchy():
         })
     
     return jsonify({'authors': result})
+
+
+# =============================================================================
+# PROSE DETECTION HELPERS
+# =============================================================================
+# Prose detection delegated to unified detect_text_type() in utils.py via
+# distance_filter.is_prose_text (imported as is_prose_text_unified at top).
+# POETRY_MAX_DISTANCE / PROSE_MAX_DISTANCE kept here for app.py's own use.
+
+POETRY_MAX_DISTANCE = 20
+PROSE_MAX_DISTANCE = 4
+
+
+def _normalize_latin_lemma(lem):
+    """Normalize Latin u/v and i/j for lemma comparison."""
+    return lem.replace('v', 'u').replace('j', 'i')
+
+
+def _normalize_lemma(lem, language='la'):
+    """Normalize a lemma for index lookup. Handles Latin u/v/j/i and Greek diacritics."""
+    if language == 'grc':
+        import unicodedata
+        decomposed = unicodedata.normalize('NFD', lem)
+        stripped = ''.join(c for c in decomposed if unicodedata.category(c) != 'Mn')
+        return stripped.lower().replace('ς', 'σ')
+    return _normalize_latin_lemma(lem)
+
+
+def _score_v3_idf(shared_lemmas, corpus_frequencies, total_corpus_words,
+                   distance, phrase_match_bonus=1.0):
+    """V3-style scoring: sum(IDF) * distance_factor * phrase_bonus.
+
+    Args:
+        shared_lemmas: Set of shared lemma strings.
+        corpus_frequencies: Dict mapping lemma → corpus frequency count.
+        total_corpus_words: Total word count across corpus.
+        distance: Span between first and last matched word positions.
+        phrase_match_bonus: Multiplier for phrase matches (default 1.0).
+
+    Returns:
+        float score.
+    """
+    idf_sum = 0
+    for lemma in shared_lemmas:
+        freq = corpus_frequencies.get(lemma, 1)
+        idf = math.log(total_corpus_words / (freq + 1)) + 1
+        idf_sum += idf
+    distance_factor = 1.0 / (1 + math.log(distance + 1))
+    return idf_sum * distance_factor * phrase_match_bonus
+
+
+def _deduplicate_and_normalize(results):
+    """Deduplicate results by text content (keep highest score) and normalize scores to 0-10."""
+    import re as _re
+    seen_texts = {}
+    deduplicated = []
+    for r in results:
+        text_key = _re.sub(r'[^\w\s]', '', r['text'].lower()).strip()
+        if text_key not in seen_texts:
+            seen_texts[text_key] = r
+            deduplicated.append(r)
+
+    if deduplicated:
+        max_score = max(r['score'] for r in deduplicated) or 1
+        for r in deduplicated:
+            r['raw_score'] = r['score']
+            r['score'] = round((r['score'] / max_score) * 10, 2)
+
+    return deduplicated
+
+
+def _resolve_line_text(source_text_id, line_ref, language):
+    """Look up a line's text from its .tess file using the reference tag."""
+    lang_dir = os.path.join(TEXTS_DIR, language)
+    source_path = os.path.join(lang_dir, source_text_id)
+    if os.path.exists(source_path):
+        with open(source_path, 'r', encoding='utf-8') as f:
+            for file_line in f:
+                file_line = file_line.strip()
+                if file_line.startswith('<') and '>' in file_line:
+                    end_tag = file_line.index('>')
+                    ref = file_line[1:end_tag].strip()
+                    if ref == line_ref:
+                        return file_line[end_tag+1:].strip()
+    return None
+
+
+def _build_line_search_stopwords(language, corpus_frequencies):
+    """Build stopwords set for line search: default language stops + Zipf elbow detection."""
+    from backend.matcher import DEFAULT_LATIN_STOP_WORDS, DEFAULT_GREEK_STOP_WORDS, DEFAULT_ENGLISH_STOP_WORDS
+    from backend.zipf import find_zipf_elbow
+    from collections import Counter
+
+    if language == 'la':
+        stopwords = set(DEFAULT_LATIN_STOP_WORDS)
+    elif language == 'grc':
+        stopwords = set(DEFAULT_GREEK_STOP_WORDS)
+    else:
+        stopwords = set(DEFAULT_ENGLISH_STOP_WORDS)
+
+    if corpus_frequencies:
+        freq_counter = Counter(corpus_frequencies)
+        zipf_stops = find_zipf_elbow(freq_counter, min_stopwords=10, max_stopwords=50)
+        stopwords = stopwords.union(zipf_stops)
+
+    return stopwords
+
+
+def _evaluate_line_candidate(unit, ref, filename, filtered_source_lemmas, query_text_lower,
+                              source_text_id, line_ref, key_phrases, corpus_frequencies,
+                              total_corpus_words, lang_dates, seen_results, min_matches=2,
+                              index_matching_lemmas=None):
+    """Evaluate a single candidate line against the source line.
+
+    Used by both the index fast path and the fallback scan path in line_search_parallel().
+    Returns a result dict if the candidate passes all filters, or None.
+
+    For the index path, pass index_matching_lemmas (the lemmas the index found).
+    For the fallback path, leave it None to compute shared lemmas directly.
+    """
+    import re as _re
+
+    if not unit:
+        return None
+
+    unit_ref = ref or unit.get('ref', '')
+    result_key = (filename, unit_ref)
+    if result_key in seen_results:
+        return None
+    seen_results.add(result_key)
+
+    target_text = unit.get('text', '').lower().strip()
+
+    # Exclude the exact source line and lines with identical text
+    if filename == source_text_id and unit_ref == line_ref:
+        return None
+    if target_text == query_text_lower:
+        return None
+
+    # Compute shared lemmas (index path verifies against actual lemmas with normalization)
+    target_lemmas_list = unit.get('lemmas', [])
+
+    if index_matching_lemmas is not None:
+        target_lemmas_normalized = {_normalize_latin_lemma(l) for l in target_lemmas_list}
+        source_lemmas_normalized = {_normalize_latin_lemma(l) for l in filtered_source_lemmas}
+        matching_normalized = {_normalize_latin_lemma(l) for l in index_matching_lemmas}
+        shared = matching_normalized & target_lemmas_normalized & source_lemmas_normalized
+    else:
+        target_lemmas = set(target_lemmas_list)
+        shared = filtered_source_lemmas & target_lemmas
+
+    if len(shared) < min_matches:
+        return None
+
+    # Phrase matching — quotation detection
+    target_normalized = _re.sub(r'[^\w\s]', '', target_text)
+    phrase_match_bonus = 1.0
+    for phrase in key_phrases:
+        if phrase in target_normalized:
+            phrase_match_bonus = 1000.0 + len(phrase) * 100
+            break
+
+    # Calculate match positions and distance
+    if index_matching_lemmas is not None:
+        match_positions = [i for i, lem in enumerate(target_lemmas_list)
+                          if _normalize_latin_lemma(lem) in shared]
+    else:
+        match_positions = [i for i, lem in enumerate(target_lemmas_list) if lem in shared]
+
+    if len(match_positions) >= 2:
+        distance = match_positions[-1] - match_positions[0] + 1
+    else:
+        distance = 1
+
+    max_dist = PROSE_MAX_DISTANCE if is_prose_text_unified(filename) else POETRY_MAX_DISTANCE
+    if distance > max_dist:
+        return None
+
+    score = _score_v3_idf(shared, corpus_frequencies, total_corpus_words,
+                           distance, phrase_match_bonus)
+
+    # Build result
+    parts = filename.replace('.tess', '').split('.')
+    author_key = filename.split('.')[0].lower()
+    author_info = lang_dates.get(author_key, {})
+
+    return {
+        'text_id': filename,
+        'author': parts[0] if parts else '',
+        'work': '.'.join(parts[1:]) if len(parts) > 1 else '',
+        'ref': unit_ref,
+        'text': unit.get('text', ''),
+        'tokens': unit.get('tokens', []),
+        'highlight_indices': match_positions,
+        'matched_lemmas': list(shared),
+        'match_count': len(shared),
+        'score': round(score, 3),
+        'year': author_info.get('year'),
+        'era': author_info.get('era', 'Unknown')
+    }
 
 
 # =============================================================================
@@ -841,28 +1060,11 @@ def search():
         settings['language'] = language
         
         # Apply prose-aware max_distance defaults if not explicitly set
-        # Use inline prose detection (faster and more reliable)
         if 'max_distance' not in settings or settings.get('max_distance') == 999:
-            PROSE_AUTHORS = ['cicero', 'caesar', 'livy', 'sallust', 'tacitus', 'suetonius',
-                            'nepos', 'quintilian', 'pliny', 'apuleius', 'petronius',
-                            'augustine', 'jerome', 'ambrose', 'seneca_prose',
-                            'cic.', 'caes.', 'liv.', 'sall.', 'tac.', 'suet.', 'nep.',
-                            'quint.', 'plin.', 'apul.', 'petron.', 'aug.', 'hier.', 'ambr.']
-            PROSE_MARKERS = ['epistulae', 'letters', 'de_officiis', 'de_oratore', 
-                            'de_finibus', 'de_natura', 'tusculan', 'bellum_gallicum',
-                            'historiae', 'annales', 'agricola', 'germania', 'dialogus',
-                            'satyricon', 'confessions', 'de_civitate']
-            
-            source_lower = source_id.lower()
-            target_lower = target_id.lower()
-            source_is_prose = any(marker in source_lower for marker in PROSE_AUTHORS + PROSE_MARKERS)
-            target_is_prose = any(marker in target_lower for marker in PROSE_AUTHORS + PROSE_MARKERS)
-            
-            # Use prose settings if either text is prose
-            if source_is_prose or target_is_prose:
-                settings['max_distance'] = 4  # Very tight for compact prose phrases
+            if is_prose_text_unified(source_id) or is_prose_text_unified(target_id):
+                settings['max_distance'] = PROSE_MAX_DISTANCE
             else:
-                settings['max_distance'] = 20  # Poetry allows more spread
+                settings['max_distance'] = POETRY_MAX_DISTANCE
         
         cached_results, cached_meta = get_cached_results(
             source_id, target_id, language, settings
@@ -922,7 +1124,7 @@ def search():
         
         scored_results = scorer.score_matches(matches, source_units, target_units, settings, source_id, target_id)
         
-        scored_results.sort(key=lambda x: x.get('overall_score') or 0, reverse=True)
+        scored_results.sort(key=lambda x: x['overall_score'], reverse=True)
         
         metadata = {
             'source_lines': len(source_units),
@@ -1010,7 +1212,7 @@ def get_stats():
     for lang in ['la', 'grc', 'en']:
         lang_dir = os.path.join(TEXTS_DIR, lang)
         if os.path.exists(lang_dir):
-            count = len([f for f in safe_listdir(lang_dir) if f.endswith('.tess')])
+            count = len([f for f in os.listdir(lang_dir) if f.endswith('.tess')])
             stats['languages'][lang] = count
             stats['total_texts'] += count
     
@@ -1248,7 +1450,6 @@ def line_search():
     try:
         from backend.inverted_index import is_index_available, find_co_occurring_lemmas, has_lines_data, get_lines_batch
         from backend.distance_filter import passes_distance_filter, is_prose_text as is_prose_text_unified
-        import re
         
         data = request.get_json() or {}
         
@@ -1301,37 +1502,16 @@ def line_search():
                 sorted_lemmas = sorted(corpus_frequencies.items(), key=lambda x: x[1], reverse=True)
                 stopwords.update(lemma for lemma, _ in sorted_lemmas[:stoplist_size])
             
-            def normalize_latin_lemma(lemma):
-                """Normalize Latin lemmas to match index (v->u, j->i)"""
-                if language == 'la':
-                    return lemma.replace('v', 'u').replace('j', 'i')
-                return lemma
-            
             query_lemmas = set()
-            token_to_lemma_fallbacks = {}
             if search_type == 'lemma':
-                from backend.text_processor import get_reverse_lemma_table
-                reverse_table = get_reverse_lemma_table(language)
                 query_tokens = query.lower().split()
                 for token in query_tokens:
                     lemmas = text_processor.lemmatize_word(token, language)
-                    normalized_lemmas = [normalize_latin_lemma(l) for l in lemmas]
-                    normalized_token = normalize_latin_lemma(token)
-                    query_lemmas.update(normalized_lemmas)
-                    if not normalized_lemmas:
-                        query_lemmas.add(normalized_token)
-                    for nl in normalized_lemmas:
-                        fallbacks = set()
-                        if nl != normalized_token:
-                            fallbacks.add(normalized_token)
-                        if nl in reverse_table:
-                            fallbacks.update(reverse_table[nl])
-                        if fallbacks:
-                            token_to_lemma_fallbacks[nl] = fallbacks
+                    query_lemmas.update(_normalize_lemma(l, language) for l in lemmas)
                 if not query_lemmas:
-                    query_lemmas = set(normalize_latin_lemma(t) for t in query_tokens)
+                    query_lemmas = set(_normalize_lemma(t, language) for t in query_tokens)
             else:
-                query_lemmas = set(normalize_latin_lemma(t) for t in query.lower().split())
+                query_lemmas = set(_normalize_lemma(t, language) for t in query.lower().split())
             
             # Filter out stopwords from query lemmas (like pairwise search)
             filtered_query_lemmas = query_lemmas - stopwords
@@ -1343,7 +1523,7 @@ def line_search():
             
             # FAST PATH: Use inverted index if available (O(1) lookup vs O(n) scan)
             if search_type == 'lemma' and is_index_available(language) and len(filtered_query_lemmas) >= 2:
-                candidates = find_co_occurring_lemmas(list(filtered_query_lemmas), language, min_matches=2, fallback_forms=token_to_lemma_fallbacks if token_to_lemma_fallbacks else None)
+                candidates = find_co_occurring_lemmas(list(filtered_query_lemmas), language, min_matches=2)
                 use_indexed_lines = has_lines_data(language)
                 
                 # Group candidates by text
@@ -1367,7 +1547,7 @@ def line_search():
                     author_key = filename.split('.')[0].lower()
                     author_info = lang_dates.get(author_key, {})
                     era = author_info.get('era', 'Unknown')
-                    year = author_info.get('year') or 9999
+                    year = author_info.get('year', 9999)
                     
                     # Get line data from index
                     refs_needed = [ref for ref, _, _ in matches]
@@ -1410,37 +1590,28 @@ def line_search():
                         locus = locus_parts[-1] if locus_parts else ref
                         locus = clean_cts_reference(locus)
                         
+                        # Find matched words in text using pre-indexed lemmas
                         matched_words = []
-                        matched_indexed_lemmas = []
-                        indexed_lemmas_list = line_info.get('lemmas', []) if line_info else []
+                        indexed_lemmas = set(line_info.get('lemmas', [])) if line_info else set()
                         indexed_tokens = line_info.get('tokens', []) if line_info else []
                         
-                        all_fallback_forms = set()
-                        for ql in filtered_query_lemmas:
-                            all_fallback_forms.add(ql)
-                            if token_to_lemma_fallbacks and ql in token_to_lemma_fallbacks:
-                                all_fallback_forms.update(token_to_lemma_fallbacks[ql])
-                        
-                        if indexed_lemmas_list and indexed_tokens:
-                            for i, lemma in enumerate(indexed_lemmas_list):
-                                if lemma in all_fallback_forms and i < len(indexed_tokens):
-                                    matched_words.append(indexed_tokens[i])
-                                    matched_indexed_lemmas.append(lemma)
+                        # Use indexed data if available, otherwise fallback to quick token matching
+                        if indexed_lemmas:
+                            # Match query lemmas against indexed lemmas
+                            matching_query_lemmas = indexed_lemmas & filtered_query_lemmas
+                            if matching_query_lemmas:
+                                # Find the actual words that correspond to matching lemmas
+                                for i, lemma in enumerate(line_info.get('lemmas', [])):
+                                    if lemma in matching_query_lemmas and i < len(indexed_tokens):
+                                        matched_words.append(indexed_tokens[i])
                         else:
-                            text_tokens = re.sub(r'[^\w\s]', '', text.lower()).split()
+                            # Quick fallback: just check token overlap without full lemmatization
+                            text_tokens = set(re.sub(r'[^\w\s]', '', text.lower()).split())
                             for token in text_tokens:
-                                norm_token = normalize_latin_lemma(token)
-                                if norm_token in all_fallback_forms:
+                                if token in filtered_query_lemmas:
                                     matched_words.append(token)
-                                    matched_indexed_lemmas.append(norm_token)
                         
-                        unique_matched_lemmas = set()
-                        for idx_lemma in matched_indexed_lemmas:
-                            for ql in filtered_query_lemmas:
-                                if idx_lemma == ql or (token_to_lemma_fallbacks and ql in token_to_lemma_fallbacks and idx_lemma in token_to_lemma_fallbacks[ql]):
-                                    unique_matched_lemmas.add(ql)
-                        
-                        if len(unique_matched_lemmas) < 2:
+                        if len(set(matched_words)) < 2:
                             continue
                         
                         # Exclude source line if specified (normalize both sides for robust matching)
@@ -1479,7 +1650,7 @@ def line_search():
             
             else:
                 # SLOW PATH: Fallback to file scanning (for exact/regex search)
-                text_files = [f for f in safe_listdir(lang_dir) if f.endswith('.tess')]
+                text_files = [f for f in os.listdir(lang_dir) if f.endswith('.tess')]
                 
                 for filename in text_files:
                     filepath = os.path.join(lang_dir, filename)
@@ -1493,7 +1664,7 @@ def line_search():
                     author_key = filename.split('.')[0].lower()
                     author_info = lang_dates.get(author_key, {})
                     era = author_info.get('era', 'Unknown')
-                    year = author_info.get('year') or 9999
+                    year = author_info.get('year', 9999)
                     
                     with open(filepath, 'r', encoding='utf-8') as f:
                         for line in f:
@@ -1609,7 +1780,7 @@ def line_search():
             }
             results.sort(key=lambda x: (
                 era_order.get(x.get('era', 'Unknown'), 50),
-                x.get('year', 9999),  # Sort by year within era
+                x.get('year') if x.get('year') is not None else 9999,
                 x.get('author', '').lower()
             ))
             
@@ -1661,18 +1832,7 @@ def line_search_parallel():
             return jsonify({'error': 'Provide line_text or source_text_id + line_ref'}), 400
         
         if source_text_id and line_ref and not line_text:
-            lang_dir = os.path.join(TEXTS_DIR, language)
-            source_path = os.path.join(lang_dir, source_text_id)
-            if os.path.exists(source_path):
-                with open(source_path, 'r', encoding='utf-8') as f:
-                    for line in f:
-                        line = line.strip()
-                        if line.startswith('<') and '>' in line:
-                            end_tag = line.index('>')
-                            ref = line[1:end_tag].strip()
-                            if ref == line_ref:
-                                line_text = line[end_tag+1:].strip()
-                                break
+            line_text = _resolve_line_text(source_text_id, line_ref, language) or ''
         
         if not line_text:
             return jsonify({'error': 'Could not find the specified line'}), 404
@@ -1684,8 +1844,6 @@ def line_search_parallel():
             return jsonify({'error': 'No lemmas found in the line'}), 400
         
         # Extract key phrases for exact phrase matching
-        # Normalize query: lowercase, strip punctuation for matching
-        import re
         query_normalized = re.sub(r'[^\w\s]', '', line_text.lower())
         query_tokens = query_normalized.split()
         
@@ -1710,28 +1868,13 @@ def line_search_parallel():
         corpus_frequencies = corpus_freq_data.get('frequencies', {}) if corpus_freq_data else {}
         total_corpus_words = sum(corpus_frequencies.values()) if corpus_frequencies else 1
         
-        # USE SAME STOPLIST AS PAIRWISE SEARCH: Default stopwords + Zipf elbow detection
-        # This uses matcher.py logic with DEFAULT_LATIN_STOP_WORDS (70+ words)
-        from backend.matcher import DEFAULT_LATIN_STOP_WORDS, DEFAULT_GREEK_STOP_WORDS, DEFAULT_ENGLISH_STOP_WORDS
-        from backend.zipf import find_zipf_elbow
-        from collections import Counter
-        
-        # Get base stopwords for language (same as pairwise)
-        if language == 'la':
-            stopwords = set(DEFAULT_LATIN_STOP_WORDS)
-        elif language == 'grc':
-            stopwords = set(DEFAULT_GREEK_STOP_WORDS)
-        else:
-            stopwords = set(DEFAULT_ENGLISH_STOP_WORDS)
-        
-        # Add Zipf-detected stopwords from corpus frequencies (same as pairwise)
-        if corpus_frequencies:
-            freq_counter = Counter(corpus_frequencies)
-            zipf_stops = find_zipf_elbow(freq_counter, min_stopwords=10, max_stopwords=50)
-            stopwords = stopwords.union(zipf_stops)
+        # Use same stoplist as pairwise search: default language stops + Zipf elbow detection
+        stopwords = _build_line_search_stopwords(language, corpus_frequencies)
         
         # Filter source lemmas to exclude stopwords AND short words (same as Matcher)
         # Matcher uses len(lemma) > 2 filter
+        # Normalize lemmas for index lookup (Greek diacritics, Latin u/v)
+        source_lemmas = {_normalize_lemma(l, language) for l in source_lemmas}
         filtered_source_lemmas = {l for l in source_lemmas if l not in stopwords and len(l) > 2}
         if len(filtered_source_lemmas) < min_matches:
             # Fallback: include longer stopwords if too few content words
@@ -1740,7 +1883,8 @@ def line_search_parallel():
         all_results = []
         texts_searched = 0
         seen_results = set()
-        
+        query_text_lower = line_text.lower().strip()
+
         # Try to use inverted index for fast lookup
         if use_index and is_index_available(language):
             # FAST PATH: Use inverted index
@@ -1762,12 +1906,7 @@ def line_search_parallel():
             
             for filename, matches in text_candidates.items():
                 filepath = os.path.join(lang_dir, filename)
-                    
-                author_key = filename.split('.')[0].lower()
-                author_info = lang_dates.get(author_key, {})
-                author_year = author_info.get('year') or 9999
-                author_era = author_info.get('era', 'Unknown')
-                
+
                 # Get line data - FAST: from index, SLOW: from file
                 refs_needed = set(ref for ref, _, _ in matches)
                 units_by_ref = {}
@@ -1792,274 +1931,42 @@ def line_search_parallel():
                 text_matches = []
                 for ref, matching_lemmas, positions in matches:
                     unit = units_by_ref.get(ref)
-                    if not unit:
-                        continue
-                    
-                    result_key = (filename, ref)
-                    if result_key in seen_results:
-                        continue
-                    seen_results.add(result_key)
-                    
-                    target_text = unit.get('text', '').lower().strip()
-                    query_text = line_text.lower().strip()
-                    
-                    # EXCLUDE the exact source line (same text + same reference)
-                    if filename == source_text_id and ref == line_ref:
-                        continue
-                    
-                    # EXCLUDE lines with identical text (duplicate texts in corpus)
-                    if target_text == query_text:
-                        continue
-                    
-                    # Check for PHRASE matches (key to finding quotations!)
-                    target_normalized = re.sub(r'[^\w\s]', '', target_text)
-                    phrase_match_bonus = 1.0
-                    matched_phrase = None
-                    
-                    # Check for key phrases from query in target
-                    # Phrase matches get OVERWHELMING priority to surface quotations
-                    for phrase in key_phrases:
-                        if phrase in target_normalized:
-                            # Much stronger bonus: 1000+ for any phrase match
-                            phrase_match_bonus = 1000.0 + len(phrase) * 100
-                            matched_phrase = phrase
-                            break
-                    
-                    # CRITICAL: Verify matched lemmas actually exist in target line
-                    # The index may return stale/mismatched data from duplicate refs
-                    target_lemmas_list = unit.get('lemmas', [])
-                    
-                    # Normalize Latin u/v and i/j for comparison (cached may have 'vir', query has 'uir')
-                    def normalize_latin_lemma(lem):
-                        return lem.replace('v', 'u').replace('j', 'i')
-                    
-                    target_lemmas_normalized = {normalize_latin_lemma(l) for l in target_lemmas_list}
-                    source_lemmas_normalized = {normalize_latin_lemma(l) for l in filtered_source_lemmas}
-                    matching_lemmas_normalized = {normalize_latin_lemma(l) for l in matching_lemmas}
-                    
-                    # Intersect normalized lemmas
-                    shared_normalized = matching_lemmas_normalized & target_lemmas_normalized & source_lemmas_normalized
-                    if len(shared_normalized) < min_matches:
-                        continue  # Skip if not enough verified matches
-                    
-                    # Use normalized shared set for display
-                    shared = shared_normalized
-                    
-                    match_count = len(shared)
-                    target_length = len(target_lemmas_list) if target_lemmas_list else len(unit.get('tokens', []))
-                    
-                    # Calculate positions from actual target lemmas (more reliable than index)
-                    # Index positions may be stale for duplicate refs
-                    match_positions = [i for i, lem in enumerate(target_lemmas_list) if normalize_latin_lemma(lem) in shared]
-                    
-                    # Calculate distance (span) between matched words - V3 style
-                    if len(match_positions) >= 2:
-                        distance = match_positions[-1] - match_positions[0] + 1
-                    else:
-                        distance = 1
-                    
-                    # APPLY MAX_DISTANCE FILTER (same as pairwise search)
-                    # Poetry allows wider spans, prose requires tighter clustering
-                    # Use inline prose detection (faster and more reliable than import)
-                    PROSE_AUTHORS = ['cicero', 'caesar', 'livy', 'sallust', 'tacitus', 'suetonius',
-                                    'nepos', 'quintilian', 'pliny', 'apuleius', 'petronius',
-                                    'augustine', 'jerome', 'ambrose', 'seneca_prose',
-                                    'cic.', 'caes.', 'liv.', 'sall.', 'tac.', 'suet.', 'nep.',
-                                    'quint.', 'plin.', 'apul.', 'petron.', 'aug.', 'hier.', 'ambr.']
-                    PROSE_MARKERS = ['epistulae', 'letters', 'de_officiis', 'de_oratore', 
-                                    'de_finibus', 'de_natura', 'tusculan', 'bellum_gallicum',
-                                    'historiae', 'annales', 'agricola', 'germania', 'dialogus',
-                                    'satyricon', 'confessions', 'de_civitate']
-                    
-                    text_lower = filename.lower()
-                    is_prose = any(marker in text_lower for marker in PROSE_AUTHORS + PROSE_MARKERS)
-                    
-                    POETRY_MAX_DISTANCE = 20
-                    PROSE_MAX_DISTANCE = 4  # Very tight for compact prose phrases
-                    max_dist = PROSE_MAX_DISTANCE if is_prose else POETRY_MAX_DISTANCE
-                    
-                    if distance > max_dist:
-                        continue  # Skip results where matched words are too far apart
-                    
-                    # V3-STYLE SCORING: score = sum(IDF) / (1 + log(distance))
-                    idf_sum = 0
-                    for lemma in shared:
-                        freq = corpus_frequencies.get(lemma, 1)
-                        idf = math.log(total_corpus_words / (freq + 1)) + 1
-                        idf_sum += idf
-                    
-                    # V3 distance penalty: 1 / (1 + log(distance))
-                    distance_factor = 1.0 / (1 + math.log(distance + 1))
-                    
-                    # V3 final score: IDF sum * distance factor
-                    score = idf_sum * distance_factor * phrase_match_bonus
-                    tokens = unit.get('tokens', [])
-                    
-                    parts = filename.replace('.tess', '').split('.')
-                    author_name = parts[0] if parts else ''
-                    work_name = '.'.join(parts[1:]) if len(parts) > 1 else ''
-                    
-                    text_matches.append({
-                        'text_id': filename,
-                        'author': author_name,
-                        'work': work_name,
-                        'ref': ref,
-                        'text': unit.get('text', ''),
-                        'tokens': tokens,
-                        'highlight_indices': match_positions,
-                        'matched_lemmas': list(shared),
-                        'match_count': match_count,
-                        'score': round(score, 3),
-                        'year': author_year,
-                        'era': author_era,
-                        'is_poetry': not is_prose
-                    })
-                
+                    result = _evaluate_line_candidate(
+                        unit, ref, filename, filtered_source_lemmas, query_text_lower,
+                        source_text_id, line_ref, key_phrases, corpus_frequencies,
+                        total_corpus_words, lang_dates, seen_results, min_matches,
+                        index_matching_lemmas=matching_lemmas)
+                    if result:
+                        text_matches.append(result)
+
                 text_matches.sort(key=lambda x: x['score'], reverse=True)
                 all_results.extend(text_matches[:max_per_text])
         else:
             # FALLBACK: Scan all texts (original behavior)
-            text_files = [f for f in safe_listdir(lang_dir) if f.endswith('.tess')]
+            text_files = [f for f in os.listdir(lang_dir) if f.endswith('.tess')]
             if exclude_source and source_text_id:
                 text_files = [f for f in text_files if f != source_text_id]
             
             for filename in text_files:
                 texts_searched += 1
-                filepath = os.path.join(lang_dir, filename)
-                metadata = get_text_metadata(filepath)
-                
-                author_key = filename.split('.')[0].lower()
-                author_info = lang_dates.get(author_key, {})
-                author_year = author_info.get('year') or 9999
-                author_era = author_info.get('era', 'Unknown')
-                
                 units = get_processed_units(filename, language, 'line', text_processor)
-                
+
                 text_matches = []
-                
                 for unit in units:
-                    target_lemmas_list = unit.get('lemmas', [])
-                    target_lemmas = set(target_lemmas_list)
-                    target_length = len(target_lemmas_list)
-                    
-                    shared = filtered_source_lemmas & target_lemmas
-                    match_count = len(shared)
-                    
-                    if match_count >= min_matches:
-                        target_text = unit.get('text', '').lower().strip()
-                        query_text = line_text.lower().strip()
-                        unit_ref = unit.get('ref', '')
-                        
-                        # EXCLUDE the exact source line (same text + same reference)
-                        if filename == source_text_id and unit_ref == line_ref:
-                            continue
-                        
-                        # EXCLUDE lines with identical text (duplicate texts in corpus)
-                        if target_text == query_text:
-                            continue
-                        
-                        # Check for PHRASE matches (key to finding quotations!)
-                        target_normalized = re.sub(r'[^\w\s]', '', target_text)
-                        phrase_match_bonus = 1.0
-                        
-                        # Check for key phrases from query in target
-                        # Phrase matches get OVERWHELMING priority to surface quotations
-                        for phrase in key_phrases:
-                            if phrase in target_normalized:
-                                phrase_match_bonus = 1000.0 + len(phrase) * 100
-                                break
-                        
-                        match_positions = [i for i, lem in enumerate(target_lemmas_list) if lem in shared]
-                        
-                        # Calculate distance (span) between matched words - V3 style
-                        if len(match_positions) >= 2:
-                            distance = match_positions[-1] - match_positions[0] + 1
-                        else:
-                            distance = 1
-                        
-                        # APPLY MAX_DISTANCE FILTER (same as pairwise search)
-                        # Use inline prose detection (faster and more reliable than import)
-                        PROSE_AUTHORS = ['cicero', 'caesar', 'livy', 'sallust', 'tacitus', 'suetonius',
-                                        'nepos', 'quintilian', 'pliny', 'apuleius', 'petronius',
-                                        'augustine', 'jerome', 'ambrose', 'seneca_prose',
-                                        'cic.', 'caes.', 'liv.', 'sall.', 'tac.', 'suet.', 'nep.',
-                                        'quint.', 'plin.', 'apul.', 'petron.', 'aug.', 'hier.', 'ambr.']
-                        PROSE_MARKERS = ['epistulae', 'letters', 'de_officiis', 'de_oratore', 
-                                        'de_finibus', 'de_natura', 'tusculan', 'bellum_gallicum',
-                                        'historiae', 'annales', 'agricola', 'germania', 'dialogus',
-                                        'satyricon', 'confessions', 'de_civitate']
-                        
-                        text_lower = filename.lower()
-                        is_prose = any(marker in text_lower for marker in PROSE_AUTHORS + PROSE_MARKERS)
-                        
-                        POETRY_MAX_DISTANCE = 20
-                        PROSE_MAX_DISTANCE = 4  # Very tight for compact prose phrases
-                        max_dist = PROSE_MAX_DISTANCE if is_prose else POETRY_MAX_DISTANCE
-                        
-                        if distance > max_dist:
-                            continue  # Skip results where matched words are too far apart
-                        
-                        # V3-STYLE SCORING: score = sum(IDF) / (1 + log(distance))
-                        idf_sum = 0
-                        for lemma in shared:
-                            freq = corpus_frequencies.get(lemma, 1)
-                            idf = math.log(total_corpus_words / (freq + 1)) + 1
-                            idf_sum += idf
-                        
-                        # V3 distance penalty: 1 / (1 + log(distance))
-                        distance_factor = 1.0 / (1 + math.log(distance + 1))
-                        
-                        # V3 final score: IDF sum * distance factor
-                        score = idf_sum * distance_factor * phrase_match_bonus
-                        
-                        result_key = (filename, unit.get('ref', ''))
-                        if result_key in seen_results:
-                            continue
-                        seen_results.add(result_key)
-                        
-                        tokens = unit.get('tokens', [])
-                        
-                        text_matches.append({
-                            'text_id': filename,
-                            'author': metadata.get('author', ''),
-                            'work': metadata.get('title', ''),
-                            'ref': unit.get('ref', ''),
-                            'text': unit.get('text', ''),
-                            'tokens': tokens,
-                            'highlight_indices': match_positions,
-                            'matched_lemmas': list(shared),
-                            'match_count': len(shared),
-                            'score': round(score, 3),
-                            'year': author_year,
-                            'era': author_era,
-                            'is_poetry': not is_prose
-                        })
-                
+                    result = _evaluate_line_candidate(
+                        unit, unit.get('ref', ''), filename, filtered_source_lemmas,
+                        query_text_lower, source_text_id, line_ref, key_phrases,
+                        corpus_frequencies, total_corpus_words, lang_dates,
+                        seen_results, min_matches)
+                    if result:
+                        text_matches.append(result)
+
                 text_matches.sort(key=lambda x: x['score'], reverse=True)
                 all_results.extend(text_matches[:max_per_text])
         
         all_results.sort(key=lambda x: x['score'], reverse=True)
         
-        # Deduplicate by text content (keep highest scoring version)
-        seen_texts = {}
-        deduplicated = []
-        for r in all_results:
-            # Normalize text for comparison (lowercase, strip punctuation)
-            text_key = re.sub(r'[^\w\s]', '', r['text'].lower()).strip()
-            if text_key not in seen_texts:
-                seen_texts[text_key] = r
-                deduplicated.append(r)
-            # Keep the one with the highest score (already sorted)
-        
-        all_results = deduplicated
-        
-        # Normalize scores to 0-10 range for readability
-        if all_results:
-            max_score = max(r['score'] for r in all_results) or 1
-            for r in all_results:
-                # Keep raw score for internal use, add normalized for display
-                r['raw_score'] = r['score']
-                r['score'] = round((r['score'] / max_score) * 10, 2)
+        all_results = _deduplicate_and_normalize(all_results)
         
         final_results = all_results[:max_results] if max_results > 0 else all_results
         
@@ -2091,7 +1998,6 @@ def corpus_search():
     """Search the entire corpus for lines containing specific lemmas using inverted index"""
     try:
         from backend.inverted_index import is_index_available, find_co_occurring_lemmas, has_lines_data, get_lines_batch
-        from backend.metrical_scanner import is_prose_text
         
         data = request.get_json() or {}
         lemmas = data.get('lemmas', [])
@@ -2106,34 +2012,21 @@ def corpus_search():
         
         if not is_index_available(language):
             return jsonify({'error': 'Index not available for this language'}), 400
-        
-        matches = find_co_occurring_lemmas(lemmas, language, min_matches=len(lemmas))
+
+        # Normalize lemmas for index lookup (strip Greek diacritics, Latin u/v)
+        normalized_lemmas = [_normalize_lemma(l, language) for l in lemmas]
+        matches = find_co_occurring_lemmas(normalized_lemmas, language, min_matches=min(2, len(normalized_lemmas)))
         
         results = []
         text_matches = {}
         text_genre_cache = {}
         
-        POETRY_MAX_DISTANCE = 20
-        PROSE_MAX_DISTANCE = 4  # Very tight for compact prose phrases
-        
-        # Use inline prose detection (faster and more reliable)
-        PROSE_AUTHORS = ['cicero', 'caesar', 'livy', 'sallust', 'tacitus', 'suetonius',
-                        'nepos', 'quintilian', 'pliny', 'apuleius', 'petronius',
-                        'augustine', 'jerome', 'ambrose', 'seneca_prose',
-                        'cic.', 'caes.', 'liv.', 'sall.', 'tac.', 'suet.', 'nep.',
-                        'quint.', 'plin.', 'apul.', 'petron.', 'aug.', 'hier.', 'ambr.']
-        PROSE_MARKERS = ['epistulae', 'letters', 'de_officiis', 'de_oratore', 
-                        'de_finibus', 'de_natura', 'tusculan', 'bellum_gallicum',
-                        'historiae', 'annales', 'agricola', 'germania', 'dialogus',
-                        'satyricon', 'confessions', 'de_civitate']
-        
         for filename, ref, matching_lemmas, positions in matches:
             if filename in exclude_texts:
                 continue
             if filename not in text_genre_cache:
-                text_lower = filename.lower()
-                text_genre_cache[filename] = not any(marker in text_lower for marker in PROSE_AUTHORS + PROSE_MARKERS)
-            
+                text_genre_cache[filename] = not is_prose_text_unified(filename, language)
+
             is_poetry = text_genre_cache[filename]
             max_distance = POETRY_MAX_DISTANCE if is_poetry else PROSE_MAX_DISTANCE
             
@@ -2158,7 +2051,7 @@ def corpus_search():
             metadata = get_text_metadata(filepath)
             author_key = filename.split('.')[0].lower()
             author_info = lang_dates.get(author_key, {})
-            author_year = author_info.get('year') or 9999
+            author_year = author_info.get('year')
             author_era = author_info.get('era', 'Unknown')
             author_note = author_info.get('note', '')
             is_poetry = text_genre_cache.get(filename, False)
@@ -2343,163 +2236,6 @@ def admin_login():
         return jsonify({'success': True})
     else:
         return jsonify({'error': 'Invalid password'}), 401
-
-@api_route('/admin/requests')
-def get_requests():
-    """Get all text requests (admin only)"""
-    password = request.headers.get('X-Admin-Password', '')
-    if password != ADMIN_PASSWORD:
-        return jsonify({'error': 'Unauthorized'}), 401
-    
-    try:
-        with get_db_cursor(commit=False) as cur:
-            cur.execute('''
-                SELECT id, name, email, author, work, language, notes, content, 
-                       status, created_at, reviewed_at, reviewed_by, admin_notes
-                FROM text_requests
-                ORDER BY created_at DESC
-            ''')
-            rows = cur.fetchall()
-        
-        requests = []
-        for row in rows:
-            requests.append({
-                'id': row[0],
-                'name': row[1],
-                'email': row[2],
-                'author': row[3],
-                'work': row[4],
-                'language': row[5],
-                'notes': row[6],
-                'content': row[7],
-                'status': row[8],
-                'created_at': row[9].isoformat() if row[9] else None,
-                'reviewed_at': row[10].isoformat() if row[10] else None,
-                'reviewed_by': row[11],
-                'admin_notes': row[12]
-            })
-        return jsonify(requests)
-    except Exception as e:
-        app_logger.error(f"Failed to get text requests: {e}")
-        return jsonify({'error': str(e)}), 500
-
-@api_route('/admin/requests/<int:request_id>', methods=['PUT'])
-def update_request(request_id):
-    """Update a text request status (admin only)"""
-    password = request.headers.get('X-Admin-Password', '')
-    if password != ADMIN_PASSWORD:
-        return jsonify({'error': 'Unauthorized'}), 401
-    
-    data = request.get_json() or {}
-    status = data.get('status', 'pending')
-    admin_notes = data.get('admin_notes', '')
-    reviewed_by = data.get('reviewed_by', 'admin')
-    
-    try:
-        with get_db_cursor() as cur:
-            cur.execute('''
-                UPDATE text_requests 
-                SET status = %s, admin_notes = %s, reviewed_by = %s, reviewed_at = %s
-                WHERE id = %s
-            ''', (status, admin_notes, reviewed_by, datetime.now(), request_id))
-        return jsonify({'success': True})
-    except Exception as e:
-        app_logger.error(f"Failed to update text request: {e}")
-        return jsonify({'error': str(e)}), 500
-
-@api_route('/admin/requests/<int:request_id>/approve', methods=['POST'])
-def approve_and_add_text(request_id):
-    """Approve a request and add the text to corpus (admin only)"""
-    password = request.headers.get('X-Admin-Password', '')
-    if password != ADMIN_PASSWORD:
-        return jsonify({'error': 'Unauthorized'}), 401
-    
-    data = request.get_json() or {}
-    final_content = data.get('content', '')
-    
-    try:
-        with get_db_cursor() as cur:
-            cur.execute('SELECT author, work, language FROM text_requests WHERE id = %s', (request_id,))
-            row = cur.fetchone()
-            if not row:
-                return jsonify({'error': 'Request not found'}), 404
-            
-            author, work, language = row
-            
-            safe_author = ''.join(c if c.isalnum() or c in '._-' else '_' for c in author.lower())
-            safe_work = ''.join(c if c.isalnum() or c in '._-' else '_' for c in work.lower())
-            filename = f"{safe_author}.{safe_work}.tess"
-            
-            lang_dir = os.path.join(TEXTS_DIR, language)
-            os.makedirs(lang_dir, exist_ok=True)
-            filepath = os.path.join(lang_dir, filename)
-            
-            if os.path.exists(filepath):
-                return jsonify({'error': f'Text "{author} - {work}" already exists in corpus'}), 409
-            
-            lines = final_content.strip().split('\n')
-            formatted_lines = []
-            for i, line in enumerate(lines, 1):
-                line = line.strip()
-                if not line:
-                    continue
-                if line.startswith('<') and '>' in line:
-                    formatted_lines.append(line)
-                else:
-                    tag = f"<{safe_author}.{safe_work}.{i}>"
-                    formatted_lines.append(f"{tag} {line}")
-            
-            with open(filepath, 'w', encoding='utf-8') as f:
-                f.write('\n'.join(formatted_lines))
-            
-            cur.execute('''
-                UPDATE text_requests 
-                SET status = 'approved', reviewed_at = %s
-                WHERE id = %s
-            ''', (datetime.now(), request_id))
-        
-        recalculate_language_frequencies(language, text_processor)
-        
-        from backend.inverted_index import index_single_text
-        index_result = index_single_text(filepath, language, text_processor)
-        
-        # Compute embeddings for the new text (for semantic search)
-        embeddings_computed = False
-        try:
-            from sentence_transformers import SentenceTransformer
-            from backend.precompute_embeddings import compute_embeddings_for_text
-            model_name = 'all-MiniLM-L6-v2' if language == 'en' else 'bowphs/SPhilBerta'
-            model = SentenceTransformer(model_name)
-            success, n_lines = compute_embeddings_for_text(filepath, language, model, force=True)
-            embeddings_computed = success
-        except Exception as e:
-            print(f"Warning: Could not compute embeddings for {filename}: {e}")
-        
-        return jsonify({
-            'success': True,
-            'filename': filename,
-            'lines': len(formatted_lines),
-            'indexed': index_result.get('status') == 'indexed' if index_result else False,
-            'embeddings_computed': embeddings_computed
-        })
-    except Exception as e:
-        app_logger.error(f"Failed to approve text request: {e}")
-        return jsonify({'error': str(e)}), 500
-
-@api_route('/admin/requests/<int:request_id>', methods=['DELETE'])
-def delete_request(request_id):
-    """Delete a text request (admin only)"""
-    password = request.headers.get('X-Admin-Password', '')
-    if password != ADMIN_PASSWORD:
-        return jsonify({'error': 'Unauthorized'}), 401
-    
-    try:
-        with get_db_cursor() as cur:
-            cur.execute('DELETE FROM text_requests WHERE id = %s', (request_id,))
-        return jsonify({'success': True})
-    except Exception as e:
-        app_logger.error(f"Failed to delete text request: {e}")
-        return jsonify({'error': str(e)}), 500
 
 @api_route('/admin/author-dates', methods=['GET'])
 def get_author_dates():
@@ -2953,6 +2689,12 @@ def get_analytics():
     except Exception as e:
         app_logger.error(f"Failed to get analytics: {e}")
         return jsonify({'error': str(e)}), 500
+
+
+def create_app():
+    """Return app for scripts that need app context (e.g. import_connections)."""
+    return app
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)

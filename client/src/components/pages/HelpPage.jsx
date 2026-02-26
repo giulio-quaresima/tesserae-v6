@@ -109,6 +109,7 @@ export default function HelpPage() {
 
   const sections = [
     { id: 'getting-started', label: 'Getting Started' },
+    { id: 'fusion-search', label: 'How Fusion Search Works' },
     { id: 'search-modes', label: 'Search Modes' },
     { id: 'match-types', label: 'Match Types' },
     { id: 'settings', label: 'Search Settings' },
@@ -223,14 +224,14 @@ export default function HelpPage() {
               <h3 className="text-xl font-semibold text-gray-900 mb-4">Getting Started</h3>
               <ol className="list-decimal list-inside space-y-4 text-gray-700">
                 <li><strong>Select a Language:</strong> Choose Latin, Greek, or English from the language tabs.</li>
-                <li><strong>Choose Source Text:</strong> Select the "source" text - typically the earlier text.</li>
-                <li><strong>Choose Target Text:</strong> Select the "target" text - the later text that may contain the allusion.</li>
-                <li><strong>Adjust Settings (Optional):</strong> Configure match type, minimum matches, and other parameters.</li>
-                <li><strong>Run Search:</strong> Click "Find Parallels" to discover textual connections.</li>
+                <li><strong>Choose Source Text:</strong> Select the "source" text — typically the earlier text.</li>
+                <li><strong>Choose Target Text:</strong> Select the "target" text — the later text that may contain the allusion.</li>
+                <li><strong>Run Search:</strong> Click "Find Parallels." The default search mode is <strong>Fusion — All Channels</strong>, which runs nine independent detection methods and combines their results for the best recall.</li>
+                <li><strong>Browse Results:</strong> Results are ranked by confidence. The top results are overwhelmingly genuine parallels. Matched words are highlighted and channel badges show which methods detected each pair.</li>
               </ol>
               <div className="mt-6 bg-amber-50 p-4 rounded-lg">
                 <h4 className="font-medium text-amber-800 mb-2">Tip</h4>
-                <p className="text-amber-700 text-sm">Start with a smaller section (e.g., Book 1) rather than complete works for faster results.</p>
+                <p className="text-amber-700 text-sm">Start with a smaller section (e.g., Book 1) rather than complete works for faster results. Large comparisons like the full Aeneid vs. Metamorphoses can take up to 15 minutes on first run; subsequent searches are cached.</p>
               </div>
               <div className="mt-4 bg-gray-50 p-4 rounded-lg">
                 <p className="text-gray-700 text-sm">
@@ -240,55 +241,145 @@ export default function HelpPage() {
             </div>
           )}
 
+          {activeSection === 'fusion-search' && (
+            <div className="prose max-w-none">
+              <h3 className="text-xl font-semibold text-gray-900 mb-4">How Fusion Search Works</h3>
+              <p className="text-gray-700 mb-4">
+                Tesserae V6's default search mode runs <strong>nine independent detection channels</strong> and combines their results.
+                Each channel looks for a different kind of textual similarity — shared vocabulary, phonetic echo, semantic meaning,
+                grammatical structure, and more. By fusing these signals, the system finds parallels that no single method could detect alone.
+              </p>
+
+              <h4 className="text-lg font-medium text-gray-900 mt-6 mb-3">The Nine Channels</h4>
+              <div className="space-y-3">
+                <div className="border-l-4 border-red-400 pl-3">
+                  <p className="text-sm text-gray-700"><strong>Lemma (2-word):</strong> The classic Tesserae approach — finds lines sharing two or more content-word dictionary forms. The workhorse channel for direct verbal echo.</p>
+                </div>
+                <div className="border-l-4 border-red-400 pl-3">
+                  <p className="text-sm text-gray-700"><strong>Lemma (1-word):</strong> Same method, but requires only one shared word. Catches allusions built around a single pivotal term, like Lucan's <em>canimus</em> echoing Vergil's <em>cano</em>.</p>
+                </div>
+                <div className="border-l-4 border-red-400 pl-3">
+                  <p className="text-sm text-gray-700"><strong>Exact:</strong> Matches identical surface forms (not lemmatized). Catches verbatim quotation and formulaic borrowing.</p>
+                </div>
+                <div className="border-l-4 border-blue-400 pl-3">
+                  <p className="text-sm text-gray-700"><strong>Semantic (AI):</strong> Uses SPhilBERTa neural embeddings to detect lines with similar meaning, even with completely different vocabulary.</p>
+                </div>
+                <div className="border-l-4 border-blue-400 pl-3">
+                  <p className="text-sm text-gray-700"><strong>Dictionary:</strong> Detects synonym substitution (<em>uariatio</em>) using 23,833 curated Latin word pairs — e.g., <em>gladius/ensis</em>, <em>mare/pontus</em>.</p>
+                </div>
+                <div className="border-l-4 border-amber-400 pl-3">
+                  <p className="text-sm text-gray-700"><strong>Sound:</strong> Measures phonetic similarity via character trigram patterns. Detects alliteration, assonance, and phonetic echo.</p>
+                </div>
+                <div className="border-l-4 border-amber-400 pl-3">
+                  <p className="text-sm text-gray-700"><strong>Edit Distance:</strong> Fuzzy character-level matching for morphological variants — <em>ferrea</em> matching <em>ferratos</em>, <em>belligeri</em> matching <em>belli</em>.</p>
+                </div>
+                <div className="border-l-4 border-purple-400 pl-3">
+                  <p className="text-sm text-gray-700"><strong>Syntax:</strong> Compares grammatical dependency structures (parsed by LatinPipe) to detect parallel sentence construction without shared vocabulary.</p>
+                </div>
+                <div className="border-l-4 border-purple-400 pl-3">
+                  <p className="text-sm text-gray-700"><strong>Rare Vocabulary:</strong> Flags shared words that appear in fewer than 50 texts corpus-wide. A rare shared word is unlikely to be coincidence.</p>
+                </div>
+              </div>
+
+              <h4 className="text-lg font-medium text-gray-900 mt-6 mb-3">How Results Are Combined</h4>
+              <p className="text-gray-700 mb-3">
+                Each channel produces its own candidate list with scores. The fusion step combines them using <strong>weighted score fusion</strong>:
+                each channel's score is multiplied by a weight reflecting its precision, and the weighted scores are summed. Channels that produce
+                fewer but more reliable results (like sound and edit distance) receive higher weights. The single-word lemma channel, which
+                casts a wider net, receives a lower weight.
+              </p>
+              <p className="text-gray-700 mb-3">
+                A <strong>convergence bonus</strong> rewards pairs found independently by multiple channels. If six out of nine channels all
+                flag the same pair of lines, that agreement is strong evidence of a real connection — stronger than any single channel's
+                score alone.
+              </p>
+
+              <h4 className="text-lg font-medium text-gray-900 mt-6 mb-3">Sliding Windows</h4>
+              <p className="text-gray-700 mb-3">
+                Poets don't always confine allusions to a single line. To catch vocabulary split across line breaks (enjambment),
+                the system also searches <strong>two-line sliding windows</strong> — each consecutive pair of lines merged into one unit.
+                Window results that are genuinely new are appended after line-mode results, adding recall without diluting precision.
+              </p>
+
+              <div className="mt-6 bg-gray-50 p-4 rounded-lg">
+                <h4 className="font-medium text-gray-900 mb-2">Performance</h4>
+                <p className="text-gray-700 text-sm">
+                  Evaluated against five benchmark datasets (862 parallels from published commentaries), fusion search finds <strong>91% of known parallels</strong> —
+                  up from ~27% in Tesserae V3. On the Valerius Flaccus benchmark, 9 of the top 10 results are attested in scholarly commentary.
+                </p>
+              </div>
+
+              <div className="mt-4 bg-amber-50 p-4 rounded-lg">
+                <h4 className="font-medium text-amber-800 mb-2">Individual Channels</h4>
+                <p className="text-amber-700 text-sm">
+                  You can also run individual channels (Lemma, Exact, Semantic, etc.) by changing the Match Type dropdown.
+                  This is useful when you want to isolate a specific kind of similarity, but fusion is recommended for general use.
+                </p>
+              </div>
+            </div>
+          )}
+
           {activeSection === 'search-modes' && (
             <div className="prose max-w-none">
               <h3 className="text-xl font-semibold text-gray-900 mb-4">Search Modes</h3>
-              <p className="text-gray-700 mb-6">Tesserae offers five main search modes, accessible via tabs:</p>
-              
+              <p className="text-gray-700 mb-6">Tesserae offers six search modes, accessible via tabs at the top of the search page:</p>
+
               <div className="space-y-6">
                 <div className="border-l-4 border-red-500 pl-4">
                   <h4 className="font-medium text-gray-900">Phrases (Parallel Search)</h4>
                   <p className="text-gray-600 text-sm mt-1">
-                    The default search mode. Finds passages that share multiple words between source and target texts. 
-                    Uses lemma matching by default so "amor" matches "amorem", "amores", etc.
+                    Compare a source text against a target text. The default match type is <strong>Fusion — All Channels</strong>, which
+                    runs nine independent detection methods (lemma, exact, semantic, dictionary, sound, edit distance, syntax,
+                    and rare vocabulary) and combines their results for the best recall.
+                    You can also select individual match types (Lemma, Exact, Sound, etc.) from the dropdown.
                   </p>
                   <p className="text-gray-500 text-sm mt-2">
                     <strong>Use for:</strong> Discovering allusions, quotations, and thematic parallels between texts.
+                    See{' '}
+                    <button onClick={() => setActiveSection('fusion-search')} className="text-red-600 hover:underline">
+                      How Fusion Search Works
+                    </button>
+                    {' '}for details on the nine channels.
                   </p>
                 </div>
 
                 <div className="border-l-4 border-blue-500 pl-4">
                   <h4 className="font-medium text-gray-900">Lines (Line Search)</h4>
                   <p className="text-gray-600 text-sm mt-1">
-                    Search for parallels to a specific line across the entire corpus. Select a line from any text, 
-                    or type/paste Latin or Greek text directly.
+                    Search for parallels to a specific line across the entire corpus. Select a line from any text,
+                    or type/paste Latin or Greek text directly. For Greek, you can enter text with or without diacritics.
+                    Three match types are available: <strong>Lemma</strong> (matches dictionary forms), <strong>Exact</strong> (identical
+                    surface forms only), and <strong>Regular expression</strong> (pattern matching — see{' '}
+                    <button onClick={() => setActiveSection('match-types')} className="text-red-600 hover:underline">
+                      Match Types
+                    </button>{' '}for details and examples).
                   </p>
                   <p className="text-gray-500 text-sm mt-2">
                     <strong>Use for:</strong> Finding all passages in the corpus that share vocabulary with a specific line of interest.
                   </p>
                   <div className="bg-gray-50 p-3 rounded mt-2 text-sm">
-                    <strong>Example:</strong> Search for "arma virumque cano" to find all lines sharing "arma" and "vir".
+                    <strong>Example:</strong> Search for "arma virumque cano" to find all lines sharing "arma" and "vir" across 500+ results.
                   </div>
                 </div>
 
                 <div className="border-l-4 border-amber-500 pl-4">
                   <h4 className="font-medium text-gray-900">Rare Words</h4>
                   <p className="text-gray-600 text-sm mt-1">
-                    Finds words that appear rarely across the entire corpus but are shared between your source 
+                    Finds words that appear in fewer than 50 texts corpus-wide but are shared between your source
                     and target texts. These low-frequency words often indicate meaningful textual connections.
                   </p>
                   <p className="text-gray-500 text-sm mt-2">
                     <strong>Use for:</strong> Identifying distinctive vocabulary that suggests direct borrowing or influence.
                   </p>
                   <div className="bg-gray-50 p-3 rounded mt-2 text-sm">
-                    <strong>Example:</strong> If "laticlavius" appears only 3 times in the corpus, and both Vergil and Lucan use it, that's significant.
+                    <strong>Example:</strong> If "spumifer" appears in only 3 texts corpus-wide, and both Statius and Vergil use it, that's significant.
                   </div>
                 </div>
 
                 <div className="border-l-4 border-purple-500 pl-4">
                   <h4 className="font-medium text-gray-900">Word Pairs (Bigram Search)</h4>
                   <p className="text-gray-600 text-sm mt-1">
-                    Discovers unusual word combinations (bigrams) that appear together in very few texts. 
+                    Discovers unusual word combinations (bigrams) that appear together in very few texts.
                     Even if individual words are common, their pairing may be distinctive.
                   </p>
                   <p className="text-gray-500 text-sm mt-2">
@@ -296,10 +387,10 @@ export default function HelpPage() {
                   </p>
                 </div>
 
-                <div className="border-l-4 border-green-500 pl-4">
+                <div className="border-l-4 border-amber-500 pl-4">
                   <h4 className="font-medium text-gray-900">String Search</h4>
                   <p className="text-gray-600 text-sm mt-1">
-                    Wildcard and boolean search across the entire corpus. Perfect for finding 
+                    Wildcard and boolean search across the entire corpus. Perfect for finding
                     specific words, word patterns, or co-occurrences.
                   </p>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3 text-sm">
@@ -329,6 +420,23 @@ export default function HelpPage() {
                     </ul>
                   </div>
                 </div>
+
+                <div className="border-l-4 border-blue-500 pl-4">
+                  <h4 className="font-medium text-gray-900">Greek↔Latin (Cross-Lingual Search)</h4>
+                  <p className="text-gray-600 text-sm mt-1">
+                    Finds parallels across languages — Greek source vs. Latin target or vice versa. Two modes:
+                    AI Semantic (SPhilBERTa neural embeddings for meaning-based matching) and Dictionary
+                    (34,500+ curated Greek-Latin word pairs plus cognate detection).
+                  </p>
+                  <p className="text-gray-500 text-sm mt-2">
+                    <strong>Use for:</strong> Tracing how Latin authors adapted Greek sources — e.g., Vergil echoing Homer.
+                    See{' '}
+                    <button onClick={() => setActiveSection('cross-lingual')} className="text-red-600 hover:underline">
+                      Cross-Lingual Search
+                    </button>
+                    {' '}for details.
+                  </p>
+                </div>
               </div>
             </div>
           )}
@@ -336,58 +444,109 @@ export default function HelpPage() {
           {activeSection === 'match-types' && (
             <div className="prose max-w-none">
               <h3 className="text-xl font-semibold text-gray-900 mb-4">Match Types</h3>
-              <p className="text-gray-700 mb-4">Within Phrases search, choose how words are matched:</p>
+              <p className="text-gray-700 mb-4">Within Phrases search, the Match Type dropdown controls which detection method runs:</p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="bg-red-50 p-4 rounded-lg border border-red-200 md:col-span-2">
+                  <h4 className="font-medium text-red-900">Fusion — All Channels (default)</h4>
+                  <p className="text-gray-700 text-sm mt-1">
+                    Runs all nine detection channels simultaneously and combines results with weighted score fusion.
+                    Finds 91% of known parallels across five benchmark datasets — the recommended choice for general use.
+                    See{' '}
+                    <button onClick={() => setActiveSection('fusion-search')} className="text-red-600 hover:underline">
+                      How Fusion Search Works
+                    </button>.
+                  </p>
+                </div>
                 <div className="bg-gray-50 p-4 rounded-lg">
-                  <h4 className="font-medium text-gray-900">Lemma (default)</h4>
+                  <h4 className="font-medium text-gray-900">Lemma</h4>
                   <p className="text-gray-600 text-sm mt-1">
                     Matches words with the same dictionary form. "amor" matches "amorem", "amores", etc.
-                    Best for finding semantic parallels.
+                    The classic Tesserae method. Requires 2+ shared lemmas by default.
                   </p>
                 </div>
                 <div className="bg-gray-50 p-4 rounded-lg">
                   <h4 className="font-medium text-gray-900">Exact</h4>
                   <p className="text-gray-600 text-sm mt-1">
-                    Only identical word forms match. Good for finding direct quotations or formulaic phrases.
+                    Only identical surface forms match — no lemmatization. Good for finding direct quotations or formulaic phrases.
                   </p>
                 </div>
                 <div className="bg-gray-50 p-4 rounded-lg">
                   <h4 className="font-medium text-gray-900">Sound (Trigrams)</h4>
                   <p className="text-gray-600 text-sm mt-1">
-                    Matches based on phonetic similarity using character patterns. Detects alliteration, 
+                    Measures phonetic similarity via character trigram patterns. Detects alliteration,
                     rhyme, assonance, and consonance.
                   </p>
                 </div>
                 <div className="bg-gray-50 p-4 rounded-lg">
                   <h4 className="font-medium text-gray-900">Edit Distance</h4>
                   <p className="text-gray-600 text-sm mt-1">
-                    Fuzzy matching for character-similar words. Finds morphological variants and spelling 
-                    variations: "bellum" matches "bello", "bella".
+                    Fuzzy character-level matching for morphological variants and spelling
+                    variations: "ferrea" matches "ferratos", "belligeri" matches "belli".
                   </p>
                 </div>
-                <div className="bg-gray-50 p-4 rounded-lg md:col-span-2">
+                <div className="bg-gray-50 p-4 rounded-lg">
                   <h4 className="font-medium text-gray-900">Semantic (AI)</h4>
                   <p className="text-gray-600 text-sm mt-1">
-                    Uses deep learning embeddings to find passages with similar meaning, even with different vocabulary.
-                    Powered by the SPhilBERTa model trained on classical texts. Includes 54,000+ synonym pairs.
-                    Examples: numen~deus, bellum~proelium, ignis~flamma.
+                    Uses SPhilBERTa neural embeddings to find passages with similar meaning, even with completely different vocabulary.
+                    Also uses 23,800+ curated Latin synonym pairs (e.g., numen~deus, bellum~proelium, ignis~flamma).
+                  </p>
+                </div>
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <h4 className="font-medium text-gray-900">Dictionary</h4>
+                  <p className="text-gray-600 text-sm mt-1">
+                    Detects synonym substitution (<em>uariatio</em>) using curated Latin word pairs from Lewis & Short.
+                    Scores by IDF so rare synonym matches rank higher than common ones.
                   </p>
                 </div>
               </div>
               <p className="text-gray-600 text-sm mt-4">
-                <strong>Tip:</strong> Sound and Edit Distance can also be enabled as feature boosts when using Lemma or Exact matching.
+                <strong>Tip:</strong> When running individual channels, Sound and Edit Distance can also be enabled as feature boosts under Advanced Settings.
               </p>
+
+              <div className="mt-6 border-t pt-4" id="regex-help">
+                <h4 className="font-medium text-gray-900 mb-2">Regular Expressions (Line Search)</h4>
+                <p className="text-gray-600 text-sm mb-3">
+                  In Line Search mode, the <strong>Regular expression</strong> option lets you search with patterns instead of
+                  literal text. A regular expression (or "regex") is a sequence of characters that defines a search pattern.
+                  This is a powerful tool for finding words with variant spellings, partial forms, or structural patterns.
+                </p>
+                <div className="bg-gray-50 p-4 rounded-lg text-sm space-y-2">
+                  <p className="font-medium text-gray-800">Common patterns:</p>
+                  <table className="w-full text-left">
+                    <tbody className="divide-y divide-gray-200">
+                      <tr><td className="py-1 pr-4 font-mono text-red-700 whitespace-nowrap">arm.</td><td className="py-1 text-gray-600">Matches "arma", "arms", "army" — the dot matches any single character</td></tr>
+                      <tr><td className="py-1 pr-4 font-mono text-red-700 whitespace-nowrap">amor|bellum</td><td className="py-1 text-gray-600">Matches lines containing "amor" OR "bellum"</td></tr>
+                      <tr><td className="py-1 pr-4 font-mono text-red-700 whitespace-nowrap">ferr[aeiou]</td><td className="py-1 text-gray-600">Matches "ferra", "ferre", "ferri", "ferro", "ferru" — brackets match any one character listed</td></tr>
+                      <tr><td className="py-1 pr-4 font-mono text-red-700 whitespace-nowrap">^arma</td><td className="py-1 text-gray-600">Matches "arma" only at the start of a line</td></tr>
+                      <tr><td className="py-1 pr-4 font-mono text-red-700 whitespace-nowrap">cano$</td><td className="py-1 text-gray-600">Matches "cano" only at the end of a line</td></tr>
+                      <tr><td className="py-1 pr-4 font-mono text-red-700 whitespace-nowrap">reg(is|em|i|e)</td><td className="py-1 text-gray-600">Matches "regis", "regem", "regi", "rege" — parentheses group alternatives</td></tr>
+                      <tr><td className="py-1 pr-4 font-mono text-red-700 whitespace-nowrap">.*pietas.*arma.*</td><td className="py-1 text-gray-600">Matches any line containing "pietas" followed later by "arma" — <code>.*</code> means "any characters"</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+                <p className="text-gray-500 text-sm mt-2">
+                  Regex search checks each line in the corpus for a match against your pattern.
+                  It does not use lemmatization — patterns match against the actual text as it appears.
+                </p>
+              </div>
             </div>
           )}
 
           {activeSection === 'settings' && (
             <div className="prose max-w-none">
               <h3 className="text-xl font-semibold text-gray-900 mb-4">Search Settings</h3>
+              <div className="bg-amber-50 p-4 rounded-lg border border-amber-200 mb-4">
+                <p className="text-amber-700 text-sm">
+                  <strong>Note:</strong> In Fusion mode (the default), most settings below are managed automatically by the
+                  nine channels. Settings like Minimum Matches, Max Distance, and Stoplist apply when running individual match types.
+                </p>
+              </div>
               <dl className="space-y-4">
                 <div>
                   <dt className="font-medium text-gray-900">Minimum Matches</dt>
                   <dd className="text-gray-600 text-sm mt-1">
                     Require at least N shared words (default: 2). Higher values find stronger parallels but fewer results.
+                    In Fusion mode, each channel applies its own threshold (e.g., lemma requires 2, lemma-1-word requires 1).
                   </dd>
                 </div>
                 <div>
@@ -399,9 +558,9 @@ export default function HelpPage() {
                 <div>
                   <dt className="font-medium text-gray-900">Stoplist</dt>
                   <dd className="text-gray-600 text-sm mt-1">
-                    Filter common words like "et", "in", "est" to reduce noise. The default setting combines 
+                    Filter common words like "et", "in", "est" to reduce noise. The default setting combines
                     curated function words with automatic high-frequency detection.
-                    <button 
+                    <button
                       onClick={() => setActiveSection('stoplists')}
                       className="text-red-600 hover:underline ml-1"
                     >
@@ -413,6 +572,13 @@ export default function HelpPage() {
                   <dt className="font-medium text-gray-900">Unit Type (Line/Phrase)</dt>
                   <dd className="text-gray-600 text-sm mt-1">
                     Compare by poetic lines (default) or prose sentences. Phrase mode splits on punctuation.
+                  </dd>
+                </div>
+                <div>
+                  <dt className="font-medium text-gray-900">Max Results</dt>
+                  <dd className="text-gray-600 text-sm mt-1">
+                    Maximum number of results to return (default: 5,000). Set to 0 for unlimited.
+                    For most comparisons, the top 5,000 results capture all significant parallels.
                   </dd>
                 </div>
               </dl>
@@ -499,20 +665,42 @@ export default function HelpPage() {
               <div className="space-y-4">
                 <div>
                   <h4 className="font-medium text-gray-900">Score</h4>
+                  <p className="text-gray-600 text-sm mb-2">
+                    Higher scores indicate more significant parallels. The scoring method depends on the search mode:
+                  </p>
+                  <div className="bg-red-50 p-3 rounded border border-red-200 mb-2">
+                    <p className="text-sm text-gray-700">
+                      <strong>Fusion mode (default):</strong> Each channel produces its own score, which is multiplied by a
+                      channel-specific weight and summed. A <em>convergence bonus</em> rewards pairs detected by multiple
+                      independent channels. The result is a single combined score reflecting both the strength of individual
+                      signals and the breadth of agreement across methods.
+                    </p>
+                  </div>
+                  <div className="bg-gray-50 p-3 rounded mb-2">
+                    <p className="text-sm text-gray-700">
+                      <strong>Individual channels:</strong> V3-style scoring using IDF (rare words score higher),
+                      distance penalty (closer matched words score higher), and match count.
+                    </p>
+                  </div>
+                </div>
+                <div>
+                  <h4 className="font-medium text-gray-900">Channel Badges</h4>
                   <p className="text-gray-600 text-sm">
-                    Higher scores indicate more significant parallels. The score combines:
+                    In Fusion mode, each result displays colored badges showing which channels detected it.
+                    More badges generally indicates a stronger, more reliable parallel. Badges are grouped by category:
                   </p>
                   <ul className="list-disc list-inside text-gray-600 text-sm mt-1 ml-4">
-                    <li>IDF (Inverse Document Frequency) - rare words score higher</li>
-                    <li>Distance penalty - closer matched words score higher</li>
-                    <li>Number of matches - more shared words score higher</li>
+                    <li><span className="text-red-600 font-medium">Red</span> — Vocabulary channels (lemma, exact, dictionary, rare word)</li>
+                    <li><span className="text-blue-600 font-medium">Blue</span> — Semantic channels (AI semantic)</li>
+                    <li><span className="text-amber-600 font-medium">Amber</span> — Sound channels (sound, edit distance)</li>
+                    <li><span className="text-purple-600 font-medium">Purple</span> — Structure channels (syntax)</li>
                   </ul>
                 </div>
                 <div>
                   <h4 className="font-medium text-gray-900">Highlighting</h4>
                   <ul className="list-disc list-inside text-gray-600 text-sm mt-1">
-                    <li><span className="bg-yellow-200 px-1 rounded">Yellow</span> - Matched lemmas (dictionary forms)</li>
-                    <li><span className="bg-indigo-200 px-1 rounded">Indigo</span> - Synonym matches (semantic similarity)</li>
+                    <li><span className="bg-yellow-200 px-1 rounded">Yellow</span> — Matched lemmas (shared dictionary forms)</li>
+                    <li><span className="bg-indigo-200 px-1 rounded">Indigo</span> — Synonym matches (dictionary or semantic similarity)</li>
                   </ul>
                 </div>
                 <div>
@@ -531,39 +719,42 @@ export default function HelpPage() {
             <div className="prose max-w-none">
               <h3 className="text-xl font-semibold text-gray-900 mb-4">Search Tips</h3>
               <p className="text-gray-700 mb-4">
-                Tips for refining your searches to find the most relevant parallels.
+                Tips for getting the most out of Tesserae. The default Fusion mode handles most settings
+                automatically, but these strategies can help refine your results.
               </p>
 
+              <h4 className="font-medium text-gray-900 mt-6 mb-3">Getting Started</h4>
+              <ul className="list-disc list-inside text-gray-600 text-sm space-y-2 ml-2">
+                <li><strong>Use Fusion (the default)</strong>: It runs nine channels and finds far more parallels than any single method. Start here.</li>
+                <li><strong>Start small, then expand</strong>: Begin with a single book comparison, then broaden to complete works</li>
+                <li><strong>Focus on the top results</strong>: Fusion ranks results by combined confidence. The highest-scoring results are overwhelmingly genuine parallels.</li>
+                <li><strong>Check channel badges</strong>: Results flagged by many independent channels are the most reliable</li>
+              </ul>
+
               <h4 className="font-medium text-gray-900 mt-6 mb-3">Narrowing Down Results</h4>
-              <p className="text-gray-600 text-sm mb-2">Use these strategies when you have too many results or want more precision:</p>
+              <p className="text-gray-600 text-sm mb-2">When you have too many results or want more precision:</p>
               <ul className="list-disc list-inside text-gray-600 text-sm space-y-2 ml-2">
                 <li><strong>Select smaller text sections</strong>: Choose individual books instead of complete works (e.g., "Aeneid, Book 1" rather than "Aeneid (Complete)")</li>
-                <li><strong>Increase minimum matches</strong>: Require 3+ shared words instead of the default 2</li>
                 <li><strong>Add custom stopwords</strong>: Exclude common thematic words that create noise (e.g., "bellum" in war narratives, "amor" in love poetry)</li>
-                <li><strong>Reduce max distance</strong>: Lower from 999 to require matched words to appear closer together</li>
-                <li><strong>Enable score boosts</strong>: Turn on "Bigram frequency boost" to prioritize rare word pairs</li>
-                <li><strong>Use syntax matching</strong>: For supported texts, require grammatical structure similarity</li>
-                <li><strong>Sort by score</strong>: Focus on highest-scoring results first</li>
+                <li><strong>Sort by score</strong>: The highest scores represent the strongest parallels</li>
+                <li><strong>Try individual channels</strong>: Switch from Fusion to a specific match type (Lemma, Semantic, etc.) to isolate one kind of similarity</li>
               </ul>
 
               <h4 className="font-medium text-gray-900 mt-6 mb-3">Expanding Results</h4>
-              <p className="text-gray-600 text-sm mb-2">Use these strategies when you want to cast a wider net:</p>
+              <p className="text-gray-600 text-sm mb-2">When you want to cast a wider net:</p>
               <ul className="list-disc list-inside text-gray-600 text-sm space-y-2 ml-2">
                 <li><strong>Select complete works</strong>: Search entire texts rather than individual books</li>
-                <li><strong>Lower minimum matches</strong>: Set to 2 (the minimum) to catch more parallels</li>
-                <li><strong>Disable stoplist</strong>: Enter -1 in Stoplist Size to include all words (not recommended for large texts)</li>
-                <li><strong>Use semantic matching</strong>: Switch to "AI Semantic" match type to find conceptually similar passages</li>
-                <li><strong>Try sound matching</strong>: "Sound Matching" finds words that sound alike across texts</li>
-                <li><strong>Increase max results</strong>: Set to 0 for unlimited results, or raise the limit</li>
+                <li><strong>Increase max results</strong>: The default is 5,000. Set to 0 for unlimited results.</li>
+                <li><strong>Use the Lines tab</strong>: Search a single line against the entire 2,100+ text corpus</li>
+                <li><strong>Try Rare Words or Word Pairs</strong>: These specialized modes find distinctive vocabulary connections that complement Fusion</li>
               </ul>
 
               <h4 className="font-medium text-gray-900 mt-6 mb-3">General Tips</h4>
               <ul className="list-disc list-inside text-gray-600 text-sm space-y-2 ml-2">
-                <li><strong>Start small, then expand</strong>: Begin with a single book comparison, then broaden your search</li>
-                <li><strong>Save interesting searches</strong>: Use "Save Search" to bookmark productive queries</li>
                 <li><strong>Export for analysis</strong>: Download CSV files to analyze results in spreadsheet software</li>
                 <li><strong>Check the corpus</strong>: Use "Search Corpus" on a result to see where else those words co-occur</li>
                 <li><strong>Register discoveries</strong>: Add significant parallels to the Repository for future reference</li>
+                <li><strong>Greek diacritics are optional</strong>: You can search Greek with or without accents and breathings</li>
               </ul>
             </div>
           )}
@@ -572,28 +763,43 @@ export default function HelpPage() {
             <div className="prose max-w-none">
               <h3 className="text-xl font-semibold text-gray-900 mb-4">Cross-Lingual Search (Greek↔Latin)</h3>
               <p className="text-gray-700 mb-4">
-                The Greek↔Latin tab enables searching for parallels <em>across languages</em> - 
-                finding how Greek texts influenced Latin authors or vice versa.
+                The Greek↔Latin tab enables searching for parallels <em>across languages</em> —
+                finding how Greek texts influenced Latin authors or vice versa. Two detection modes are available.
               </p>
               <div className="space-y-4">
-                <div className="bg-amber-50 p-4 rounded-lg border border-amber-200">
-                  <h4 className="font-medium text-amber-800 mb-2">AI Semantic Mode</h4>
-                  <p className="text-amber-700 text-sm">
-                    Uses the SPhilBERTa model trained on parallel Greek-Latin texts to find conceptually 
-                    similar passages. Best for discovering thematic connections and paraphrased ideas.
+                <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                  <h4 className="font-medium text-blue-800 mb-2">AI Semantic Mode</h4>
+                  <p className="text-blue-700 text-sm">
+                    Uses the SPhilBERTa neural model trained on parallel Greek-Latin texts to find conceptually
+                    similar passages. Best for discovering thematic connections and paraphrased ideas where
+                    no direct vocabulary correspondence exists.
                   </p>
                 </div>
-                <div className="bg-green-50 p-4 rounded-lg border border-green-200">
-                  <h4 className="font-medium text-green-800 mb-2">Dictionary Mode</h4>
-                  <p className="text-green-700 text-sm">
-                    Uses a curated vocabulary of 50,000+ Greek-Latin word pairs from V3 scholars. 
-                    Scores matches by word rarity (IDF). Shows exact word correspondences with highlighting.
+                <div className="bg-amber-50 p-4 rounded-lg border border-amber-200">
+                  <h4 className="font-medium text-amber-900 mb-2">Dictionary Mode</h4>
+                  <p className="text-amber-700 text-sm mb-2">
+                    Finds shared vocabulary across languages using three matching layers:
+                  </p>
+                  <ul className="text-amber-700 text-sm space-y-1 ml-4 list-disc list-inside">
+                    <li><strong>Curated pairs</strong> — hand-verified Greek-Latin equivalences</li>
+                    <li><strong>V3 dictionary</strong> — 34,500+ Greek-Latin word pairs from Tesserae V3 scholars</li>
+                    <li><strong>Cognate detection</strong> — automatic transliteration matching (e.g., Greek <em>philosophia</em> → Latin <em>philosophia</em>, <em>Olympos</em> → <em>Olympus</em>)</li>
+                  </ul>
+                  <p className="text-amber-700 text-sm mt-2">
+                    Scores matches by word rarity (IDF). Matched words are highlighted in the results.
                   </p>
                 </div>
               </div>
               <div className="mt-4 bg-gray-50 p-4 rounded-lg">
+                <h4 className="font-medium text-gray-900 mb-2">Greek Input</h4>
                 <p className="text-gray-700 text-sm">
-                  <strong>Example:</strong> Compare Homer's Iliad Book 1 (Greek) with Vergil's Aeneid Book 1 (Latin) 
+                  Greek text can be entered with or without diacritics (accents, breathings, iota subscript).
+                  The search normalizes diacritics automatically, so <em>ἄνδρα</em> and <em>ανδρα</em> are treated identically.
+                </p>
+              </div>
+              <div className="mt-4 bg-gray-50 p-4 rounded-lg">
+                <p className="text-gray-700 text-sm">
+                  <strong>Example:</strong> Compare Homer's Iliad Book 1 (Greek) with Vergil's Aeneid Book 1 (Latin)
                   to discover how Vergil adapted Homeric themes and vocabulary.
                 </p>
               </div>
@@ -602,68 +808,48 @@ export default function HelpPage() {
 
           {activeSection === 'syntax-texts' && (
             <div className="prose max-w-none">
-              <h3 className="text-xl font-semibold text-gray-900 mb-4">Texts with Syntax Matching</h3>
+              <h3 className="text-xl font-semibold text-gray-900 mb-4">Syntax Matching</h3>
               <p className="text-gray-700 mb-4">
-                Syntax matching uses Universal Dependencies (UD) treebank data to compare grammatical structures 
-                between passages. This feature is only available for texts that have been annotated in UD treebanks.
+                Syntax matching compares grammatical dependency structures between passages, detecting parallel
+                sentence construction even when no vocabulary is shared. It is one of the nine channels in Fusion search
+                and can also be used as a standalone feature boost.
               </p>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                <div className="bg-red-50 p-4 rounded border border-red-200">
-                  <h4 className="font-medium text-red-800 mb-2">Latin Texts (UD-Latin-Perseus)</h4>
-                  <ul className="text-sm text-gray-700 space-y-1">
-                    <li>Vergil, Aeneid</li>
-                    <li>Ovid, Metamorphoses (selections)</li>
-                    <li>Propertius, Elegies</li>
-                    <li>Petronius, Satyricon</li>
-                    <li>Cicero, Letters to Atticus (selections)</li>
-                  </ul>
-                </div>
-                <div className="bg-red-50 p-4 rounded border border-red-200">
-                  <h4 className="font-medium text-red-800 mb-2">Latin Texts (UD-Latin-PROIEL)</h4>
-                  <ul className="text-sm text-gray-700 space-y-1">
-                    <li>Cicero, Letters to Atticus</li>
-                    <li>Jerome, Vulgate (Genesis, Revelation, Ephesians)</li>
-                    <li>Palladius, Opus Agriculturae</li>
-                    <li>Caesar, Commentarii de Bello Gallico</li>
-                  </ul>
-                </div>
-                <div className="bg-amber-50 p-4 rounded border border-amber-200">
-                  <h4 className="font-medium text-amber-800 mb-2">Greek Texts (UD-Ancient_Greek-Perseus)</h4>
-                  <ul className="text-sm text-gray-700 space-y-1">
-                    <li>Homer, Iliad and Odyssey</li>
-                    <li>Hesiod, Works and Days, Theogony, Shield</li>
-                    <li>Aeschylus, Agamemnon, Eumenides, Libation Bearers, Persians, Prometheus Bound, Seven Against Thebes, Suppliants</li>
-                    <li>Sophocles, Ajax, Antigone, Electra, Oedipus at Colonus, Oedipus Tyrannus, Philoctetes, Trachiniae</li>
-                    <li>Plato, Euthyphro</li>
-                  </ul>
-                </div>
-                <div className="bg-amber-50 p-4 rounded border border-amber-200">
-                  <h4 className="font-medium text-amber-800 mb-2">Greek Texts (UD-Ancient_Greek-PROIEL)</h4>
-                  <ul className="text-sm text-gray-700 space-y-1">
-                    <li>New Testament (all books)</li>
-                    <li>Herodotus, Histories</li>
-                    <li>Sphrantzes, Chronicle</li>
-                  </ul>
-                </div>
+
+              <div className="bg-red-50 p-4 rounded border border-red-200 mb-4">
+                <h4 className="font-medium text-red-800 mb-2">Latin — Full Coverage</h4>
+                <p className="text-sm text-gray-700">
+                  All <strong>1,429 Latin texts</strong> in the corpus (542,000+ lines) have been parsed for syntactic
+                  dependencies using LatinPipe, a state-of-the-art Latin dependency parser. This means syntax matching
+                  works for <em>any</em> Latin text pair — not just a curated subset.
+                </p>
               </div>
-              <div className="bg-gray-100 p-4 rounded mb-4">
+
+              <div className="bg-amber-50 p-4 rounded border border-amber-200 mb-4">
+                <h4 className="font-medium text-amber-800 mb-2">Greek & English — Not Yet Available</h4>
+                <p className="text-sm text-gray-700">
+                  Syntax parsing has not yet been completed for Greek or English texts. When both texts in a comparison
+                  are Greek or English, the syntax channel contributes no results. This is a planned future enhancement.
+                </p>
+              </div>
+
+              <div className="bg-gray-50 p-4 rounded mb-4">
+                <h4 className="font-medium text-gray-900 mb-2">How It Works</h4>
                 <p className="text-sm text-gray-600">
-                  <strong>Note:</strong> Syntax matching will only produce results when both the source and target 
-                  texts have UD treebank annotations. For best results, select texts from the same treebank source.
+                  Each line is represented as a set of dependency relation patterns (e.g., <code className="bg-gray-200 px-1 rounded">nsubj→VERB</code>,
+                  {' '}<code className="bg-gray-200 px-1 rounded">amod→NOUN</code>). Lines with similar grammatical structures
+                  receive high syntax similarity scores. This catches parallels where an author mirrors sentence
+                  structure — subject-verb-object order, subordinate clause placement, participial constructions — without
+                  reusing any of the same words.
                 </p>
               </div>
 
               <div className="bg-blue-50 p-4 rounded border border-blue-200">
-                <h4 className="font-medium text-blue-800 mb-2">Data Sources & Credits</h4>
-                <p className="text-sm text-gray-700 mb-2">
-                  Syntactic annotations are provided by the <a href="https://universaldependencies.org/" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Universal Dependencies</a> project:
+                <h4 className="font-medium text-blue-800 mb-2">Credits</h4>
+                <p className="text-sm text-gray-700">
+                  Latin syntactic annotations are produced by <strong>LatinPipe</strong> (Straka & Straková, Charles University),
+                  a neural dependency parser trained on Universal Dependencies treebanks. The parser processes raw Latin text
+                  into full dependency trees with part-of-speech tags and grammatical relations.
                 </p>
-                <ul className="text-sm text-gray-700 space-y-1 ml-4">
-                  <li><strong>UD-Latin-Perseus</strong>: Treebank from the <a href="http://www.perseus.tufts.edu/" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Perseus Digital Library</a>, converted by Giuseppe G. A. Celano</li>
-                  <li><strong>UD-Latin-PROIEL</strong>: From the <a href="https://proiel.github.io/" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">PROIEL Treebank</a> (Pragmatic Resources in Old Indo-European Languages), Dag Haug et al.</li>
-                  <li><strong>UD-Ancient_Greek-Perseus</strong>: Greek treebank from the <a href="http://www.perseus.tufts.edu/" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Perseus Digital Library</a>, converted by Giuseppe G. A. Celano</li>
-                  <li><strong>UD-Ancient_Greek-PROIEL</strong>: From the <a href="https://proiel.github.io/" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">PROIEL Treebank</a>, Dag Haug et al.</li>
-                </ul>
               </div>
             </div>
           )}
@@ -701,33 +887,59 @@ export default function HelpPage() {
               <h3 className="text-xl font-semibold text-gray-900 mb-4">Frequently Asked Questions</h3>
               <div className="space-y-6">
                 <div>
+                  <h4 className="font-medium text-gray-900">What is Fusion search and should I use it?</h4>
+                  <p className="text-gray-600 text-sm mt-1">
+                    Fusion is the default search mode. It runs nine independent detection channels simultaneously
+                    and combines their results, finding 91% of known parallels in benchmark tests. Unless you need
+                    to isolate a specific detection method, Fusion is recommended for general use.
+                  </p>
+                </div>
+                <div>
                   <h4 className="font-medium text-gray-900">Why is my search taking so long?</h4>
                   <p className="text-gray-600 text-sm mt-1">
-                    Try searching smaller sections (e.g., individual books) for faster results. 
-                    Semantic and cross-lingual searches take longer than lemma matching.
+                    Fusion search runs nine channels, which takes longer than a single-channel search.
+                    Try searching smaller sections (e.g., individual books) for faster results. Large text pairs
+                    like the full Aeneid vs. Metamorphoses can take up to 15 minutes on first run but are cached
+                    for subsequent searches. A progress timer is shown during the search.
                   </p>
                 </div>
                 <div>
                   <h4 className="font-medium text-gray-900">Can I request a text that's not in the corpus?</h4>
-                  <p className="text-gray-600 text-sm mt-1">Yes! Use the "Request a Text" section in this Help page.</p>
+                  <p className="text-gray-600 text-sm mt-1">
+                    Yes! Use the{' '}
+                    <button onClick={() => setActiveSection('upload-text')} className="text-red-600 hover:underline">
+                      Upload Your Text
+                    </button>
+                    {' '}section in this Help page.
+                  </p>
                 </div>
                 <div>
                   <h4 className="font-medium text-gray-900">How do I save my results?</h4>
                   <p className="text-gray-600 text-sm mt-1">
-                    Use "Export CSV" to download results, or "Register" to save parallels to the Repository.
+                    Use "Export CSV" to download results as a spreadsheet, or "Register" to save individual parallels to the Intertext Repository.
                   </p>
                 </div>
                 <div>
                   <h4 className="font-medium text-gray-900">What's the difference between Phrases and Lines search?</h4>
                   <p className="text-gray-600 text-sm mt-1">
-                    Phrases compares two specific texts. Lines searches a single line against the entire corpus.
+                    Phrases compares two specific texts against each other. Lines searches a single line
+                    (selected from a text or typed in) against the entire corpus of 2,100+ texts.
                   </p>
                 </div>
                 <div>
                   <h4 className="font-medium text-gray-900">How does the scoring work?</h4>
                   <p className="text-gray-600 text-sm mt-1">
-                    The V3-style algorithm uses IDF (rare words score higher) and distance penalties 
-                    (closer words score higher). More matching words also increase the score.
+                    In Fusion mode, each channel's score is multiplied by a weight and summed, with a convergence
+                    bonus for pairs found by multiple channels. In individual channel mode, the V3-style algorithm
+                    uses IDF (rare words score higher) and distance penalties (closer words score higher).
+                  </p>
+                </div>
+                <div>
+                  <h4 className="font-medium text-gray-900">Does syntax matching work for Greek and English?</h4>
+                  <p className="text-gray-600 text-sm mt-1">
+                    Not yet. All 1,429 Latin texts have been parsed for syntax, but Greek and English syntax
+                    parsing is a planned future enhancement. The syntax channel simply contributes no results for
+                    non-Latin text pairs.
                   </p>
                 </div>
               </div>
@@ -775,39 +987,39 @@ export default function HelpPage() {
               </div>
               
               {/* Text Formatter Utility */}
-              <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
-                <h4 className="font-semibold text-green-900 mb-3">Text Formatter Utility</h4>
-                <p className="text-green-800 text-sm mb-4">
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
+                <h4 className="font-semibold text-amber-900 mb-3">Text Formatter Utility</h4>
+                <p className="text-amber-900 text-sm mb-4">
                   Paste your plain text below and we'll convert it to .tess format automatically.
                 </p>
                 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
                   <div>
-                    <label className="block text-xs font-medium text-green-800 mb-1">Author</label>
+                    <label className="block text-xs font-medium text-amber-900 mb-1">Author</label>
                     <input 
                       type="text" 
                       value={formatterAuthor} 
                       onChange={e => setFormatterAuthor(e.target.value)}
                       placeholder="e.g., Vergil"
-                      className="w-full border border-green-300 rounded px-2 py-1 text-sm"
+                      className="w-full border border-amber-300 rounded px-2 py-1 text-sm"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-green-800 mb-1">Work</label>
+                    <label className="block text-xs font-medium text-amber-900 mb-1">Work</label>
                     <input 
                       type="text" 
                       value={formatterWork} 
                       onChange={e => setFormatterWork(e.target.value)}
                       placeholder="e.g., Aeneid"
-                      className="w-full border border-green-300 rounded px-2 py-1 text-sm"
+                      className="w-full border border-amber-300 rounded px-2 py-1 text-sm"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-green-800 mb-1">Text Type</label>
+                    <label className="block text-xs font-medium text-amber-900 mb-1">Text Type</label>
                     <select 
                       value={formatterTextType} 
                       onChange={e => setFormatterTextType(e.target.value)}
-                      className="w-full border border-green-300 rounded px-2 py-1 text-sm"
+                      className="w-full border border-amber-300 rounded px-2 py-1 text-sm"
                     >
                       <option value="poetry">Poetry (book.line)</option>
                       <option value="prose">Prose (section.para)</option>
@@ -816,23 +1028,23 @@ export default function HelpPage() {
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <label className="block text-xs font-medium text-green-800 mb-1">Start Book</label>
+                      <label className="block text-xs font-medium text-amber-900 mb-1">Start Book</label>
                       <input 
                         type="number" 
                         min="1"
                         value={formatterStartBook} 
                         onChange={e => setFormatterStartBook(e.target.value)}
-                        className="w-full border border-green-300 rounded px-2 py-1 text-sm"
+                        className="w-full border border-amber-300 rounded px-2 py-1 text-sm"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-green-800 mb-1">Start Line</label>
+                      <label className="block text-xs font-medium text-amber-900 mb-1">Start Line</label>
                       <input 
                         type="number" 
                         min="1"
                         value={formatterStartLine} 
                         onChange={e => setFormatterStartLine(e.target.value)}
-                        className="w-full border border-green-300 rounded px-2 py-1 text-sm"
+                        className="w-full border border-amber-300 rounded px-2 py-1 text-sm"
                       />
                     </div>
                   </div>
@@ -840,25 +1052,25 @@ export default function HelpPage() {
                 
                 <div className="grid md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-medium text-green-800 mb-1">Paste Raw Text (one line per row)</label>
+                    <label className="block text-xs font-medium text-amber-900 mb-1">Paste Raw Text (one line per row)</label>
                     <textarea 
                       value={formatterRawText}
                       onChange={e => setFormatterRawText(e.target.value)}
                       placeholder="Arma virumque cano, Troiae qui primus ab oris&#10;Italiam, fato profugus, Laviniaque venit&#10;litora, multum ille et terris iactatus et alto"
                       rows={8}
-                      className="w-full border border-green-300 rounded px-2 py-2 text-sm font-mono"
+                      className="w-full border border-amber-300 rounded px-2 py-2 text-sm font-mono"
                     />
-                    <p className="text-xs text-green-700 mt-1">
+                    <p className="text-xs text-amber-700 mt-1">
                       Tip: Lines starting with "Book", "Liber", "Chapter", or "Act" followed by a number will start a new section.
                     </p>
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-green-800 mb-1">Formatted .tess Output</label>
+                    <label className="block text-xs font-medium text-amber-900 mb-1">Formatted .tess Output</label>
                     <textarea 
                       value={formatterOutput}
                       readOnly
                       rows={8}
-                      className="w-full border border-green-300 rounded px-2 py-2 text-sm font-mono bg-white"
+                      className="w-full border border-amber-300 rounded px-2 py-2 text-sm font-mono bg-white"
                       placeholder="Formatted output will appear here..."
                     />
                     {formatterOutput && (
@@ -866,14 +1078,14 @@ export default function HelpPage() {
                         <button 
                           type="button"
                           onClick={copyFormatterOutput}
-                          className="px-3 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700"
+                          className="px-3 py-1 text-xs bg-amber-600 text-white rounded hover:bg-amber-700"
                         >
                           {formatterCopied ? 'Copied!' : 'Copy to Clipboard'}
                         </button>
                         <button 
                           type="button"
                           onClick={downloadFormatterOutput}
-                          className="px-3 py-1 text-xs bg-green-700 text-white rounded hover:bg-green-800"
+                          className="px-3 py-1 text-xs bg-amber-700 text-white rounded hover:bg-amber-800"
                         >
                           Download .tess File
                         </button>
@@ -886,7 +1098,7 @@ export default function HelpPage() {
                   type="button"
                   onClick={formatToTess}
                   disabled={!formatterAuthor.trim() || !formatterWork.trim() || !formatterRawText.trim()}
-                  className="mt-3 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="mt-3 px-4 py-2 bg-amber-600 text-white rounded hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Format Text
                 </button>
@@ -946,7 +1158,7 @@ export default function HelpPage() {
                     rows={3} className="w-full border rounded px-3 py-2 text-sm" />
                 </div>
                 {requestMessage && (
-                  <div className={`p-3 rounded text-sm ${requestMessage.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+                  <div className={`p-3 rounded text-sm ${requestMessage.type === 'success' ? 'bg-amber-50 text-amber-700' : 'bg-red-50 text-red-700'}`}>
                     {requestMessage.text}
                   </div>
                 )}
@@ -994,7 +1206,7 @@ export default function HelpPage() {
                     rows={5} required className="w-full border rounded px-3 py-2 text-sm" />
                 </div>
                 {feedbackStatus && (
-                  <div className={`p-3 rounded text-sm ${feedbackStatus.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+                  <div className={`p-3 rounded text-sm ${feedbackStatus.type === 'success' ? 'bg-amber-50 text-amber-700' : 'bg-red-50 text-red-700'}`}>
                     {feedbackStatus.text}
                   </div>
                 )}

@@ -14,6 +14,11 @@ print("=" * 50)
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'backend'))
 
+# Signal to app.py that we're running Flask directly (not behind Apache).
+# This enables /api prefix on all routes since there's no Apache WSGIScriptAlias
+# to strip it for us.
+os.environ['TESSERAE_DIRECT_SERVER'] = '1'
+
 try:
     print("Importing Flask application...")
     from backend.app import app, start_cache_init

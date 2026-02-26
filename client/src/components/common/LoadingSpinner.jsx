@@ -1,15 +1,10 @@
+import { formatElapsedTime } from '../../utils/formatting';
+
 const LoadingSpinner = ({ size = 'md', text = 'Loading...', elapsedTime = null, step = null }) => {
   const sizeClasses = {
     sm: 'w-4 h-4',
     md: 'w-6 h-6',
     lg: 'w-8 h-8'
-  };
-  
-  const formatTime = (seconds) => {
-    if (seconds < 60) return `${seconds}s`;
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}m ${secs}s`;
   };
   
   return (
@@ -22,7 +17,7 @@ const LoadingSpinner = ({ size = 'md', text = 'Loading...', elapsedTime = null, 
         <div className="flex items-center gap-3 text-sm text-gray-500">
           {step && <span className="font-medium">{step}</span>}
           {elapsedTime !== null && elapsedTime > 0 && (
-            <span className="tabular-nums">{formatTime(elapsedTime)} elapsed</span>
+            <span className="tabular-nums">{formatElapsedTime(elapsedTime)} elapsed</span>
           )}
         </div>
       )}

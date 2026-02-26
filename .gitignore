@@ -60,8 +60,9 @@ backend/embeddings/
 # Attached assets (user uploads during development)
 attached_assets/
 
-# Data files (not code)
-trans3.csv
+# Research artifacts (large files)
+research/datasets/
+research/references/
 
 # Private drafts and manuals (stay on Replit only)
 docs/ARTICLE_METHODS_DRAFT.md
@@ -79,5 +80,10 @@ evaluation/
 # Pre-computed embeddings (too large for Git)
 backend/embeddings/
 
-# Large dataset files
-vf_intertext_dataset_2.0.tab
+# Research directory (private plans, writing, evaluation output)
+research/
+docs/FUSION_ARCHITECTURE.md
+docs/HOW_TESSERAE_SEARCHES.md
+
+# Claude Code project instructions (private)
+CLAUDE.md

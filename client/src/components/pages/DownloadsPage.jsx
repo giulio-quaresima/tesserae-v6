@@ -382,18 +382,6 @@ const DownloadsPage = () => {
               Download
             </a>
           </div>
-          <div className="flex items-center justify-between p-3 bg-gray-50 rounded">
-            <div>
-              <span className="font-medium">Extended Latin Lemma Table</span>
-              <span className="text-sm text-gray-500 ml-2">(optional, 15 MB)</span>
-            </div>
-            <a
-              href="https://tesserae.caset.buffalo.edu/tesserae-data/latin_lemmas_extended.db.tar.gz"
-              className="px-4 py-2 bg-red-700 text-white rounded hover:bg-red-800 text-sm"
-            >
-              Download
-            </a>
-          </div>
         </div>
 
         <p className="text-xs text-gray-500 mt-4">
