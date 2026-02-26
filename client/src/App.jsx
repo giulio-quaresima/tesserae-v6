@@ -143,6 +143,7 @@ function App() {
     progressText: searchProgressText,
     elapsedTime: searchElapsedTime,
     fusionProgress,
+    hasSearched,
     search,
     searchRareWords,
     searchWordPairs,
@@ -606,7 +607,7 @@ function App() {
               )}
             </div>
 
-            {(results.length > 0 || searchLoading || searchError) && !showCorpusSearch && (
+            {(results.length > 0 || searchLoading || searchError || hasSearched) && !showCorpusSearch && (
               <div className="bg-white rounded-lg shadow p-4 sm:p-6">
                 {searchMode === 'hapax' || searchMode === 'bigram' ? (
                   <RareResultsDisplay
