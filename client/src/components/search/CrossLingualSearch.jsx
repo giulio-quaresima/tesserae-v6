@@ -35,6 +35,8 @@ export default function CrossLingualSearch() {
   const [sortBy, setSortBy] = useState('score');
   const [showDistributionChart, setShowDistributionChart] = useState(false);
   const [distributionChartView, setDistributionChartView] = useState('target');
+  const [elapsedTime, setElapsedTime] = useState(0);
+  const timerRef = useRef(null);
   const [chartFilter, setChartFilter] = useState(null);
   const chartRef = useRef(null);
   const hasSearchedRef = useRef(false);
@@ -86,6 +88,26 @@ export default function CrossLingualSearch() {
       }
     }
   }, [matchMode, sourceSection, targetSection, searchLoading, doSearch]);
+
+  useEffect(() => {
+    if (searchLoading) {
+      const startTime = Date.now();
+      setElapsedTime(0);
+      timerRef.current = setInterval(() => {
+        setElapsedTime(Math.floor((Date.now() - startTime) / 1000));
+      }, 1000);
+    } else {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+    }
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+    };
+  }, [searchLoading]);
 
   const loadHierarchies = async () => {
     setLoading(true);
@@ -383,11 +405,11 @@ export default function CrossLingualSearch() {
                   }
                 }
               }}
-              disabled={true}
-              title="Coming soon - AI semantic matching will be available in a future update"
-              className={`px-4 py-2 rounded text-sm bg-gray-100 text-gray-400 cursor-not-allowed`}
+              disabled={searchLoading}
+              title="Finds semantic parallels using SPhilBERTa cross-lingual embeddings"
+              className={`px-4 py-2 rounded text-sm ${matchMode === 'ai' ? 'bg-red-700 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'} disabled:opacity-50`}
             >
-              AI Semantic (Coming Soon)
+              AI Semantic
             </button>
             <button
               onClick={() => {
@@ -433,7 +455,7 @@ export default function CrossLingualSearch() {
         </div>
       )}
 
-      {searchLoading && <LoadingSpinner text="Searching for cross-lingual parallels..." />}
+      {searchLoading && <LoadingSpinner text="Searching for cross-lingual parallels..." elapsedTime={elapsedTime} />}
 
       {results.length > 0 && (
         <div className="bg-white rounded-lg shadow overflow-hidden">
@@ -502,7 +524,10 @@ export default function CrossLingualSearch() {
           <div className="divide-y divide-gray-200">
             {sortedResults.slice(0, displayLimit).map((result, i) => (
               <div key={i} className="p-4">
-                <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-xs text-gray-400 min-w-[2.5rem] text-right shrink-0 leading-none">
+                    {i + 1}.
+                  </span>
                   <span className="text-sm font-medium text-gray-500">
                     Score: {(result.overall_score || result.score)?.toFixed(3)}
                   </span>

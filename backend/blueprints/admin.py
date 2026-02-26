@@ -9,7 +9,7 @@ import json
 
 from backend.db_utils import get_db_cursor
 from backend.logging_config import get_logger
-from backend.utils import get_text_metadata, get_override, set_override, load_metadata_overrides, safe_listdir
+from backend.utils import get_text_metadata, get_override, set_override, safe_listdir
 from backend.lemma_cache import (
     rebuild_lemma_cache, get_cache_stats as get_lemma_cache_stats,
     clear_lemma_cache
@@ -18,7 +18,7 @@ from backend.frequency_cache import recalculate_language_frequencies, clear_freq
 from backend.cache import clear_cache as clear_search_cache, get_cache_stats as get_search_cache_stats
 from backend.feature_extractor import feature_extractor
 from backend.bigram_frequency import (
-    calculate_bigram_frequencies, get_bigram_frequencies, 
+    calculate_bigram_frequencies,
     get_bigram_stats, is_bigram_cache_available
 )
 
@@ -474,12 +474,11 @@ def _update_text_provenance(text_id, author, title, language):
 
 
 def _add_to_text_sources(author, work, e_source, e_source_url, print_source, added_by):
-    """Append a new entry to data/text_sources.json for the Sources page."""
+    """Append a new entry to backend/text_sources.json for the Sources page."""
     if not any([e_source, print_source, added_by]):
         return
     try:
-        project_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-        sources_path = os.path.join(project_root, 'data', 'text_sources.json')
+        sources_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'text_sources.json')
         
         if os.path.exists(sources_path):
             with open(sources_path, 'r', encoding='utf-8') as f:
@@ -507,9 +506,8 @@ def _add_to_text_sources(author, work, e_source, e_source_url, print_source, add
 
 
 def _get_sources_path():
-    """Return the path to data/text_sources.json."""
-    project_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-    return os.path.join(project_root, 'data', 'text_sources.json')
+    """Return the path to backend/text_sources.json."""
+    return os.path.join(os.path.dirname(os.path.dirname(__file__)), 'text_sources.json')
 
 
 def _load_sources():

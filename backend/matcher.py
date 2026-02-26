@@ -33,9 +33,157 @@ def normalize_latin(text):
     return text.lower().replace('v', 'u')
 
 from collections import defaultdict, Counter
-import math
+import os
+from concurrent.futures import ProcessPoolExecutor
 from backend.zipf import find_zipf_elbow
-from backend.feature_extractor import feature_extractor
+
+
+def _get_trigrams(token):
+    """Extract character trigrams (standalone for pickling)."""
+    if len(token) < 3:
+        return set()
+    token = token.lower()
+    return set(token[i:i+3] for i in range(len(token) - 2))
+
+
+def _sound_chunk_worker(args):
+    """Process a chunk of source units for sound matching."""
+    chunk_src, tgt_trigram_cache, min_sound_score, top_n_per_source = args
+
+    matches = []
+    for src_idx, src_tokens, src_trigrams in chunk_src:
+        if not src_trigrams:
+            continue
+
+        src_candidates = []
+        for tgt_idx, (tgt_tokens, tgt_trigrams) in enumerate(tgt_trigram_cache):
+            if not tgt_trigrams:
+                continue
+            intersection = len(src_trigrams & tgt_trigrams)
+            union = len(src_trigrams | tgt_trigrams)
+            sim = intersection / union if union > 0 else 0
+            if sim >= min_sound_score:
+                src_candidates.append((tgt_idx, tgt_tokens, sim))
+
+        src_candidates.sort(key=lambda x: x[2], reverse=True)
+        for tgt_idx, tgt_tokens, sim in src_candidates[:top_n_per_source]:
+            tgt_trigrams = tgt_trigram_cache[tgt_idx][1]
+            shared = sorted(
+                list(src_trigrams & tgt_trigrams),
+                key=lambda t: sum(1 for tok in src_tokens + tgt_tokens
+                                  if t in tok.lower()),
+                reverse=True
+            )[:10]
+
+            trigram_tokens = {}
+            for tri in shared:
+                src_toks = [t for t in src_tokens if tri in t.lower()]
+                tgt_toks = [t for t in tgt_tokens if tri in t.lower()]
+                if src_toks and tgt_toks:
+                    for st in src_toks[:2]:
+                        for tt in tgt_toks[:2]:
+                            if st.lower() != tt.lower():
+                                trigram_tokens[tri] = (st, tt)
+                                break
+                        if tri in trigram_tokens:
+                            break
+
+            matches.append({
+                'source_idx': src_idx,
+                'target_idx': tgt_idx,
+                'matched_lemmas': [],
+                'match_basis': 'sound',
+                'sound_score': sim,
+                'shared_trigrams': shared,
+                'trigram_tokens': trigram_tokens
+            })
+
+    return matches
+
+
+def _edit_distance_chunk_worker(args):
+    """Process a chunk of source units for edit distance matching.
+
+    Runs in a separate process for true CPU parallelism.
+    """
+    from rapidfuzz import fuzz
+
+    (chunk, tgt_token_lists, trigram_to_targets,
+     min_similarity, min_matches, include_exact_in_count,
+     min_shared_trigrams, top_n_per_source) = args
+
+    threshold = int(min_similarity * 100)
+    matches = []
+    comparisons = 0
+
+    for src_idx, src_tokens in chunk:
+        if not src_tokens:
+            continue
+
+        # Find candidate targets sharing trigrams
+        candidate_targets = Counter()
+        for token in src_tokens:
+            for trigram in _get_trigrams(token):
+                for tgt_idx in trigram_to_targets.get(trigram, ()):
+                    candidate_targets[tgt_idx] += 1
+
+        filtered = [i for i, c in candidate_targets.items()
+                    if c >= min_shared_trigrams]
+
+        src_candidates = []
+        for tgt_idx in filtered:
+            tgt_tokens = tgt_token_lists[tgt_idx]
+            if not tgt_tokens:
+                continue
+
+            comparisons += 1
+
+            # Fuzzy matching (inline to avoid pickling feature_extractor)
+            fuzzy_matches = []
+            for st in src_tokens:
+                if len(st) < 3:
+                    continue
+                for tt in tgt_tokens:
+                    if len(tt) < 3:
+                        continue
+                    sim = fuzz.ratio(st, tt)
+                    if sim >= threshold and st != tt:
+                        fuzzy_matches.append({
+                            'source_token': st,
+                            'target_token': tt,
+                            'similarity': sim / 100.0
+                        })
+
+            # Count exact matches
+            src_norm = {normalize_greek(t) for t in src_tokens}
+            tgt_norm = {normalize_greek(t) for t in tgt_tokens}
+            exact_count = len(src_norm & tgt_norm) if include_exact_in_count else 0
+            unique_src = set(m['source_token'] for m in fuzzy_matches)
+            unique_tgt = set(m['target_token'] for m in fuzzy_matches)
+            num_fuzzy = min(len(unique_src), len(unique_tgt))
+            num_total = exact_count + num_fuzzy
+
+            if num_total >= min_matches:
+                avg_sim = (sum(m['similarity'] for m in fuzzy_matches)
+                           / len(fuzzy_matches)) if fuzzy_matches else 1.0
+                src_candidates.append(
+                    (tgt_idx, tgt_tokens, fuzzy_matches, avg_sim, num_total)
+                )
+
+        src_candidates.sort(key=lambda x: (x[4], x[3]), reverse=True)
+        for tgt_idx, tgt_tokens, fuzzy_matches, avg_sim, num_pairs in \
+                src_candidates[:top_n_per_source]:
+            matches.append({
+                'source_idx': src_idx,
+                'target_idx': tgt_idx,
+                'matched_lemmas': [],
+                'match_basis': 'edit_distance',
+                'edit_score': avg_sim,
+                'num_matches': num_pairs,
+                'fuzzy_matches': fuzzy_matches[:8]
+            })
+
+    return matches, comparisons
 
 DEFAULT_LATIN_STOP_WORDS_LIST = [
     'et', 'in', 'est', 'non', 'ut', 'cum', 'ad', 'sed', 'si', 'quod',
@@ -329,89 +477,60 @@ class Matcher:
     def find_sound_matches(self, source_units, target_units, settings=None):
         """
         Find matches based on sound similarity using character trigrams.
-        This is an alternative to lemma/exact matching for detecting alliteration,
-        rhyme, assonance, and other phonetic patterns.
-        
-        Performance safeguards:
-        - Pre-computes trigram sets for all units
-        - Uses similarity floor to skip low-quality pairs early
-        - Per-source top-N targeting ensures coverage across all source units
-        - Returns top N results by score
+        Parallelized for large text pairs.
         """
         settings = settings or {}
         min_sound_score = settings.get('min_sound_score', 0.25)
         max_results = settings.get('max_results', 500)
         top_n_per_source = settings.get('sound_top_n', 10)
-        
+
         src_trigram_cache = []
         for src_unit in source_units:
             src_tokens = [t for t in src_unit.get('tokens', []) if len(t) >= 3]
             src_trigrams = set()
             for token in src_tokens:
-                src_trigrams.update(feature_extractor.get_trigrams(token))
+                src_trigrams.update(_get_trigrams(token))
             src_trigram_cache.append((src_tokens, src_trigrams))
-        
+
         tgt_trigram_cache = []
         for tgt_unit in target_units:
             tgt_tokens = [t for t in tgt_unit.get('tokens', []) if len(t) >= 3]
             tgt_trigrams = set()
             for token in tgt_tokens:
-                tgt_trigrams.update(feature_extractor.get_trigrams(token))
+                tgt_trigrams.update(_get_trigrams(token))
             tgt_trigram_cache.append((tgt_tokens, tgt_trigrams))
-        
-        matches = []
-        
-        for src_idx, (src_tokens, src_trigrams) in enumerate(src_trigram_cache):
-            if not src_trigrams:
-                continue
-            
-            src_candidates = []
-            for tgt_idx, (tgt_tokens, tgt_trigrams) in enumerate(tgt_trigram_cache):
-                if not tgt_trigrams:
-                    continue
-                
-                intersection = len(src_trigrams & tgt_trigrams)
-                union = len(src_trigrams | tgt_trigrams)
-                unit_similarity = intersection / union if union > 0 else 0
-                
-                if unit_similarity >= min_sound_score:
-                    src_candidates.append((tgt_idx, tgt_tokens, unit_similarity))
-            
-            src_candidates.sort(key=lambda x: x[2], reverse=True)
-            for tgt_idx, tgt_tokens, unit_similarity in src_candidates[:top_n_per_source]:
-                tgt_trigrams = tgt_trigram_cache[tgt_idx][1]
-                shared_trigrams = list(src_trigrams & tgt_trigrams)
-                shared_trigrams.sort(key=lambda t: sum(1 for tok in src_tokens + tgt_tokens if t in tok.lower()), reverse=True)
-                top_trigrams = shared_trigrams[:10]
-                
-                trigram_tokens = {}
-                for tri in top_trigrams:
-                    src_toks = [t for t in src_tokens if tri in t.lower()]
-                    tgt_toks = [t for t in tgt_tokens if tri in t.lower()]
-                    if src_toks and tgt_toks:
-                        for st in src_toks[:2]:
-                            for tt in tgt_toks[:2]:
-                                if st.lower() != tt.lower():
-                                    trigram_tokens[tri] = (st, tt)
-                                    break
-                            if tri in trigram_tokens:
-                                break
-                
-                matches.append({
-                    'source_idx': src_idx,
-                    'target_idx': tgt_idx,
-                    'matched_lemmas': [],
-                    'match_basis': 'sound',
-                    'sound_score': unit_similarity,
-                    'shared_trigrams': top_trigrams,
-                    'trigram_tokens': trigram_tokens
-                })
-        
+
+        num_source = len(source_units)
+        num_workers = min(8, os.cpu_count() or 1)
+        use_parallel = num_source >= 200 and num_workers > 1
+
+        if use_parallel:
+            indexed_src = [(i, toks, tris)
+                           for i, (toks, tris) in enumerate(src_trigram_cache)]
+            chunk_size = max(1, len(indexed_src) // num_workers)
+            chunks = [indexed_src[i:i + chunk_size]
+                      for i in range(0, len(indexed_src), chunk_size)]
+
+            worker_args = [(chunk, tgt_trigram_cache, min_sound_score,
+                            top_n_per_source) for chunk in chunks]
+
+            matches = []
+            with ProcessPoolExecutor(max_workers=num_workers) as executor:
+                for chunk_matches in executor.map(_sound_chunk_worker,
+                                                  worker_args):
+                    matches.extend(chunk_matches)
+        else:
+            indexed_src = [(i, toks, tris)
+                           for i, (toks, tris) in enumerate(src_trigram_cache)]
+            args = (indexed_src, tgt_trigram_cache, min_sound_score,
+                    top_n_per_source)
+            matches = _sound_chunk_worker(args)
+
         matches.sort(key=lambda x: x.get('sound_score', 0), reverse=True)
-        
+
         if max_results > 0:
             matches = matches[:max_results]
-        
+
         return matches, 0
     
     def find_edit_distance_matches(self, source_units, target_units, settings=None):
@@ -430,6 +549,8 @@ class Matcher:
         max_results = settings.get('max_results', 500)
         top_n_per_source = settings.get('edit_top_n', 10)
         stoplist_size = settings.get('stoplist_size', 0)
+        include_exact_in_count = settings.get('edit_include_exact', True)  # Count exact matches toward min_matches (Filum-like)
+        min_shared_trigrams = settings.get('edit_min_shared_trigrams', 2)
         
         num_source = len(source_units)
         num_target = len(target_units)
@@ -468,77 +589,56 @@ class Matcher:
             tgt_token_lists.append(tokens)
         
         # Build trigram index for target tokens → target unit indices
-        # This allows O(1) lookup of candidate lines sharing similar trigrams
-        # Uses feature_extractor's existing get_trigrams method
-        trigram_to_targets = defaultdict(set)
+        trigram_to_targets = defaultdict(list)
         for tgt_idx, tgt_tokens in enumerate(tgt_token_lists):
             for token in tgt_tokens:
-                for trigram in feature_extractor.get_trigrams(token):
-                    trigram_to_targets[trigram].add(tgt_idx)
-        
+                for trigram in _get_trigrams(token):
+                    trigram_to_targets[trigram].append(tgt_idx)
+        # Convert to tuples for faster pickling
+        trigram_to_targets = {k: tuple(v) for k, v in trigram_to_targets.items()}
+
         print(f"[EDIT_DISTANCE] Built trigram index with {len(trigram_to_targets)} unique trigrams")
-        
-        matches = []
+
         start_time = time.time()
-        last_progress = 0
-        comparisons_made = 0
-        
-        for src_idx, src_tokens in enumerate(src_token_lists):
-            if not src_tokens:
-                continue
-            
-            progress = int((src_idx / num_source) * 100)
-            if progress >= last_progress + 10:
-                elapsed = time.time() - start_time
-                print(f"[EDIT_DISTANCE] Progress: {progress}% ({src_idx}/{num_source}) - {elapsed:.1f}s, {comparisons_made:,} comparisons")
-                last_progress = progress
-            
-            # Find candidate targets that share trigrams with source tokens
-            candidate_targets = Counter()
-            for token in src_tokens:
-                for trigram in feature_extractor.get_trigrams(token):
-                    for tgt_idx in trigram_to_targets.get(trigram, []):
-                        candidate_targets[tgt_idx] += 1
-            
-            # Only compare with targets that share at least 2 trigrams (rough filter)
-            min_shared_trigrams = 2
-            filtered_candidates = [tgt_idx for tgt_idx, count in candidate_targets.items() 
-                                  if count >= min_shared_trigrams]
-            
-            src_candidates = []
-            for tgt_idx in filtered_candidates:
-                tgt_tokens = tgt_token_lists[tgt_idx]
-                if not tgt_tokens:
-                    continue
-                
-                comparisons_made += 1
-                
-                fuzzy_matches = feature_extractor.find_fuzzy_matches(
-                    src_tokens, tgt_tokens, threshold=int(min_similarity * 100)
-                )
-                
-                unique_src = set(m['source_token'] for m in fuzzy_matches)
-                unique_tgt = set(m['target_token'] for m in fuzzy_matches)
-                num_unique_pairs = min(len(unique_src), len(unique_tgt))
-                
-                if num_unique_pairs >= min_matches:
-                    avg_sim = sum(m['similarity'] for m in fuzzy_matches) / len(fuzzy_matches)
-                    src_candidates.append((tgt_idx, tgt_tokens, fuzzy_matches, avg_sim, num_unique_pairs))
-            
-            src_candidates.sort(key=lambda x: (x[4], x[3]), reverse=True)
-            for tgt_idx, tgt_tokens, fuzzy_matches, avg_sim, num_pairs in src_candidates[:top_n_per_source]:
-                matches.append({
-                    'source_idx': src_idx,
-                    'target_idx': tgt_idx,
-                    'matched_lemmas': [],
-                    'match_basis': 'edit_distance',
-                    'edit_score': avg_sim,
-                    'num_matches': num_pairs,
-                    'fuzzy_matches': fuzzy_matches[:8]
-                })
-        
+
+        # Decide whether to parallelize based on problem size
+        num_workers = min(8, os.cpu_count() or 1)
+        use_parallel = num_source >= 200 and num_workers > 1
+
+        if use_parallel:
+            # Split source units into chunks for parallel processing
+            indexed_src = list(enumerate(src_token_lists))
+            chunk_size = max(1, len(indexed_src) // num_workers)
+            chunks = [indexed_src[i:i + chunk_size]
+                      for i in range(0, len(indexed_src), chunk_size)]
+
+            print(f"[EDIT_DISTANCE] Parallel: {len(chunks)} chunks across {num_workers} workers")
+
+            worker_args = [
+                (chunk, tgt_token_lists, trigram_to_targets,
+                 min_similarity, min_matches, include_exact_in_count,
+                 min_shared_trigrams, top_n_per_source)
+                for chunk in chunks
+            ]
+
+            matches = []
+            comparisons_made = 0
+            with ProcessPoolExecutor(max_workers=num_workers) as executor:
+                for chunk_matches, chunk_comparisons in executor.map(
+                        _edit_distance_chunk_worker, worker_args):
+                    matches.extend(chunk_matches)
+                    comparisons_made += chunk_comparisons
+        else:
+            # Small text: run sequentially (no subprocess overhead)
+            all_src = list(enumerate(src_token_lists))
+            args = (all_src, tgt_token_lists, trigram_to_targets,
+                    min_similarity, min_matches, include_exact_in_count,
+                    min_shared_trigrams, top_n_per_source)
+            matches, comparisons_made = _edit_distance_chunk_worker(args)
+
         elapsed = time.time() - start_time
-        print(f"[EDIT_DISTANCE] Complete: {comparisons_made:,} comparisons in {elapsed:.1f}s (vs {num_source * num_target:,} full)")
+        mode = "parallel" if use_parallel else "sequential"
+        print(f"[EDIT_DISTANCE] Complete ({mode}): {comparisons_made:,} comparisons in {elapsed:.1f}s (vs {num_source * num_target:,} full)")
         
         matches.sort(key=lambda x: (x.get('num_matches', 0), x.get('edit_score', 0)), reverse=True)
         

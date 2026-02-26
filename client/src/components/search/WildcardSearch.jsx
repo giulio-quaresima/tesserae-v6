@@ -366,27 +366,33 @@ const WildcardSearch = ({ language }) => {
               </button>
               <button
                 onClick={exportCSV}
-                className="text-sm bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700"
+                className="text-sm bg-amber-600 text-white px-3 py-1 rounded hover:bg-amber-700"
               >
                 Export CSV
               </button>
             </div>
           </div>
 
-          {showTimeline && allResults.some(r => r.era) && (
+          {showTimeline && genreFilteredResults.some(r => r.era) && (
             <div className="p-4 border-b bg-gray-50 space-y-6">
-              <div>
-                <h4 className="text-sm font-medium text-gray-700 mb-2">Period Timeline</h4>
-                <div style={{ height: '180px' }}>
-                  <Bar key={`period-${showPoetry}-${showProse}`} ref={chartRef} data={getTimelineData() || { labels: [], datasets: [] }} options={chartOptions} />
-                </div>
-              </div>
-              <div>
-                <h4 className="text-sm font-medium text-gray-700 mb-2">Author Timeline</h4>
-                <div style={{ height: '180px' }}>
-                  <Bar key={`author-${showPoetry}-${showProse}`} ref={authorChartRef} data={getAuthorTimelineData() || { labels: [], datasets: [] }} options={authorChartOptions} />
-                </div>
-              </div>
+              {getTimelineData() ? (
+                <>
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-700 mb-2">Period Timeline</h4>
+                    <div style={{ height: '180px' }}>
+                      <Bar key={`period-${showPoetry}-${showProse}`} ref={chartRef} data={getTimelineData()} options={chartOptions} />
+                    </div>
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-700 mb-2">Author Timeline</h4>
+                    <div style={{ height: '180px' }}>
+                      <Bar key={`author-${showPoetry}-${showProse}`} ref={authorChartRef} data={getAuthorTimelineData() || { labels: [], datasets: [] }} options={authorChartOptions} />
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <p className="text-sm text-gray-500 text-center py-4">No results match the current genre filter.</p>
+              )}
             </div>
           )}
 
@@ -404,14 +410,24 @@ const WildcardSearch = ({ language }) => {
             </div>
           )}
 
+          {filteredResults.length === 0 && allResults.length > 0 && (
+            <div className="p-8 text-center text-gray-500">
+              <p className="text-sm">No {!showPoetry && showProse ? 'prose' : !showProse && showPoetry ? 'poetry' : ''} results found for this search.</p>
+              <p className="text-xs mt-1">Try enabling {!showPoetry ? 'Poetry' : ''}{!showPoetry && !showProse ? ' and ' : ''}{!showProse ? 'Prose' : ''} above to see results.</p>
+            </div>
+          )}
+
           <div className="divide-y divide-gray-200 max-h-[600px] overflow-y-auto">
             {filteredResults.slice(0, displayLimit).map((r, i) => {
               const refParts = r.reference?.split(/\s+/) || [];
               const locus = refParts[refParts.length - 1] || r.reference || '';
-              
+
               return (
                 <div key={i} className="p-4 hover:bg-gray-50">
                   <div className="flex flex-col sm:flex-row sm:items-start gap-2">
+                    <span className="text-xs text-gray-400 min-w-[2.5rem] text-right shrink-0 leading-none" style={{paddingTop: '1px'}}>
+                      {i + 1}.
+                    </span>
                     <div className="sm:w-48 flex-shrink-0">
                       <div className="text-sm font-medium text-gray-900">
                         {r.author || r.display_name}

@@ -1,3 +1,16 @@
+/**
+ * Format elapsed time in seconds to a human-readable string.
+ * @param {number} seconds - Elapsed time in seconds
+ * @returns {string} Formatted time (e.g., "3.2s" or "2m 15s")
+ */
+export const formatElapsedTime = (seconds) => {
+  if (seconds == null || seconds <= 0) return '';
+  if (seconds < 60) return `${Number(seconds).toFixed(1)}s`;
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.round(seconds % 60);
+  return `${mins}m ${secs}s`;
+};
+
 export const formatDate = (dateString) => {
   if (!dateString) return '';
   const date = new Date(dateString);
@@ -293,6 +306,50 @@ const workTitles = {
   'nat': 'De Rerum Natura',
 };
 
+// Author-specific work abbreviation overrides.
+// These take precedence over the global workTitles map when the author is known.
+// Handles multi-part abbreviations (e.g., "her.o" = Hercules Oetaeus for Seneca).
+const authorWorkOverrides = {
+  'sen': {
+    'her.o': 'Hercules Oetaeus',
+    'her.f': 'Hercules Furens',
+    'herc.f': 'Hercules Furens',
+    'herc.o': 'Hercules Oetaeus',
+    'med': 'Medea',
+    'phoen': 'Phoenissae',
+    'ag': 'Agamemnon',
+    'oed': 'Oedipus',
+    'phaedr': 'Phaedra',
+    'thy': 'Thyestes',
+    'tro': 'Troades',
+  },
+  'seneca': {
+    'her.o': 'Hercules Oetaeus',
+    'her.f': 'Hercules Furens',
+    'herc.f': 'Hercules Furens',
+    'herc.o': 'Hercules Oetaeus',
+    'med': 'Medea',
+    'phoen': 'Phoenissae',
+    'ag': 'Agamemnon',
+    'oed': 'Oedipus',
+    'phaedr': 'Phaedra',
+    'thy': 'Thyestes',
+    'tro': 'Troades',
+  },
+  'alcuin': {
+    'carm': 'Carmina',
+  },
+  'hor': {
+    'carm': 'Odes',
+  },
+  'horace': {
+    'carm': 'Odes',
+  },
+  'hildebert': {
+    'carm': 'Carmina',
+  },
+};
+
 const formatLocation = (loc) => {
   if (!loc) return '';
   return loc.trim().replace(/\s+/g, '.');
@@ -327,18 +384,37 @@ export const formatReference = (ref, language = null) => {
       
       if (firstMeta) {
         const secondPart = parts[1]?.toLowerCase().trim();
+        const thirdPart = parts[2]?.toLowerCase().trim();
+
+        // Check author-specific overrides first (handles multi-part abbreviations)
+        const overrides = authorWorkOverrides[firstKey];
+        if (overrides) {
+          // Try two-part abbreviation first (e.g., "her.o" for Seneca)
+          const twoPartKey = secondPart && thirdPart ? `${secondPart}.${thirdPart}` : null;
+          if (twoPartKey && overrides[twoPartKey]) {
+            const location = formatLocation(parts.slice(3).join('.'));
+            return `${firstMeta.author}, ${overrides[twoPartKey]} ${location}`;
+          }
+          // Try single-part abbreviation (e.g., "med" for Seneca)
+          if (secondPart && overrides[secondPart]) {
+            const location = formatLocation(parts.slice(2).join('.'));
+            return `${firstMeta.author}, ${overrides[secondPart]} ${location}`;
+          }
+        }
+
+        // Fall back to global work titles
         const workTitle = workTitles[secondPart];
-        
+
         if (workTitle) {
           const location = formatLocation(parts.slice(2).join('.'));
           return `${firstMeta.author}, ${workTitle} ${location}`;
         }
-        
+
         if (firstMeta.work) {
           const location = formatLocation(parts.slice(1).join('.'));
           return `${firstMeta.author}, ${firstMeta.work} ${location}`;
         }
-        
+
         const location = formatLocation(parts.slice(1).join('.'));
         return `${firstMeta.author} ${location}`;
       }

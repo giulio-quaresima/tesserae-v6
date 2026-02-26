@@ -11,3 +11,4 @@ flask-login
 Flask-SQLAlchemy
 PyJWT
 stanza
+sentence-transformers>=2.6.0

@@ -29,6 +29,18 @@ Initial public release of Tesserae V6 at https://tesserae-v-6.replit.app
 
 Changes made after the January 26, 2026 release, awaiting next deployment:
 
+### Fusion Search (February 21–22, 2026)
+- **9-channel fusion search** available as "Fusion — All Channels (best recall)" in match type dropdown
+- Combines lemma, lemma_min1, exact, edit_distance, sound, semantic, dictionary, syntax, and rare_word channels
+- Weighted score fusion with convergence bonus (Config D weights)
+- Two-pass line/window architecture: line pass (all 9 channels) + window pass (4 channels: lemma, lemma_min1, rare_word, dictionary) for enjambed allusions
+- Syntax channel restored using syntax_latin.db (542K pre-parsed lines, lemma-inverted-index pruning)
+- SSE streaming with per-channel progress updates
+- Channel badges on results showing which channels found each pair
+- Fused score display and sorting
+- Per-channel result capping (top 50K per channel before fusion)
+- Internal parallelization of edit_distance and sound channels (8 worker processes)
+
 ### Fixes
 - Rare Words Explorer: Fixed asterisk display issue in lemma column
 - Rare Words Explorer: Added author and work columns (previously empty)

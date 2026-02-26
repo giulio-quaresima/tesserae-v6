@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { searchTexts, searchTextsStream, searchHapax, searchBigrams, searchSemanticCross } from '../utils/api';
+import { searchTexts, searchTextsStream, searchFusionStream, searchHapax, searchBigrams, searchSemanticCross } from '../utils/api';
 
 export const useSearch = () => {
   const [results, setResults] = useState([]);
@@ -9,6 +9,8 @@ export const useSearch = () => {
   const [progressText, setProgressText] = useState('');
   const [elapsedTime, setElapsedTime] = useState(0);
   const [searchStats, setSearchStats] = useState(null);
+  const [fusionProgress, setFusionProgress] = useState(null);
+  const [hasSearched, setHasSearched] = useState(false);
   const abortController = useRef(null);
   const timerRef = useRef(null);
   const startTimeRef = useRef(null);
@@ -44,18 +46,30 @@ export const useSearch = () => {
     setProgress(0);
     setProgressText('');
     setSearchStats(null);
-    
+    setFusionProgress(null);
+
     const handleProgress = (step, detail, elapsed) => {
       setProgressText(detail ? `${step}: ${detail}` : step);
       setElapsedTime(Math.floor(elapsed));
     };
-    
+
     try {
       const matchType = params.match_type || params.settings?.match_type;
       const isCrossLingual = matchType === 'semantic_cross' || matchType === 'dictionary_cross';
-      
+      const isFusion = matchType === 'fusion';
+
       let data;
-      if (isCrossLingual) {
+      if (isFusion) {
+        const handleIntermediate = (intermediateData) => {
+          setResults(intermediateData.results || []);
+          setFusionProgress({
+            channelsDone: intermediateData.channels_done || [],
+            channelsTotal: intermediateData.channels_total || 9,
+            phase: intermediateData.phase || 'line',
+          });
+        };
+        data = await searchFusionStream(params, handleProgress, abortController.current.signal, handleIntermediate);
+      } else if (isCrossLingual) {
         data = await searchTexts(params, abortController.current.signal);
       } else {
         try {
@@ -74,16 +88,20 @@ export const useSearch = () => {
       setSearchStats({
         elapsed_time: data.elapsed_time,
         source_lines: data.source_lines,
-        target_lines: data.target_lines
+        target_lines: data.target_lines,
+        total_matches: data.total_matches
       });
       setProgress(100);
       setProgressText('Complete');
+      setFusionProgress(null);
     } catch (err) {
       if (err.name !== 'AbortError') {
         setError(err.message || 'Search failed');
       }
     } finally {
       setLoading(false);
+      setFusionProgress(null);
+      setHasSearched(true);
     }
   }, []);
 
@@ -106,6 +124,7 @@ export const useSearch = () => {
       }
     } finally {
       setLoading(false);
+      setHasSearched(true);
     }
   }, []);
 
@@ -128,6 +147,7 @@ export const useSearch = () => {
       }
     } finally {
       setLoading(false);
+      setHasSearched(true);
     }
   }, []);
 
@@ -135,11 +155,11 @@ export const useSearch = () => {
     if (abortController.current) {
       abortController.current.abort();
     }
-    
+
     abortController.current = new AbortController();
     setLoading(true);
     setError(null);
-    
+
     try {
       const data = await searchBigrams(params, abortController.current.signal);
       if (data.error) {
@@ -155,6 +175,7 @@ export const useSearch = () => {
       }
     } finally {
       setLoading(false);
+      setHasSearched(true);
     }
   }, []);
 
@@ -166,11 +187,13 @@ export const useSearch = () => {
     setLoading(false);
     setProgress(0);
     setProgressText('');
+    setFusionProgress(null);
   }, []);
 
   const clearResults = useCallback(() => {
     setResults([]);
     setError(null);
+    setHasSearched(false);
   }, []);
 
   return {
@@ -181,6 +204,8 @@ export const useSearch = () => {
     progressText,
     elapsedTime,
     searchStats,
+    fusionProgress,
+    hasSearched,
     search,
     searchCrossLingual,
     searchRareWords,
