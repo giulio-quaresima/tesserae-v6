@@ -1,5 +1,10 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 
+const isTouchDevice = () => {
+  if (typeof window === 'undefined') return false;
+  return window.matchMedia('(pointer: coarse)').matches;
+};
+
 const SearchableAuthorSelect = ({
   value,
   onChange,
@@ -48,6 +53,22 @@ const SearchableAuthorSelect = ({
     setShowDropdown(false);
     setIsEditing(false);
   };
+
+  // On touch devices, use native <select> for reliable mobile support
+  if (isTouchDevice()) {
+    return (
+      <select
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        className="w-full border rounded px-2 py-2 text-sm"
+      >
+        <option value="">Select author...</option>
+        {safeAuthors.map(a => (
+          <option key={a.author_key} value={a.author_key}>{a.author}</option>
+        ))}
+      </select>
+    );
+  }
 
   return (
     <div ref={containerRef} className="relative">
