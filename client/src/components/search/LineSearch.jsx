@@ -832,7 +832,7 @@ export default function LineSearch({ language }) {
                   setShowAuthorDropdown(true);
                 }}
                 onFocus={() => setShowAuthorDropdown(true)}
-                onBlur={() => setTimeout(() => setShowAuthorDropdown(false), 200)}
+                onBlur={() => setTimeout(() => setShowAuthorDropdown(false), 300)}
                 placeholder="Type to search authors..."
                 className="w-full border rounded px-3 py-2"
                 disabled={loadingTexts}
@@ -843,13 +843,14 @@ export default function LineSearch({ language }) {
                     .filter(a => a.toLowerCase().includes(selectedAuthor.toLowerCase()))
                     .slice(0, 20)
                     .map(author => (
-                      <div
+                      <button
                         key={author}
-                        className="px-3 py-2 hover:bg-amber-50 cursor-pointer text-sm"
-                        onMouseDown={() => { setSelectedAuthor(author); setShowAuthorDropdown(false); }}
+                        type="button"
+                        className="w-full text-left px-3 py-2 hover:bg-amber-50 cursor-pointer text-sm"
+                        onPointerDown={() => { setSelectedAuthor(author); setShowAuthorDropdown(false); }}
                       >
                         {author}
-                      </div>
+                      </button>
                     ))}
                   {authors.filter(a => a.toLowerCase().includes(selectedAuthor.toLowerCase())).length === 0 && (
                     <div className="px-3 py-2 text-gray-500 text-sm">No authors found</div>
@@ -859,13 +860,14 @@ export default function LineSearch({ language }) {
               {showAuthorDropdown && selectedAuthor === '' && (
                 <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg max-h-60 overflow-y-auto">
                   {authors.slice(0, 20).map(author => (
-                    <div
+                    <button
                       key={author}
-                      className="px-3 py-2 hover:bg-amber-50 cursor-pointer text-sm"
-                      onMouseDown={() => { setSelectedAuthor(author); setShowAuthorDropdown(false); }}
+                      type="button"
+                      className="w-full text-left px-3 py-2 hover:bg-amber-50 cursor-pointer text-sm"
+                      onPointerDown={() => { setSelectedAuthor(author); setShowAuthorDropdown(false); }}
                     >
                       {author}
-                    </div>
+                    </button>
                   ))}
                 </div>
               )}
@@ -883,7 +885,7 @@ export default function LineSearch({ language }) {
                   setShowWorkDropdown(true);
                 }}
                 onFocus={() => setShowWorkDropdown(true)}
-                onBlur={() => setTimeout(() => setShowWorkDropdown(false), 200)}
+                onBlur={() => setTimeout(() => setShowWorkDropdown(false), 300)}
                 placeholder={selectedAuthor ? "Type to search works..." : "Select author first"}
                 className="w-full border rounded px-3 py-2"
                 disabled={!selectedAuthor || loadingTexts}
@@ -893,13 +895,14 @@ export default function LineSearch({ language }) {
                   {works
                     .filter(w => w.label.toLowerCase().includes(selectedWorkLabel.toLowerCase()))
                     .map(work => (
-                      <div
+                      <button
                         key={work.id}
-                        className="px-3 py-2 hover:bg-amber-50 cursor-pointer text-sm"
-                        onMouseDown={() => { setSelectedWork(work.id); setSelectedWorkLabel(work.label); setShowWorkDropdown(false); }}
+                        type="button"
+                        className="w-full text-left px-3 py-2 hover:bg-amber-50 cursor-pointer text-sm"
+                        onPointerDown={() => { setSelectedWork(work.id); setSelectedWorkLabel(work.label); setShowWorkDropdown(false); }}
                       >
                         {work.label}
-                      </div>
+                      </button>
                     ))}
                   {works.filter(w => w.label.toLowerCase().includes(selectedWorkLabel.toLowerCase())).length === 0 && (
                     <div className="px-3 py-2 text-gray-500 text-sm">No works found</div>
