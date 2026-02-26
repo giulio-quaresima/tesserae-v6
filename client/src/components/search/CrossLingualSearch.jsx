@@ -35,6 +35,8 @@ export default function CrossLingualSearch() {
   const [sortBy, setSortBy] = useState('score');
   const [showDistributionChart, setShowDistributionChart] = useState(false);
   const [distributionChartView, setDistributionChartView] = useState('target');
+  const [elapsedTime, setElapsedTime] = useState(0);
+  const timerRef = useRef(null);
   const [chartFilter, setChartFilter] = useState(null);
   const chartRef = useRef(null);
   const hasSearchedRef = useRef(false);
@@ -86,6 +88,26 @@ export default function CrossLingualSearch() {
       }
     }
   }, [matchMode, sourceSection, targetSection, searchLoading, doSearch]);
+
+  useEffect(() => {
+    if (searchLoading) {
+      const startTime = Date.now();
+      setElapsedTime(0);
+      timerRef.current = setInterval(() => {
+        setElapsedTime(Math.floor((Date.now() - startTime) / 1000));
+      }, 1000);
+    } else {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+    }
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+    };
+  }, [searchLoading]);
 
   const loadHierarchies = async () => {
     setLoading(true);
@@ -433,7 +455,7 @@ export default function CrossLingualSearch() {
         </div>
       )}
 
-      {searchLoading && <LoadingSpinner text="Searching for cross-lingual parallels..." />}
+      {searchLoading && <LoadingSpinner text="Searching for cross-lingual parallels..." elapsedTime={elapsedTime} />}
 
       {results.length > 0 && (
         <div className="bg-white rounded-lg shadow overflow-hidden">
