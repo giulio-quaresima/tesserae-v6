@@ -14,6 +14,14 @@ print("=" * 50)
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'backend'))
 
+# Load environment variables from .env file before anything else
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+    print("Environment variables loaded from .env")
+except ImportError:
+    pass
+
 # Signal to app.py that we're running Flask directly (not behind Apache).
 # This enables /api prefix on all routes since there's no Apache WSGIScriptAlias
 # to strip it for us.
@@ -30,7 +38,8 @@ except Exception as e:
     sys.exit(1)
 
 if __name__ == '__main__':
-    print("Backend API and Frontend on port 5000")
+    port = int(os.environ.get('PORT', 5001))
+    print(f"Backend API and Frontend on port {port}")
     print("=" * 50)
     
     debug_mode = os.environ.get('FLASK_DEBUG', 'false').lower() == 'true'
@@ -41,7 +50,7 @@ if __name__ == '__main__':
     except Exception as e:
         print(f"Warning: Cache init failed (non-fatal): {e}")
     
-    print("Starting Flask server on 0.0.0.0:5000...")
+    print(f"Starting Flask server on 0.0.0.0:{port}...")
     sys.stdout.flush()
     
-    app.run(host='0.0.0.0', port=5000, debug=debug_mode, threaded=True)
+    app.run(host='0.0.0.0', port=port, debug=debug_mode, threaded=True)
