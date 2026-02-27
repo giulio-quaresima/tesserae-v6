@@ -73,11 +73,16 @@ Four channels run on windows (lemma, lemma_min1, rare_word, dictionary):
 
 Scoring
 -------
-Weighted score fusion with convergence bonus:
-  fused_score = sum(channel_score_i * weight_i) + 0.5 * (N_channels - 1)
+Weighted score fusion with stopword penalty:
+  base = sum(channel_score_i * weight_i) + 0.5 * (N_channels - 1)
+  fused_score = base * stopword_multiplier
 
-Channel weights are from Config D. Production fusion achieves 90.8%
-recall across 5 benchmark pairs (783/862). See research/studies/.
+Pairs whose matched lemmas are ALL in the Latin/Greek stoplists receive
+a 0.2× penalty, demoting function-word coincidences (e.g., "neque enim").
+All other pairs are unmodified.
+
+Channel weights are from Config E (grid-search optimized, Feb 27 2026).
+See research/studies/2026-02-27_weight_optimization/REPORT.md.
 """
 
 import json
@@ -89,18 +94,20 @@ from collections import defaultdict
 
 
 # ---------------------------------------------------------------------------
-# Config D channel weights (validated across 5 benchmark pairs, Feb 2026)
-# Weights reflect each channel's independent contribution to recall,
-# determined by ablation study. Higher weight = stronger signal.
+# Config E channel weights (optimized via grid search, Feb 27 2026)
+# 34,992 weight configurations swept across 5 benchmark pairs.
+# Optimized for recall@500 (gold pairs found in top 500 results).
+# R@500 improved from 19.8% (Config D) to 22.6% (+24 gold pairs).
+# See research/studies/2026-02-27_weight_optimization/REPORT.md
 # ---------------------------------------------------------------------------
 CHANNEL_WEIGHTS = {
-    "edit_distance": 4.0,   # sub-lexical: Levenshtein fuzzy match
-    "sound": 3.0,           # sub-lexical: character trigram overlap
-    "exact": 2.0,           # lexical: identical surface forms
-    "lemma": 1.5,           # lexical: shared dictionary headwords
-    "dictionary": 1.0,      # distributional: curated synonym pairs
+    "edit_distance": 2.0,   # sub-lexical: Levenshtein fuzzy match (was 4.0)
+    "sound": 4.0,           # sub-lexical: character trigram overlap (was 3.0)
+    "exact": 1.0,           # lexical: identical surface forms (was 2.0)
+    "lemma": 2.0,           # lexical: shared dictionary headwords (was 1.5)
+    "dictionary": 1.5,      # distributional: curated synonym pairs (was 1.0)
     "semantic": 0.8,        # distributional: SPhilBERTa cosine sim
-    "rare_word": 0.5,       # lexical: shared low-frequency lemmata
+    "rare_word": 1.0,       # lexical: shared low-frequency lemmata (was 2.0)
     "syntax": 0.5,          # structural: dependency pattern match
     "lemma_min1": 0.3,      # lexical: single shared lemma (high recall, low precision)
 }
@@ -108,6 +115,9 @@ CHANNEL_WEIGHTS = {
 # Bonus added for each additional channel beyond the first that confirms
 # a pair, rewarding cross-channel convergence as evidence of a true allusion.
 CONVERGENCE_BONUS = 0.5
+
+# Rarity-aware scoring: penalty for stopword-only pairs
+FUNCTION_WORD_PENALTY = 0.2         # multiplier for all-stopword pairs (was 0.3)
 
 # ---------------------------------------------------------------------------
 # Channel classification for two-pass architecture
@@ -682,13 +692,69 @@ def run_channel(channel_name, config, source_units, target_units,
     return scored
 
 
-def fuse_results(channel_results):
+def _compute_rarity_multiplier(matched_words_dict, penalty=None):
+    """Compute a score multiplier based on the rarity of matched lemmas.
+
+    Returns a float multiplier:
+      - penalty (default FUNCTION_WORD_PENALTY=0.3) for stopword-only pairs
+      - 1.0 for all other pairs (neutral)
+
+    Only applies a penalty when ALL matched lemmas (with idf > 0) are in
+    the Latin/Greek stoplists. This demotes pairs like "neque enim" that
+    share only function words. All other pairs are left unchanged — the
+    rare_word channel weight (2.0) handles boosting rare vocabulary.
+
+    Uses stoplist membership rather than IDF thresholds because per-pair
+    IDF (computed from just two texts) gives inflated values even for
+    common words.
+    """
+    if not matched_words_dict:
+        return 1.0
+
+    if penalty is None:
+        penalty = FUNCTION_WORD_PENALTY
+
+    from backend.matcher import DEFAULT_LATIN_STOP_WORDS, DEFAULT_GREEK_STOP_WORDS
+    stop_words = DEFAULT_LATIN_STOP_WORDS | DEFAULT_GREEK_STOP_WORDS
+
+    has_content_word = False
+    has_any_idf = False
+    for lemma, mw in matched_words_dict.items():
+        idf = mw.get('idf', 0)
+        if idf <= 0:
+            continue  # skip sound/edit_distance entries (idf=0)
+        has_any_idf = True
+        if lemma not in stop_words:
+            has_content_word = True
+            break
+
+    if not has_any_idf:
+        return 1.0
+
+    # All stopwords → apply penalty
+    if not has_content_word:
+        return penalty
+
+    return 1.0
+
+
+def fuse_results(channel_results, weights=None, convergence_bonus=None,
+                  stopword_penalty=None):
     """Combine results from multiple channels using weighted score fusion.
 
     For each (source_ref, target_ref) pair:
-      fused_score = sum(channel_score * channel_weight) + convergence_bonus * (N-1)
-    where N = number of channels that found the pair.
+      base = sum(channel_score * channel_weight) + convergence_bonus * (N-1)
+      fused_score = base * stopword_multiplier
+    where N = number of channels that found the pair, and stopword_multiplier
+    is 0.3 for pairs sharing only stopwords, 1.0 otherwise.
+
+    Optional overrides allow testing different parameter configurations
+    without modifying module globals (used by weight optimization).
     """
+    _weights = weights if weights is not None else CHANNEL_WEIGHTS
+    _convergence_bonus = convergence_bonus if convergence_bonus is not None else CONVERGENCE_BONUS
+    _stopword_penalty = stopword_penalty if stopword_penalty is not None else FUNCTION_WORD_PENALTY
+
     pair_scores = defaultdict(lambda: {
         "score": 0.0,
         "channels": [],
@@ -700,7 +766,7 @@ def fuse_results(channel_results):
     })
 
     for ch_name, results in channel_results.items():
-        weight = CHANNEL_WEIGHTS.get(ch_name, 1.0)
+        weight = _weights.get(ch_name, 1.0)
         for r in results:
             rs = r.get("source", {}).get("ref", "")
             rt = r.get("target", {}).get("ref", "")
@@ -731,11 +797,16 @@ def fuse_results(channel_results):
                 pair_scores[key]["best_result"] = r
                 pair_scores[key]["best_score"] = raw_score
 
-    # Apply convergence bonus
+    # Apply convergence bonus and rarity multiplier
     for key, info in pair_scores.items():
         n = len(info["channels"])
         if n > 1:
-            info["score"] += CONVERGENCE_BONUS * (n - 1)
+            info["score"] += _convergence_bonus * (n - 1)
+
+        # Rarity multiplier on total score
+        multiplier = _compute_rarity_multiplier(info["all_matched_words"],
+                                                penalty=_stopword_penalty)
+        info["score"] *= multiplier
 
     # Sort by fused score and build output
     sorted_pairs = sorted(pair_scores.items(), key=lambda x: x[1]["score"], reverse=True)
