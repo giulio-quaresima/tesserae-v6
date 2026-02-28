@@ -202,6 +202,12 @@ RARITY_IDF_FLOOR = 0.2
 # Value of 1.5 means words appearing in more than ~22% of texts get penalized.
 RARITY_IDF_THRESHOLD = 1.5
 
+# Exponent for the base score penalty: base_score * multiplier^power.
+# Higher values make the penalty steeper for common words without affecting
+# rare words (mult=1.0 → 1.0^anything = 1.0). The squaring in Layer 2
+# (IDF-weighted convergence) uses a fixed exponent of 2.
+RARITY_PENALTY_POWER = 2.0
+
 # Exponent applied to the rarity multiplier when scaling the convergence
 # bonus: conv_mult = multiplier^power. With power=1.0, the convergence bonus
 # gets the same rarity scaling as the base score (before squaring). Higher
@@ -962,14 +968,15 @@ def _compute_rarity_multiplier(matched_words_dict, penalty=None, language='la',
     if min_idf_penalty is None:
         min_idf_penalty = RARITY_MIN_IDF_PENALTY
 
-    # --- Step 1: Collect lemmas with lexical IDF ---
-    # Sound and edit_distance matches have idf=0 because they operate on
-    # character-level similarity, not lemma identity. We exclude these
-    # because they don't carry meaningful document-frequency information.
+    # --- Step 1: Collect all lexical lemmas ---
+    # Include any matched word with a real lemma, not just those with
+    # idf > 0. The rare_word, semantic, and dictionary channels produce
+    # valid lemma matches but may not set per-pair IDF. Sub-lexical
+    # fragments from sound/edit_distance channels have keys starting
+    # with '[' (e.g., "[que]", "[nti]") and are excluded.
     lexical_lemmas = []
     for lemma, mw in matched_words_dict.items():
-        idf = mw.get('idf', 0)
-        if idf > 0:
+        if lemma and not lemma.startswith('['):
             lexical_lemmas.append(lemma)
 
     # No lexical matches (only sub-lexical channels fired) → neutral
@@ -982,19 +989,26 @@ def _compute_rarity_multiplier(matched_words_dict, penalty=None, language='la',
     total_texts = _get_total_texts(language)
     doc_freqs = _get_corpus_doc_freqs(lexical_lemmas, language)
 
-    # --- Step 3: Compute corpus IDF for each lemma: log(N / df) ---
-    # IMPORTANT: Skip entries with df=0. These are surface forms (e.g.
-    # "auras") that don't appear as canonical lemmas in the inverted index
-    # (which stores "aura"). The inverted index is lemmatized, so df=0
-    # means the string isn't a recognized dictionary headword. If we
-    # treated these as ultra-rare (log(1429/1) = 7.26), they would inflate
-    # the geometric mean and mask the penalty for genuinely common
-    # companions like "per" (df=1429, idf=0.0).
-    corpus_idfs = []
+    # --- Step 3: Compute corpus IDF, deduplicating surface forms ---
+    # Group matched words by (source_word, target_word) to avoid counting
+    # both inflected forms (e.g., "pugnas" df=1) and canonical lemmas
+    # (e.g., "pugna" df=596) for the same word. Keep the canonical form
+    # (highest df) since it reflects the word's true corpus frequency.
+    # Also skip df=0 entries (surface forms not in inverted index).
+    word_pair_best = {}
     for lemma in lexical_lemmas:
         df = doc_freqs.get(lemma, 0)
-        if df > 0:
-            corpus_idfs.append(math.log(total_texts / df))
+        if df <= 0:
+            continue
+        mw = matched_words_dict[lemma]
+        cidf = math.log(total_texts / df)
+        sw = mw.get('source_word', '')
+        tw = mw.get('target_word', '')
+        word_key = (sw, tw) if (sw or tw) else (lemma,)
+        existing = word_pair_best.get(word_key)
+        if existing is None or df > existing[1]:
+            word_pair_best[word_key] = (cidf, df)
+    corpus_idfs = [cidf for cidf, _ in word_pair_best.values()]
 
     # No corpus IDF data available (all lemmas had df=0) → neutral
     if not corpus_idfs:
@@ -1082,6 +1096,7 @@ def fuse_results(channel_results, weights=None, convergence_bonus=None,
     _min_idf_penalty = min_idf_penalty if min_idf_penalty is not None else RARITY_MIN_IDF_PENALTY
     _rarity_boost_weight = RARITY_BOOST_WEIGHT
     _rarity_boost_cap = RARITY_BOOST_CAP
+    _penalty_power = RARITY_PENALTY_POWER
 
     pair_scores = defaultdict(lambda: {
         "score": 0.0,
@@ -1151,13 +1166,18 @@ def fuse_results(channel_results, weights=None, convergence_bonus=None,
     # ===================================================================
 
     # --- Pre-fetch corpus document frequencies in one batch ---
-    # Collect every unique lemma with nonzero IDF across all pairs, then
-    # query the inverted index once. This avoids per-pair DB queries
+    # Collect every unique lemma across all pairs (excluding sub-lexical
+    # fragments like [que], [nti] from sound/edit_distance channels),
+    # then query the inverted index once. This avoids per-pair DB queries
     # (which would mean ~100K separate queries for large text pairs).
+    # NOTE: We include entries with idf=0 (from rare_word, semantic, etc.)
+    # because they still have valid lemmas whose corpus df is needed for
+    # rarity scoring. Only sub-lexical fragments (keys starting with '[')
+    # are excluded.
     all_lexical_lemmas = set()
     for key, info in pair_scores.items():
         for lemma, mw in info["all_matched_words"].items():
-            if mw.get('idf', 0) > 0:
+            if lemma and not lemma.startswith('['):
                 all_lexical_lemmas.add(lemma)
     total_texts = _get_total_texts(language) if all_lexical_lemmas else 1429
     doc_freq_map = _get_corpus_doc_freqs(list(all_lexical_lemmas), language) if all_lexical_lemmas else {}
@@ -1178,14 +1198,27 @@ def fuse_results(channel_results, weights=None, convergence_bonus=None,
         # log(N/df), then take the geometric mean. Map to a multiplier
         # via the same piecewise linear curve defined in the constants.
         mw_dict = info["all_matched_words"]
-        corpus_idfs = []
+        # Collect corpus IDFs for all lexical entries (not sub-lexical
+        # fragments). Deduplicate by (source_word, target_word) to avoid
+        # counting both inflected surface forms (e.g., "pugnas" df=1) and
+        # canonical lemmas (e.g., "pugna" df=596) for the same word —
+        # keep the canonical form (highest df) for accurate rarity scoring.
+        word_pair_best = {}  # (src_word, tgt_word) -> (corpus_idf, df)
         for lemma, mw in mw_dict.items():
-            if mw.get('idf', 0) > 0:
-                df = doc_freq_map.get(lemma, 0)
-                # Skip df=0: surface forms not in inverted index (see
-                # _compute_rarity_multiplier docstring for rationale)
-                if df > 0:
-                    corpus_idfs.append(_log_total - math.log(df))
+            if lemma.startswith('['):
+                continue  # sub-lexical fragment
+            df = doc_freq_map.get(lemma, 0)
+            if df <= 0:
+                continue  # not in inverted index
+            cidf = _log_total - math.log(df)
+            sw = mw.get('source_word', '')
+            tw = mw.get('target_word', '')
+            word_key = (sw, tw) if (sw or tw) else (lemma,)
+            existing = word_pair_best.get(word_key)
+            if existing is None or df > existing[1]:
+                word_pair_best[word_key] = (cidf, df)
+        corpus_idfs = [cidf for cidf, _ in word_pair_best.values()]
+        n_unique_words = len(corpus_idfs)  # distinct lexical words matched
 
         if corpus_idfs:
             # Geometric mean via exp(mean(log(x))), with floor of 0.001
@@ -1213,19 +1246,26 @@ def fuse_results(channel_results, weights=None, convergence_bonus=None,
                 # When geom_idf exceeds the threshold, the vocabulary is
                 # rare enough to deserve promotion rather than penalty.
                 # The boost is a log curve (diminishing returns for
-                # extremely rare words) scaled by channel convergence:
-                #   boost = weight * channel_factor * log(geom_idf / thresh)
-                # channel_factor = min(1.0, (n_channels - 1) / 5)
-                #   - n=1 → factor=0 → no boost (single-channel noise)
-                #   - n=3 → factor=0.4 → moderate boost
-                #   - n=6 → factor=1.0 → full boost (capped)
-                # This ensures only multi-channel convergence on rare
-                # vocabulary is promoted, preventing single-channel
-                # false positives from rising in the rankings.
+                # extremely rare words) scaled by TWO convergence factors:
+                #
+                # 1. channel_factor = min(1.0, (n_channels - 1) / 5)
+                #    Requires multiple channels to confirm the match.
+                # 2. word_factor = min(1.0, (n_unique_words - 1) / 3)
+                #    Requires multiple distinct words to be shared.
+                #
+                # The MINIMUM of these two factors is used, so both
+                # conditions must be met for a large boost:
+                #   - 1 word on 5 channels → min(0.8, 0) = 0 → no boost
+                #   - 2 words on 3 channels → min(0.4, 0.33) = 0.33
+                #   - 3 words on 6 channels → min(1.0, 0.67) = 0.67
+                # This prevents single rare words (even genuinely rare
+                # ones like "Erinys") from outranking multi-word allusions.
                 n_for_boost = info["n_scoring_channels"]
                 channel_factor = min(1.0, (n_for_boost - 1) / 5.0)
+                word_factor = min(1.0, (n_unique_words - 1) / 3.0)
+                boost_factor = min(channel_factor, word_factor)
                 multiplier = min(_rarity_boost_cap,
-                                 1.0 + _rarity_boost_weight * channel_factor * math.log(geom_mean_idf / _idf_threshold))
+                                 1.0 + _rarity_boost_weight * boost_factor * math.log(geom_mean_idf / _idf_threshold))
 
             # Min-IDF gate (currently disabled: threshold=0.0, penalty=1.0)
             if _min_idf_penalty < 1.0 and _min_idf_threshold > 0:
@@ -1266,7 +1306,7 @@ def fuse_results(channel_results, weights=None, convergence_bonus=None,
         #   but only to the first power (not squared), since the IDF
         #   weighting in weighted_n already provides steep suppression.
         conv_mult = multiplier ** _conv_idf_power
-        info["score"] = base_score * (multiplier ** 2) + conv_score * conv_mult
+        info["score"] = base_score * (multiplier ** _penalty_power) + conv_score * conv_mult
 
     # Sort by fused score and build output
     sorted_pairs = sorted(pair_scores.items(), key=lambda x: x[1]["score"], reverse=True)
