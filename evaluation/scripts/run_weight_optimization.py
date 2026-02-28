@@ -50,9 +50,12 @@ from backend.matcher import Matcher
 from backend.scorer import Scorer
 from backend.fusion import (
     CHANNEL_WEIGHTS, CHANNEL_CONFIGS, CHANNEL_ORDER,
-    CONVERGENCE_BONUS, FUNCTION_WORD_PENALTY,
+    CONVERGENCE_BONUS, CONVERGENCE_IDF_POWER, FUNCTION_WORD_PENALTY,
+    RARITY_IDF_FLOOR, RARITY_IDF_THRESHOLD,
+    RARITY_MIN_IDF_THRESHOLD, RARITY_MIN_IDF_PENALTY,
     WINDOW_CHANNELS,
     run_channel, fuse_results, merge_line_and_window, make_window_units,
+    _get_corpus_doc_freqs, _get_total_texts,
 )
 
 TEXTS_DIR = PROJECT_ROOT / "texts"
@@ -105,7 +108,12 @@ CHANNEL_NAMES = list(WEIGHT_GRID.keys())
 CH_IDX = {ch: i for i, ch in enumerate(CHANNEL_NAMES)}
 
 CONVERGENCE_GRID = [0.0, 0.25, 0.5, 0.75, 1.0]
-STOPWORD_PENALTY_GRID = [0.1, 0.2, 0.3, 0.5, 1.0]
+STOPWORD_PENALTY_GRID = [0.1, 0.2, 0.3, 0.5, 1.0]  # legacy, used as idf_floor
+IDF_FLOOR_GRID = [0.05, 0.1, 0.2]
+IDF_THRESHOLD_GRID = [0.5, 1.0, 1.5, 2.0]
+CONV_IDF_POWER_GRID = [1.0, 2.0, 3.0]  # re-enabled: u/v fix changes IDF landscape
+MIN_IDF_THRESHOLD_GRID = [0.0]  # gate disabled by optimizer in v5; keep disabled
+MIN_IDF_PENALTY_GRID = [1.0]   # N/A when threshold=0.0
 
 
 def log(msg):
@@ -180,17 +188,20 @@ def preparse_gold(gold_entries):
 # Phase 1: Run channels and extract lightweight summaries
 # ---------------------------------------------------------------------------
 
-def extract_pair_summary(channel_results, parsed_gold, stop_words):
+def extract_pair_summary(channel_results, parsed_gold, stop_words,
+                         language='la'):
     """Extract lightweight pair summaries from channel results.
 
     Aggregates per-channel results into per-pair data:
     - Raw score per channel (9-element vector for weighted sum)
     - Channel count (for convergence bonus)
-    - Stopword-only flag (for penalty)
+    - Mean corpus IDF (float, for graduated rarity multiplier)
     - Gold match indices (for recall evaluation)
 
     Returns numpy arrays for vectorized computation in the sweep.
     """
+    import math
+
     # Step 1: Aggregate per-pair data (same logic as fuse_results, lightweight)
     pair_data = {}
 
@@ -214,11 +225,23 @@ def extract_pair_summary(channel_results, parsed_gold, stop_words):
             pair_data[key]["scores"][ci] = raw_score
             pair_data[key]["n_ch"] += 1
 
-            # Accumulate matched words for stopword detection
+            # Accumulate matched words for rarity computation
             for mw in r.get("matched_words", []):
                 lemma = mw.get("lemma", "")
                 if lemma and lemma not in pair_data[key]["matched_words"]:
                     pair_data[key]["matched_words"][lemma] = mw
+
+    # Step 1b: Batch-fetch corpus document frequencies for all unique lemmas
+    all_lemmas = set()
+    for data in pair_data.values():
+        for lemma, info in data["matched_words"].items():
+            if info.get('idf', 0) > 0:  # only lexical entries
+                all_lemmas.add(lemma)
+
+    log(f"    Fetching corpus doc frequencies for {len(all_lemmas):,} lemmas...")
+    total_texts = _get_total_texts(language)
+    corpus_dfs = _get_corpus_doc_freqs(list(all_lemmas), language)
+    log(f"    -> total_texts={total_texts}, fetched {len(corpus_dfs)} DFs")
 
     # Step 2: Build numpy arrays
     N = len(pair_data)
@@ -226,26 +249,40 @@ def extract_pair_summary(channel_results, parsed_gold, stop_words):
 
     scores_matrix = np.zeros((N, C), dtype=np.float64)
     n_channels = np.zeros(N, dtype=np.float64)
-    is_stopword = np.zeros(N, dtype=bool)
+    rarity_mean_idfs = np.zeros(N, dtype=np.float64)
+    rarity_min_idfs = np.zeros(N, dtype=np.float64)
     gold_matches = []
 
     for i, ((src_ref, tgt_ref), data) in enumerate(pair_data.items()):
         scores_matrix[i] = data["scores"]
-        n_channels[i] = data["n_ch"]
+        # Count only channels with raw_score > 0 for convergence bonus.
+        # Channels returning score 0.0 (e.g., edit_distance on common words
+        # where IDF → 0) are not meaningful convergence evidence.
+        n_channels[i] = sum(1 for s in data["scores"] if s > 0)
 
-        # Stopword check (same logic as _compute_rarity_multiplier)
+        # Compute corpus IDFs for this pair's matched lemmas.
+        # Skip entries with df=0 — these are surface forms (e.g. "auras")
+        # not canonical lemmas (e.g. "aura"). The inverted index stores
+        # lemmatized forms, so df=0 means the string isn't a recognized lemma.
         mw = data["matched_words"]
-        has_content = False
-        has_any_idf = False
+        corpus_idfs = []
         for lemma, info in mw.items():
-            idf = info.get('idf', 0)
-            if idf <= 0:
-                continue
-            has_any_idf = True
-            if lemma not in stop_words:
-                has_content = True
-                break
-        is_stopword[i] = has_any_idf and not has_content
+            if info.get('idf', 0) <= 0:
+                continue  # skip sound/edit entries
+            df = corpus_dfs.get(lemma, 0)
+            if df > 0:
+                corpus_idfs.append(math.log(total_texts / df))
+            # else: skip — not a canonical lemma in the index
+
+        if corpus_idfs:
+            # Geometric mean (sensitive to individual ultra-common words)
+            log_sum = sum(math.log(max(idf, 0.001)) for idf in corpus_idfs)
+            rarity_mean_idfs[i] = math.exp(log_sum / len(corpus_idfs))
+            rarity_min_idfs[i] = min(corpus_idfs)
+        else:
+            # No recognized lexical lemmas → treat as neutral (no penalty)
+            rarity_mean_idfs[i] = 99.0
+            rarity_min_idfs[i] = 99.0
 
         # Gold matching (precompute which gold entries this pair covers)
         src_b1, src_l1, src_b2, src_l2 = parse_range_ref(src_ref)
@@ -265,7 +302,8 @@ def extract_pair_summary(channel_results, parsed_gold, stop_words):
     return {
         "scores_matrix": scores_matrix,
         "n_channels": n_channels,
-        "is_stopword": is_stopword,
+        "rarity_mean_idfs": rarity_mean_idfs,
+        "rarity_min_idfs": rarity_min_idfs,
         "gold_matches": gold_matches,
         "n_pairs": N,
     }
@@ -430,13 +468,19 @@ def generate_weight_configs():
     return configs
 
 
-def evaluate_config_fast(summaries, weight_vector, bonus, penalty,
+def evaluate_config_fast(summaries, weight_vector, bonus, idf_floor,
+                         idf_threshold, conv_idf_power=1.0,
+                         min_idf_threshold=0.0, min_idf_penalty=1.0,
                          k_values=(100, 500)):
     """Evaluate a single config across all benchmarks.
 
     Uses numpy vectorized operations:
-      fused = scores_matrix @ weight_vector + bonus * (n_channels - 1)
-      fused[is_stopword] *= penalty
+      base = scores_matrix @ weight_vector
+      weighted_n = n_channels * min(1.0, geom_mean_idf)
+      conv = bonus * max(0, weighted_n - 1)
+      mult = graduated_idf_multiplier(mean_idfs, idf_floor, idf_threshold)
+      if min(corpus_idfs) < min_idf_threshold: mult *= min_idf_penalty
+      fused = base * mult + conv * mult^conv_idf_power
       top_k = argpartition + argsort (O(N) + O(K log K))
 
     Returns dict with recall@K metrics.
@@ -449,16 +493,41 @@ def evaluate_config_fast(summaries, weight_vector, bonus, penalty,
     for bench_key, s in summaries.items():
         sm = s["scores_matrix"]
         nc = s["n_channels"]
-        sw = s["is_stopword"]
+        mean_idfs = s["rarity_mean_idfs"]
+        min_idfs = s["rarity_min_idfs"]
         gm = s["gold_matches"]
         n_gold = s["n_gold"]
         total_gold += n_gold
         N = s["n_pairs"]
 
         # Vectorized score computation
-        fused = sm @ weight_vector + bonus * (nc - 1.0)
-        if penalty != 1.0:
-            fused[sw] *= penalty
+        base = sm @ weight_vector
+
+        # IDF-weighted convergence: weight each channel's convergence
+        # contribution by min(1.0, geom_mean_idf)^2. Squaring makes the
+        # penalty steeper for common words (0.36→0.13) while distinctive
+        # words (idf≥1.0) are unaffected.
+        idf_weights = np.minimum(1.0, mean_idfs) ** 2
+        weighted_nc = nc * idf_weights
+        conv = bonus * np.maximum(0.0, weighted_nc - 1.0)
+
+        # Graduated IDF multiplier (vectorized piecewise linear)
+        ramp_start = idf_floor + 0.1
+        t = (mean_idfs - 0.1) / (idf_threshold - 0.1)
+        ramp_values = ramp_start + t * (1.0 - ramp_start)
+        multipliers = np.where(
+            mean_idfs < 0.1, idf_floor,
+            np.where(mean_idfs < idf_threshold, ramp_values, 1.0))
+
+        # Min-IDF gate: if ANY lemma's corpus IDF < threshold, extra penalty
+        if min_idf_threshold > 0 and min_idf_penalty < 1.0:
+            min_idf_mask = min_idfs < min_idf_threshold
+            multipliers = np.where(min_idf_mask,
+                                   multipliers * min_idf_penalty, multipliers)
+
+        # Apply rarity multiplier: base * mult + conv * mult^power
+        conv_multipliers = np.power(multipliers, conv_idf_power)
+        fused = base * multipliers + conv * conv_multipliers
 
         # Get top-K indices efficiently
         actual_k = min(max_k, N)
@@ -489,13 +558,18 @@ def evaluate_config_fast(summaries, weight_vector, bonus, penalty,
     return metrics
 
 
-def run_weight_sweep(summaries, convergence_bonus, stopword_penalty):
-    """Phase 2a: Sweep all weight configs with fixed bonus/penalty."""
+def run_weight_sweep(summaries, convergence_bonus, idf_floor, idf_threshold,
+                     conv_idf_power=1.0, min_idf_threshold=0.0,
+                     min_idf_penalty=1.0):
+    """Phase 2a: Sweep all weight configs with fixed bonus/IDF params."""
     weight_configs = generate_weight_configs()
     total = len(weight_configs)
     log(f"\nPhase 2a: Sweeping {total:,} weight configurations...")
     log(f"  Fixed: convergence_bonus={convergence_bonus}, "
-        f"stopword_penalty={stopword_penalty}")
+        f"idf_floor={idf_floor}, idf_threshold={idf_threshold}, "
+        f"conv_idf_power={conv_idf_power}, "
+        f"min_idf_threshold={min_idf_threshold}, "
+        f"min_idf_penalty={min_idf_penalty}")
 
     results = []
     t0 = time.time()
@@ -504,7 +578,10 @@ def run_weight_sweep(summaries, convergence_bonus, stopword_penalty):
     for i, weights in enumerate(weight_configs):
         wv = weights_to_vector(weights)
         metrics = evaluate_config_fast(
-            summaries, wv, convergence_bonus, stopword_penalty,
+            summaries, wv, convergence_bonus, idf_floor, idf_threshold,
+            conv_idf_power=conv_idf_power,
+            min_idf_threshold=min_idf_threshold,
+            min_idf_penalty=min_idf_penalty,
             k_values=(100, 500),
         )
         results.append((weights, metrics))
@@ -528,23 +605,30 @@ def run_weight_sweep(summaries, convergence_bonus, stopword_penalty):
     return results
 
 
-def run_bonus_penalty_sweep(summaries, best_weights):
-    """Phase 2b: Sweep convergence_bonus × stopword_penalty with best weights."""
-    combos = list(itertools.product(CONVERGENCE_GRID, STOPWORD_PENALTY_GRID))
+def run_bonus_idf_sweep(summaries, best_weights):
+    """Phase 2b: Sweep convergence_bonus × idf_floor × idf_threshold × min-IDF params."""
+    combos = list(itertools.product(
+        CONVERGENCE_GRID, IDF_FLOOR_GRID, IDF_THRESHOLD_GRID,
+        CONV_IDF_POWER_GRID,
+        MIN_IDF_THRESHOLD_GRID, MIN_IDF_PENALTY_GRID))
     total = len(combos)
-    log(f"\nPhase 2b: Sweeping {total} bonus × penalty configs...")
+    log(f"\nPhase 2b: Sweeping {total} bonus × idf_floor × idf_threshold "
+        f"× conv_power × min_idf_thresh × min_idf_pen configs...")
 
     wv = weights_to_vector(best_weights)
     results = []
-    for bonus, penalty in combos:
+    for bonus, idf_floor, idf_threshold, conv_power, mit, mip in combos:
         metrics = evaluate_config_fast(
-            summaries, wv, bonus, penalty,
+            summaries, wv, bonus, idf_floor, idf_threshold,
+            conv_idf_power=conv_power,
+            min_idf_threshold=mit, min_idf_penalty=mip,
             k_values=(100, 500),
         )
-        results.append((bonus, penalty, metrics))
+        results.append((bonus, idf_floor, idf_threshold, conv_power,
+                         mit, mip, metrics))
 
-    results.sort(key=lambda x: _objective(x[2]), reverse=True)
-    log(f"  Bonus/penalty sweep complete: {total} configs")
+    results.sort(key=lambda x: _objective(x[6]), reverse=True)
+    log(f"  Bonus/IDF sweep complete: {total} configs")
     return results
 
 
@@ -570,9 +654,11 @@ def format_weights_short(weights):
     return "/".join(f"{a}{weights[k]}" for a, k in zip(abbrev, CHANNEL_NAMES))
 
 
-def print_top_configs(weight_results, bonus_penalty_results, summaries,
+def print_top_configs(weight_results, bonus_idf_results, summaries,
                       total_recall_info,
-                      current_weights, current_bonus, current_penalty):
+                      current_weights, current_bonus,
+                      current_idf_floor, current_idf_threshold,
+                      current_conv_idf_power=1.0):
     """Print summary of top configurations."""
     log(f"\n\n{'='*80}")
     log("OPTIMIZATION RESULTS")
@@ -591,12 +677,20 @@ def print_top_configs(weight_results, bonus_penalty_results, summaries,
     # Current config baseline
     wv_current = weights_to_vector(current_weights)
     current_metrics = evaluate_config_fast(
-        summaries, wv_current, current_bonus, current_penalty,
+        summaries, wv_current, current_bonus,
+        current_idf_floor, current_idf_threshold,
+        conv_idf_power=current_conv_idf_power,
+        min_idf_threshold=RARITY_MIN_IDF_THRESHOLD,
+        min_idf_penalty=RARITY_MIN_IDF_PENALTY,
         k_values=(10, 50, 100, 500, 1000, 5000),
     )
-    log(f"\n--- Current Config D (baseline) ---")
+    log(f"\n--- Current Config G (baseline) ---")
     log(f"  Weights: {format_weights(current_weights)}")
-    log(f"  Bonus: {current_bonus}, Penalty: {current_penalty}")
+    log(f"  Bonus: {current_bonus}, IDF floor: {current_idf_floor}, "
+        f"IDF threshold: {current_idf_threshold}, "
+        f"conv_idf_power: {current_conv_idf_power}, "
+        f"min_idf_threshold: {RARITY_MIN_IDF_THRESHOLD}, "
+        f"min_idf_penalty: {RARITY_MIN_IDF_PENALTY}")
     for k in [10, 50, 100, 500, 1000, 5000]:
         key = f"recall_at_{k}"
         fkey = f"found_at_{k}"
@@ -628,7 +722,7 @@ def print_top_configs(weight_results, bonus_penalty_results, summaries,
         f"R@100: {best_metrics.get('recall_at_100', 0):.1%} "
         f"({best_metrics.get('found_at_100', 0)}/{best_metrics['total_gold']})")
 
-    log(f"\n  Changes from Config D:")
+    log(f"\n  Weight changes from Config G:")
     any_change = False
     for k in CHANNEL_NAMES:
         if best_weights[k] != current_weights[k]:
@@ -637,39 +731,52 @@ def print_top_configs(weight_results, bonus_penalty_results, summaries,
     if not any_change:
         log(f"    (no changes — current weights are optimal)")
 
-    # Top bonus/penalty configs (Phase 2b)
-    if bonus_penalty_results:
-        log(f"\n--- Top 10 Bonus x Penalty Configs (Phase 2b) ---")
-        log(f"{'Rank':>4} {'Bonus':>7} {'Penalty':>8} {'R@500':>8} "
-            f"{'R@100':>8} {'F@500':>6} {'F@100':>6}")
-        log("-" * 65)
+    # Top bonus/IDF configs (Phase 2b)
+    if bonus_idf_results:
+        log(f"\n--- Top 10 Bonus x IDF x MinIDF Configs (Phase 2b) ---")
+        log(f"{'Rank':>4} {'Bonus':>6} {'Floor':>6} {'Thresh':>6} {'CvPow':>5} "
+            f"{'MinTh':>6} {'MinPn':>6} {'R@500':>8} {'R@100':>8} "
+            f"{'F@500':>5} {'F@100':>5}")
+        log("-" * 100)
 
-        for rank, (bonus, penalty, metrics) in enumerate(
-                bonus_penalty_results[:10], 1):
+        for rank, entry in enumerate(bonus_idf_results[:10], 1):
+            bonus, idf_floor, idf_threshold, conv_power, mit, mip, metrics = entry
             r500 = metrics.get("recall_at_500", 0)
             r100 = metrics.get("recall_at_100", 0)
             f500 = metrics.get("found_at_500", 0)
             f100 = metrics.get("found_at_100", 0)
-            is_current = (bonus == current_bonus and penalty == current_penalty)
-            marker = " <-- CURRENT" if is_current else ""
-            log(f"{rank:>4} {bonus:>7.2f} {penalty:>8.2f} {r500:>7.1%} "
-                f"{r100:>7.1%}  {f500:>5} {f100:>5}{marker}")
+            log(f"{rank:>4} {bonus:>6.2f} {idf_floor:>6.2f} "
+                f"{idf_threshold:>6.2f} {conv_power:>5.1f} "
+                f"{mit:>6.2f} {mip:>6.2f} {r500:>7.1%} "
+                f"{r100:>7.1%}  {f500:>4} {f100:>4}")
 
     # Final recommendation
-    if bonus_penalty_results:
-        best_bonus, best_penalty, best_bp_metrics = bonus_penalty_results[0]
+    if bonus_idf_results:
+        (best_bonus, best_floor, best_thresh, best_conv_power,
+         best_mit, best_mip, best_bp_metrics) = bonus_idf_results[0]
     else:
-        best_bonus, best_penalty = current_bonus, current_penalty
+        best_bonus = current_bonus
+        best_floor = current_idf_floor
+        best_thresh = current_idf_threshold
+        best_conv_power = 1.0
+        best_mit = RARITY_MIN_IDF_THRESHOLD
+        best_mip = RARITY_MIN_IDF_PENALTY
 
     log(f"\n--- RECOMMENDATION ---")
     log(f"  Weights: {format_weights(best_weights)}")
     log(f"  Convergence bonus: {best_bonus}")
-    log(f"  Stopword penalty: {best_penalty}")
+    log(f"  IDF floor: {best_floor}")
+    log(f"  IDF threshold: {best_thresh}")
+    log(f"  Convergence IDF power: {best_conv_power}")
+    log(f"  Min-IDF threshold: {best_mit}")
+    log(f"  Min-IDF penalty: {best_mip}")
 
     # Full evaluation of recommended config
     wv_best = weights_to_vector(best_weights)
     final_metrics = evaluate_config_fast(
-        summaries, wv_best, best_bonus, best_penalty,
+        summaries, wv_best, best_bonus, best_floor, best_thresh,
+        conv_idf_power=best_conv_power,
+        min_idf_threshold=best_mit, min_idf_penalty=best_mip,
         k_values=(10, 50, 100, 500, 1000, 5000),
     )
     log(f"\n  Recall@K for recommended config:")
@@ -685,14 +792,14 @@ def print_top_configs(weight_results, bonus_penalty_results, summaries,
     rec_r500 = final_metrics.get("recall_at_500", 0)
     curr_r100 = current_metrics.get("recall_at_100", 0)
     rec_r100 = final_metrics.get("recall_at_100", 0)
-    log(f"\n  Improvement over Config D:")
+    log(f"\n  Improvement over Config G:")
     log(f"    R@500: {curr_r500:.1%} -> {rec_r500:.1%} "
         f"({rec_r500 - curr_r500:+.1%})")
     log(f"    R@100: {curr_r100:.1%} -> {rec_r100:.1%} "
         f"({rec_r100 - curr_r100:+.1%})")
 
 
-def save_csv(weight_results, bonus_penalty_results, output_dir):
+def save_csv(weight_results, bonus_idf_results, output_dir):
     """Save all results to CSV files."""
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -718,27 +825,29 @@ def save_csv(weight_results, bonus_penalty_results, output_dir):
     log(f"\n  Weight sweep CSV: {csv_path}")
     log(f"    ({len(weight_results):,} rows)")
 
-    if bonus_penalty_results:
-        csv_path2 = output_dir / "bonus_penalty_sweep_results.csv"
+    if bonus_idf_results:
+        csv_path2 = output_dir / "bonus_idf_sweep_results.csv"
         with open(csv_path2, "w", newline="") as f:
             writer = csv.writer(f)
             writer.writerow([
-                "rank", "convergence_bonus", "stopword_penalty",
+                "rank", "convergence_bonus", "idf_floor", "idf_threshold",
+                "conv_idf_power", "min_idf_threshold", "min_idf_penalty",
                 "recall_at_500", "recall_at_100",
                 "found_at_500", "found_at_100", "total_gold",
             ])
-            for rank, (bonus, penalty, metrics) in enumerate(
-                    bonus_penalty_results, 1):
+            for rank, entry in enumerate(bonus_idf_results, 1):
+                bonus, idf_floor, idf_threshold, conv_power, mit, mip, metrics = entry
                 writer.writerow([
-                    rank, bonus, penalty,
+                    rank, bonus, idf_floor, idf_threshold, conv_power,
+                    mit, mip,
                     f"{metrics.get('recall_at_500', 0):.4f}",
                     f"{metrics.get('recall_at_100', 0):.4f}",
                     metrics.get("found_at_500", 0),
                     metrics.get("found_at_100", 0),
                     metrics.get("total_gold", 0),
                 ])
-        log(f"  Bonus/penalty CSV: {csv_path2}")
-        log(f"    ({len(bonus_penalty_results)} rows)")
+        log(f"  Bonus/IDF CSV: {csv_path2}")
+        log(f"    ({len(bonus_idf_results)} rows)")
 
 
 # ---------------------------------------------------------------------------
@@ -749,20 +858,27 @@ def main():
     t_start = time.time()
 
     log("=" * 80)
-    log("FUSION WEIGHT OPTIMIZATION (v2 — numpy-accelerated)")
-    log("Grid search over channel weights, convergence bonus, stopword penalty")
+    log("FUSION WEIGHT OPTIMIZATION (v6 — u/v norm fix + zero-score conv + power sweep)")
+    log("Grid search over channel weights, convergence bonus, IDF curve params,")
+    log("and conv_idf_power (u/v normalized DF lookups, zero-score conv filtering)")
     log("=" * 80)
 
     weight_configs = generate_weight_configs()
-    bp_combos = len(CONVERGENCE_GRID) * len(STOPWORD_PENALTY_GRID)
+    idf_combos = (len(CONVERGENCE_GRID) * len(IDF_FLOOR_GRID)
+                  * len(IDF_THRESHOLD_GRID) * len(CONV_IDF_POWER_GRID)
+                  * len(MIN_IDF_THRESHOLD_GRID) * len(MIN_IDF_PENALTY_GRID))
     log(f"\nSearch space:")
     log(f"  Weight configs: {len(weight_configs):,}")
-    log(f"  Bonus x penalty: {bp_combos}")
-    log(f"  Total (two-phase): {len(weight_configs):,} + {bp_combos}")
-    log(f"\nCurrent Config D:")
+    log(f"  Bonus x IDF params x min-IDF params: {idf_combos}")
+    log(f"  Total (two-phase): {len(weight_configs):,} + {idf_combos}")
+    log(f"\nCurrent Config G:")
     log(f"  {format_weights(CHANNEL_WEIGHTS)}")
     log(f"  convergence_bonus={CONVERGENCE_BONUS}, "
-        f"stopword_penalty={FUNCTION_WORD_PENALTY}")
+        f"idf_floor={RARITY_IDF_FLOOR}, idf_threshold={RARITY_IDF_THRESHOLD}, "
+        f"conv_idf_power={CONVERGENCE_IDF_POWER}")
+    log(f"  min_idf_threshold={RARITY_MIN_IDF_THRESHOLD}, "
+        f"min_idf_penalty={RARITY_MIN_IDF_PENALTY}")
+    log(f"  NOTE: df=0 entries (surface forms) now SKIPPED in geometric mean")
 
     # Initialize components
     log(f"\nInitializing TextProcessor, Matcher, Scorer...")
@@ -787,36 +903,42 @@ def main():
 
     # Memory estimate
     mem_mb = sum(
-        s["scores_matrix"].nbytes + s["n_channels"].nbytes + s["is_stopword"].nbytes
+        s["scores_matrix"].nbytes + s["n_channels"].nbytes
+        + s["rarity_mean_idfs"].nbytes
         for s in summaries.values()
     ) / 1e6
     log(f"  Summary memory (arrays): {mem_mb:.1f} MB")
 
-    # Phase 2a: Weight sweep
+    # Phase 2a: Weight sweep (with current IDF params)
     log(f"\n{'='*80}")
     log("PHASE 2a: Weight grid sweep (numpy-accelerated)")
     log(f"{'='*80}")
     weight_results = run_weight_sweep(
-        summaries, CONVERGENCE_BONUS, FUNCTION_WORD_PENALTY
+        summaries, CONVERGENCE_BONUS, RARITY_IDF_FLOOR, RARITY_IDF_THRESHOLD,
+        conv_idf_power=CONVERGENCE_IDF_POWER,
+        min_idf_threshold=RARITY_MIN_IDF_THRESHOLD,
+        min_idf_penalty=RARITY_MIN_IDF_PENALTY,
     )
 
-    # Phase 2b: Bonus/penalty sweep with best weights
+    # Phase 2b: Bonus/IDF/min-IDF sweep with best weights
     log(f"\n{'='*80}")
-    log("PHASE 2b: Convergence bonus x stopword penalty sweep")
+    log("PHASE 2b: Bonus x IDF x min-IDF sweep")
     log(f"{'='*80}")
     best_weights = weight_results[0][0]
-    bonus_penalty_results = run_bonus_penalty_sweep(summaries, best_weights)
+    bonus_idf_results = run_bonus_idf_sweep(summaries, best_weights)
 
     # Phase 3: Output
     log(f"\n{'='*80}")
     log("PHASE 3: Results")
     log(f"{'='*80}")
     print_top_configs(
-        weight_results, bonus_penalty_results, summaries,
+        weight_results, bonus_idf_results, summaries,
         total_recall_info,
-        CHANNEL_WEIGHTS, CONVERGENCE_BONUS, FUNCTION_WORD_PENALTY,
+        CHANNEL_WEIGHTS, CONVERGENCE_BONUS,
+        RARITY_IDF_FLOOR, RARITY_IDF_THRESHOLD,
+        current_conv_idf_power=CONVERGENCE_IDF_POWER,
     )
-    save_csv(weight_results, bonus_penalty_results, OUTPUT_DIR)
+    save_csv(weight_results, bonus_idf_results, OUTPUT_DIR)
 
     total_elapsed = time.time() - t_start
     log(f"\n\nTotal elapsed: {total_elapsed:.1f}s ({total_elapsed/60:.1f} min)")

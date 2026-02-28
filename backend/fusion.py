@@ -73,16 +73,18 @@ Four channels run on windows (lemma, lemma_min1, rare_word, dictionary):
 
 Scoring
 -------
-Weighted score fusion with stopword penalty:
+Weighted score fusion with graduated corpus-IDF rarity multiplier:
   base = sum(channel_score_i * weight_i) + 0.5 * (N_channels - 1)
-  fused_score = base * stopword_multiplier
+  fused_score = base * rarity_multiplier
 
-Pairs whose matched lemmas are ALL in the Latin/Greek stoplists receive
-a 0.2× penalty, demoting function-word coincidences (e.g., "neque enim").
-All other pairs are unmodified.
+The rarity multiplier is a continuous value in [idf_floor, 1.0] based on
+the arithmetic mean of corpus-wide IDF values (log(N/df)) across matched
+lemmas. Pairs matching only very common words (mean IDF < 0.1) get the
+floor multiplier; pairs with rare vocabulary get 1.0; intermediate cases
+get a linear ramp. This replaces the earlier binary stopword penalty.
 
-Channel weights are from Config E (grid-search optimized, Feb 27 2026).
-See research/studies/2026-02-27_weight_optimization/REPORT.md.
+Channel weights are from Config F (grid-search optimized, Feb 27 2026).
+Built on Config E with graduated corpus-IDF rarity multiplier.
 """
 
 import json
@@ -94,30 +96,141 @@ from collections import defaultdict
 
 
 # ---------------------------------------------------------------------------
-# Config E channel weights (optimized via grid search, Feb 27 2026)
-# 34,992 weight configurations swept across 5 benchmark pairs.
-# Optimized for recall@500 (gold pairs found in top 500 results).
-# R@500 improved from 19.8% (Config D) to 22.6% (+24 gold pairs).
-# See research/studies/2026-02-27_weight_optimization/REPORT.md
+# Config K channel weights (Feb 28 2026)
+#
+# These weights were determined by grid-search optimization across Configs
+# A through K, evaluated on 5 Latin benchmarks (862 gold-standard parallels).
+# The optimizer (evaluation/scripts/run_weight_optimization.py v8) swept
+# 34,992 weight combinations and 180 IDF curve parameter sets at each stage.
+#
+# Three-layer rarity scoring system
+# ----------------------------------
+# The scoring formula applies three independent mechanisms to suppress
+# common-word noise while preserving (and boosting) rare-word matches.
+# All three layers use the same geometric mean corpus-IDF as input.
+#
+# Layer 1 — Base score penalty (mult^2):
+#   The raw weighted sum is multiplied by mult^2, where mult is a piecewise
+#   linear function from idf_floor (0.2) at geom_idf < 0.1 to 1.0 at the
+#   threshold (1.5). Common-word pairs are heavily penalized: a pair with
+#   geom_idf=0.36 (e.g. "tum vero") gets mult=0.33, so mult^2=0.11 — an
+#   89% reduction. Pairs with geom_idf >= threshold are unpenalized (1.0).
+#
+# Layer 2 — IDF-weighted convergence:
+#   Each channel's contribution to the convergence bonus is scaled by
+#   min(1.0, geom_mean_idf)^2 instead of counting as a flat 1.0. This
+#   prevents common-word pairs that happen to match on many channels from
+#   accumulating large bonuses: "tum vero" matching on 6 channels gets
+#   weighted_n = 6 * 0.13 = 0.78, yielding zero convergence bonus (needs
+#   weighted_n > 1.0). Distinctive pairs like "centum angues" with
+#   geom_idf > 1.0 are unaffected (capped at 1.0 per channel).
+#
+# Layer 3 — Rarity boost for multi-channel rare matches:
+#   When geom_idf exceeds the threshold, the multiplier rises above 1.0
+#   via a log curve: 1.0 + boost_weight * channel_factor * log(geom_idf /
+#   threshold), capped at boost_cap (2.0). The channel_factor is
+#   (n_scoring_channels - 1) / 5, so single-channel noise (n=1, factor=0)
+#   gets no boost — only multi-channel convergence on rare vocabulary is
+#   promoted. This rewards the most distinctive, well-attested allusions.
+#
+# Combined effect on key test cases (from optimizer evaluation):
+#   "tum vero"       (common): geom_idf=0.36, rank went from #37 to #903
+#   "centum angues"  (rare):   geom_idf>3.0,  stable at #4
+#   "Acheronta movebo" (rare): stable at #10
+#   Top 100: 0% common-word matches; function-word noise eliminated.
+#   Total recall: 784/862 (91.0%, unchanged by rarity scoring).
 # ---------------------------------------------------------------------------
 CHANNEL_WEIGHTS = {
-    "edit_distance": 2.0,   # sub-lexical: Levenshtein fuzzy match (was 4.0)
-    "sound": 4.0,           # sub-lexical: character trigram overlap (was 3.0)
-    "exact": 1.0,           # lexical: identical surface forms (was 2.0)
-    "lemma": 2.0,           # lexical: shared dictionary headwords (was 1.5)
-    "dictionary": 1.5,      # distributional: curated synonym pairs (was 1.0)
-    "semantic": 0.8,        # distributional: SPhilBERTa cosine sim
-    "rare_word": 1.0,       # lexical: shared low-frequency lemmata (was 2.0)
-    "syntax": 0.5,          # structural: dependency pattern match
-    "lemma_min1": 0.3,      # lexical: single shared lemma (high recall, low precision)
+    "edit_distance": 2.0,   # sub-lexical: Levenshtein fuzzy match (highest for phonetic echoes)
+    "sound": 4.0,           # sub-lexical: character trigram overlap (most heavily weighted —
+                            #   sound echoes are strong evidence of intentional allusion)
+    "exact": 1.0,           # lexical: identical surface forms (low — subsumed by lemma)
+    "lemma": 2.0,           # lexical: shared dictionary headwords (core V3-style matching)
+    "dictionary": 0.5,      # distributional: curated V3 synonym pairs (low — broad recall,
+                            #   many false positives without co-occurrence)
+    "semantic": 1.2,        # distributional: SPhilBERTa cosine similarity (moderate —
+                            #   good at catching paraphrase but noisy at low thresholds)
+    "rare_word": 2.0,       # lexical: shared low-frequency lemmata (high — rare word sharing
+                            #   is strong allusion evidence; min_matches=1 is sufficient)
+    "syntax": 0.3,          # structural: dependency pattern match (low — supplements other
+                            #   channels but unreliable as primary signal)
+    "lemma_min1": 0.3,      # lexical: single shared lemma (low — very high recall, very
+                            #   noisy; serves as a catch-all for otherwise missed pairs)
 }
 
 # Bonus added for each additional channel beyond the first that confirms
 # a pair, rewarding cross-channel convergence as evidence of a true allusion.
-CONVERGENCE_BONUS = 0.5
+# The raw bonus per extra channel is 0.75 * idf_weight, where idf_weight
+# is min(1.0, geom_mean_idf)^2 (Layer 2). With squared IDF weighting,
+# 0.75 is safe: even 8 extra channels on a common-word pair contribute
+# little (0.75 * 8 * 0.13 = 0.78), while 4 extra channels on a distinctive
+# pair contribute 0.75 * 4 * 1.0 = 3.0 — a meaningful boost.
+CONVERGENCE_BONUS = 0.75
 
-# Rarity-aware scoring: penalty for stopword-only pairs
-FUNCTION_WORD_PENALTY = 0.2         # multiplier for all-stopword pairs (was 0.3)
+# ---------------------------------------------------------------------------
+# Rarity scoring parameters: graduated corpus-IDF multiplier
+# ---------------------------------------------------------------------------
+# The rarity multiplier uses the GEOMETRIC mean of corpus-wide IDF values
+# for matched lemmas. Geometric mean penalizes pairs where even ONE word
+# is ultra-common: "sum" (idf=0.007) + "locus" (idf=3.0) → geom=0.15
+# (penalized) vs arithmetic mean=1.50 (not penalized). This is critical
+# because function words like "est", "et", "in" appear in >95% of the
+# 1429 Latin texts, making any pair containing them almost certainly noise.
+#
+# Entries with df=0 (surface forms not in the inverted index, e.g. "auras"
+# instead of canonical "aura") are SKIPPED — treating them as ultra-rare
+# would inflate the geometric mean and mask penalties for their common
+# companions.
+#
+# Piecewise linear curve mapping geom_mean_idf → multiplier:
+#   geom_idf < 0.1           → idf_floor (harshest penalty, near-stopwords)
+#   0.1 ≤ geom_idf < thresh  → linear ramp from (idf_floor + 0.1) to 1.0
+#   geom_idf ≥ thresh        → ≥ 1.0 (no penalty; rarity boost for Layer 3)
+# ---------------------------------------------------------------------------
+
+# Multiplier floor: the minimum rarity multiplier applied to pairs whose
+# geometric mean IDF is below 0.1 (i.e., all matched lemmata are extremely
+# common — words appearing in >90% of texts). Since mult is squared (Layer 1),
+# the effective floor is 0.2^2 = 0.04 (96% score reduction).
+RARITY_IDF_FLOOR = 0.2
+
+# IDF threshold: the geometric mean IDF at which the multiplier reaches 1.0
+# (no penalty). With 1429 Latin texts, IDF = log(1429/df):
+#   df=954 (67% of texts) → idf=0.40 (penalized)
+#   df=314 (22% of texts) → idf=1.51 (at threshold, no penalty)
+#   df=50  (3.5% of texts) → idf=3.35 (boosted if multi-channel)
+# Value of 1.5 means words appearing in more than ~22% of texts get penalized.
+RARITY_IDF_THRESHOLD = 1.5
+
+# Exponent applied to the rarity multiplier when scaling the convergence
+# bonus: conv_mult = multiplier^power. With power=1.0, the convergence bonus
+# gets the same rarity scaling as the base score (before squaring). Higher
+# powers would penalize convergence more aggressively. Optimizer found 1.0
+# optimal — further convergence penalty on top of squared IDF weighting
+# (Layer 2) provides no benefit.
+CONVERGENCE_IDF_POWER = 1.0
+
+# Min-IDF gate: an additional penalty if ANY single matched lemma has corpus
+# IDF below the threshold. This would catch pairs where the geometric mean
+# is pulled up by moderate-frequency companions but one word is truly
+# ubiquitous (e.g., "per" in all 1429 texts). DISABLED (threshold=0.0):
+# the optimizer grid search found no recall/ranking benefit — the geometric
+# mean already handles this case via its sensitivity to individual outliers.
+RARITY_MIN_IDF_THRESHOLD = 0.0
+RARITY_MIN_IDF_PENALTY = 1.0       # 1.0 = no effect (gate is disabled)
+
+# Rarity boost (Layer 3): for pairs with geom_idf above the threshold,
+# the multiplier exceeds 1.0 to actively promote rare multi-channel matches.
+# Formula: 1.0 + boost_weight * channel_factor * log(geom_idf / threshold)
+# where channel_factor = min(1.0, (n_scoring_channels - 1) / 5).
+# The log curve provides diminishing returns for extremely rare words,
+# preventing runaway scores. The channel_factor ensures single-channel
+# matches (n=1, factor=0) get zero boost — only multi-channel convergence
+# on rare vocabulary is promoted. The cap prevents any multiplier from
+# exceeding 2.0 regardless of how rare the vocabulary is.
+RARITY_BOOST_WEIGHT = 0.5          # scaling factor on the log-curve boost
+RARITY_BOOST_CAP = 2.0             # hard ceiling on multiplier (prevents runaway)
+FUNCTION_WORD_PENALTY = RARITY_IDF_FLOOR  # backward compatibility alias
 
 # ---------------------------------------------------------------------------
 # Channel classification for two-pass architecture
@@ -692,72 +805,288 @@ def run_channel(channel_name, config, source_units, target_units,
     return scored
 
 
-def _compute_rarity_multiplier(matched_words_dict, penalty=None):
-    """Compute a score multiplier based on the rarity of matched lemmas.
+# ---------------------------------------------------------------------------
+# Corpus-IDF utilities for graduated rarity multiplier
+# ---------------------------------------------------------------------------
 
-    Returns a float multiplier:
-      - penalty (default FUNCTION_WORD_PENALTY=0.3) for stopword-only pairs
-      - 1.0 for all other pairs (neutral)
+_corpus_doc_freq_cache = {}
+_total_texts_cache = {}
 
-    Only applies a penalty when ALL matched lemmas (with idf > 0) are in
-    the Latin/Greek stoplists. This demotes pairs like "neque enim" that
-    share only function words. All other pairs are left unchanged — the
-    rare_word channel weight (2.0) handles boosting rare vocabulary.
 
-    Uses stoplist membership rather than IDF thresholds because per-pair
-    IDF (computed from just two texts) gives inflated values even for
-    common words.
+def _get_corpus_doc_freqs(lemmas, language='la'):
+    """Batch-fetch corpus-wide document frequencies, with caching.
+
+    Reuses get_document_frequencies_batch() from hapax.py which queries the
+    inverted index (la_index.db / grc_index.db). The hapax function handles
+    u/v expansion internally for Latin.
+
+    IMPORTANT: For Latin, deduplicates u/v variants before batch querying
+    to avoid a collision bug in get_document_frequencies_batch where the
+    expanded_map overwrites entries when two input lemmas are u/v variants
+    of each other (e.g., querying {'uero', 'vero'} causes 'uero' → df=0).
+
+    Returns dict: lemma → document count (0 if not found).
     """
+    uncached = [l for l in lemmas if l not in _corpus_doc_freq_cache]
+    if uncached:
+        from backend.blueprints.hapax import get_document_frequencies_batch
+
+        if language == 'la':
+            # Deduplicate u/v variants: keep only one canonical form per
+            # variant group. Map all variants back to the same DF result.
+            canonical = {}  # u-normalized form → first lemma seen
+            query_set = set()
+            for l in uncached:
+                norm = l.replace('v', 'u').replace('j', 'i')
+                if norm not in canonical:
+                    canonical[norm] = l
+                    query_set.add(l)
+                # else: l is a u/v variant of an already-queued lemma
+
+            batch_result = get_document_frequencies_batch(query_set, language)
+
+            # Populate cache for all uncached lemmas, including variants
+            for l in uncached:
+                norm = l.replace('v', 'u').replace('j', 'i')
+                canon_lemma = canonical[norm]
+                _corpus_doc_freq_cache[l] = batch_result.get(canon_lemma, 0)
+        else:
+            batch_result = get_document_frequencies_batch(set(uncached), language)
+            for l in uncached:
+                _corpus_doc_freq_cache[l] = batch_result.get(l, 0)
+
+    return {l: _corpus_doc_freq_cache.get(l, 0) for l in lemmas}
+
+
+def _get_total_texts(language='la'):
+    """Get total text count from inverted index (cached)."""
+    if language not in _total_texts_cache:
+        try:
+            from backend.inverted_index import get_connection
+            conn = get_connection(language)
+            if conn:
+                cursor = conn.cursor()
+                cursor.execute('SELECT COUNT(*) FROM texts')
+                _total_texts_cache[language] = cursor.fetchone()[0]
+            else:
+                # Fallback: known corpus sizes
+                _total_texts_cache[language] = {'la': 1429, 'grc': 691}.get(
+                    language, 1000)
+        except Exception:
+            _total_texts_cache[language] = {'la': 1429, 'grc': 691}.get(
+                language, 1000)
+    return _total_texts_cache[language]
+
+
+def _compute_rarity_multiplier(matched_words_dict, penalty=None, language='la',
+                                idf_floor=None, idf_threshold=None,
+                                min_idf_threshold=None, min_idf_penalty=None):
+    """Compute a graduated score multiplier based on corpus-wide document frequency.
+
+    This function implements Layer 1 of the three-layer rarity scoring system.
+    (Layers 2 and 3 are applied in fuse_results() using the geom_mean_idf
+    returned here.)
+
+    In plain English: this function looks at the words that matched between
+    a source and target line, checks how common each word is across the
+    entire Latin corpus (1429 texts), and returns a penalty factor. Pairs
+    that match only on very common words (like "est", "et", "in") get
+    their scores reduced by up to 96%. Pairs matching on distinctive
+    vocabulary pass through unpenalized.
+
+    Technical detail:
+      1. For each matched lemma with a nonzero IDF, look up its document
+         frequency (df) across the full corpus via the inverted index.
+      2. Compute corpus IDF for each: log(N / df) where N = total texts.
+      3. Take the GEOMETRIC mean of these corpus IDFs. The geometric mean
+         is critical because it is sensitive to individual outliers: if
+         even one matched word is ultra-common, the geometric mean drops
+         sharply. Example: "sum" (idf=0.007) + "locus" (idf=3.0) →
+         geometric mean = sqrt(0.007 * 3.0) = 0.15 (penalized), whereas
+         arithmetic mean = (0.007 + 3.0) / 2 = 1.50 (would escape penalty).
+      4. Map the geometric mean to a multiplier via a piecewise linear curve:
+           geom_idf < 0.1            → idf_floor (harshest: 0.2)
+           0.1 ≤ geom_idf < thresh   → linear ramp from 0.3 to 1.0
+           geom_idf ≥ thresh (1.5)   → 1.0 (no penalty)
+      5. Optionally apply a min-IDF gate (currently disabled by optimizer).
+
+    Entries with df=0 (surface forms not in the corpus inverted index, e.g.
+    "auras" rather than canonical "aura") are skipped entirely. Including
+    them would treat unrecognized surface forms as infinitely rare, inflating
+    the geometric mean and masking the penalty for genuinely common companions.
+
+    This function is used standalone by evaluation scripts. In production,
+    fuse_results() inlines an equivalent computation for performance (the
+    function-call overhead was ~400s for 100K+ pairs; inlining reduced it
+    to ~58s). Any changes to the logic here MUST be mirrored in the inlined
+    version in fuse_results().
+
+    Args:
+        matched_words_dict: {lemma: {idf: ..., ...}} from fused pair.
+            Each value is a matched_word dict containing at minimum an 'idf'
+            field (the per-pair IDF from the scorer). Entries with idf=0
+            (e.g., sound/edit_distance matches without lexical IDF) are
+            excluded from the rarity calculation.
+        penalty: Legacy parameter, used as idf_floor if idf_floor not set.
+            Retained for backward compatibility with older evaluation scripts.
+        language: Corpus language code ('la' or 'grc'). Determines which
+            inverted index is queried for document frequencies.
+        idf_floor: Multiplier floor for highest-frequency words (default 0.2).
+            Since fuse_results() squares this (Layer 1), effective floor = 0.04.
+        idf_threshold: Geometric mean IDF at which multiplier reaches 1.0
+            (default 1.5). Words in >22% of Latin texts get penalized.
+        min_idf_threshold: If any single lemma's corpus IDF falls below this,
+            apply min_idf_penalty. Default 0.0 (disabled).
+        min_idf_penalty: Extra multiplier when min-IDF gate fires.
+            Default 1.0 (no effect when gate is disabled).
+
+    Returns:
+        (multiplier, geom_mean_idf) tuple.
+        - multiplier: float in [idf_floor * min_idf_penalty, 1.0]. Applied
+          as mult^2 to the base score in fuse_results() (Layer 1).
+        - geom_mean_idf: the raw geometric mean, used by fuse_results() for
+          Layer 2 (IDF-weighted convergence) and Layer 3 (rarity boost).
+    """
+    # No matched words → no rarity data available; return neutral multiplier
     if not matched_words_dict:
-        return 1.0
+        return 1.0, 1.0
 
-    if penalty is None:
-        penalty = FUNCTION_WORD_PENALTY
+    # Resolve parameter defaults: allow callers (e.g., weight optimizer) to
+    # override any parameter without modifying module globals.
+    if idf_floor is None:
+        idf_floor = penalty if penalty is not None else RARITY_IDF_FLOOR
+    if idf_threshold is None:
+        idf_threshold = RARITY_IDF_THRESHOLD
+    if min_idf_threshold is None:
+        min_idf_threshold = RARITY_MIN_IDF_THRESHOLD
+    if min_idf_penalty is None:
+        min_idf_penalty = RARITY_MIN_IDF_PENALTY
 
-    from backend.matcher import DEFAULT_LATIN_STOP_WORDS, DEFAULT_GREEK_STOP_WORDS
-    stop_words = DEFAULT_LATIN_STOP_WORDS | DEFAULT_GREEK_STOP_WORDS
-
-    has_content_word = False
-    has_any_idf = False
+    # --- Step 1: Collect lemmas with lexical IDF ---
+    # Sound and edit_distance matches have idf=0 because they operate on
+    # character-level similarity, not lemma identity. We exclude these
+    # because they don't carry meaningful document-frequency information.
+    lexical_lemmas = []
     for lemma, mw in matched_words_dict.items():
         idf = mw.get('idf', 0)
-        if idf <= 0:
-            continue  # skip sound/edit_distance entries (idf=0)
-        has_any_idf = True
-        if lemma not in stop_words:
-            has_content_word = True
-            break
+        if idf > 0:
+            lexical_lemmas.append(lemma)
 
-    if not has_any_idf:
-        return 1.0
+    # No lexical matches (only sub-lexical channels fired) → neutral
+    if not lexical_lemmas:
+        return 1.0, 1.0
 
-    # All stopwords → apply penalty
-    if not has_content_word:
-        return penalty
+    # --- Step 2: Look up corpus-wide document frequencies ---
+    # Query the inverted index (la_index.db or grc_index.db) for the number
+    # of texts containing each lemma. For Latin, this covers 1429 texts.
+    total_texts = _get_total_texts(language)
+    doc_freqs = _get_corpus_doc_freqs(lexical_lemmas, language)
 
-    return 1.0
+    # --- Step 3: Compute corpus IDF for each lemma: log(N / df) ---
+    # IMPORTANT: Skip entries with df=0. These are surface forms (e.g.
+    # "auras") that don't appear as canonical lemmas in the inverted index
+    # (which stores "aura"). The inverted index is lemmatized, so df=0
+    # means the string isn't a recognized dictionary headword. If we
+    # treated these as ultra-rare (log(1429/1) = 7.26), they would inflate
+    # the geometric mean and mask the penalty for genuinely common
+    # companions like "per" (df=1429, idf=0.0).
+    corpus_idfs = []
+    for lemma in lexical_lemmas:
+        df = doc_freqs.get(lemma, 0)
+        if df > 0:
+            corpus_idfs.append(math.log(total_texts / df))
+
+    # No corpus IDF data available (all lemmas had df=0) → neutral
+    if not corpus_idfs:
+        return 1.0, 1.0
+
+    # --- Step 4: Geometric mean of corpus IDFs ---
+    # Formula: exp(mean(log(idf_i))). The geometric mean is the key
+    # innovation over arithmetic mean: it is dragged down by ANY single
+    # common word, even if other matched words are rare. This prevents
+    # pairs like "sum locus" from escaping the penalty.
+    # Guard against log(0) with a floor of 0.001 (effectively treats
+    # words with corpus IDF < 0.001 identically — all are "maximally common").
+    log_sum = sum(math.log(max(idf, 0.001)) for idf in corpus_idfs)
+    mean_idf = math.exp(log_sum / len(corpus_idfs))
+
+    # --- Step 5: Piecewise linear multiplier ---
+    # Maps the continuous geometric mean IDF to a multiplier:
+    #   [0, 0.1)       → flat at idf_floor (0.2): near-stopwords
+    #   [0.1, thresh)   → linear ramp from 0.3 to 1.0: graduated penalty
+    #   [thresh, inf)   → 1.0: no penalty (rare enough to be meaningful)
+    # Note: this function only computes up to 1.0. The rarity BOOST
+    # (multiplier > 1.0 for rare multi-channel matches) is applied in
+    # fuse_results(), not here, because it depends on n_scoring_channels.
+    if mean_idf < 0.1:
+        multiplier = idf_floor
+    elif mean_idf < idf_threshold:
+        # Linear interpolation: at mean_idf=0.1, multiplier = idf_floor + 0.1
+        # (slightly above floor to avoid a discontinuity); at mean_idf=threshold,
+        # multiplier = 1.0.
+        ramp_start = idf_floor + 0.1
+        t = (mean_idf - 0.1) / (idf_threshold - 0.1)
+        multiplier = ramp_start + t * (1.0 - ramp_start)
+    else:
+        multiplier = 1.0
+
+    # --- Step 6: Min-IDF gate (currently disabled) ---
+    # An additional per-lemma penalty: if ANY matched lemma has corpus IDF
+    # below min_idf_threshold, multiply the result by min_idf_penalty.
+    # This would catch pairs where the geometric mean is pulled up by
+    # moderate-frequency companions but one word is truly ubiquitous
+    # (e.g. "per" in 1429/1429 texts → idf=0.0). Currently disabled
+    # (threshold=0.0, penalty=1.0) because the optimizer found no benefit
+    # beyond what the geometric mean already provides.
+    if min_idf_penalty < 1.0 and min_idf_threshold > 0:
+        min_corpus_idf = min(corpus_idfs)
+        if min_corpus_idf < min_idf_threshold:
+            multiplier *= min_idf_penalty
+
+    return multiplier, mean_idf
 
 
 def fuse_results(channel_results, weights=None, convergence_bonus=None,
-                  stopword_penalty=None):
+                  stopword_penalty=None, idf_floor=None, idf_threshold=None,
+                  convergence_idf_power=None, min_idf_threshold=None,
+                  min_idf_penalty=None, language='la'):
     """Combine results from multiple channels using weighted score fusion.
 
     For each (source_ref, target_ref) pair:
-      base = sum(channel_score * channel_weight) + convergence_bonus * (N-1)
-      fused_score = base * stopword_multiplier
-    where N = number of channels that found the pair, and stopword_multiplier
-    is 0.3 for pairs sharing only stopwords, 1.0 otherwise.
+      base = sum(channel_score * channel_weight)
+      weighted_n = n_scoring_channels * min(1.0, geom_mean_idf)
+      conv = convergence_bonus * (weighted_n - 1)
+      mult = rarity_multiplier(mean_corpus_idf) [* min_idf_penalty if gate fires]
+      fused_score = base * mult + conv * mult^convergence_idf_power
+    where rarity_multiplier is a graduated value in [idf_floor, 1.0] based
+    on the geometric mean corpus-wide IDF of matched lemmas.
+
+    IDF-weighted convergence: each channel's contribution to convergence is
+    scaled by min(1.0, geom_mean_idf). This prevents common-word pairs from
+    accumulating large convergence bonuses despite matching on many channels
+    (e.g. "tum vero" matching on 6 channels gets weighted_n=2.16 not 6).
+
+    Min-IDF gate: if any matched lemma's corpus IDF < min_idf_threshold,
+    multiplier *= min_idf_penalty. This catches pairs containing ultra-common
+    words (e.g. "per", "tum", "num") even when companions pull the mean up.
 
     Optional overrides allow testing different parameter configurations
     without modifying module globals (used by weight optimization).
     """
     _weights = weights if weights is not None else CHANNEL_WEIGHTS
     _convergence_bonus = convergence_bonus if convergence_bonus is not None else CONVERGENCE_BONUS
-    _stopword_penalty = stopword_penalty if stopword_penalty is not None else FUNCTION_WORD_PENALTY
+    _idf_floor = idf_floor if idf_floor is not None else RARITY_IDF_FLOOR
+    _idf_threshold = idf_threshold if idf_threshold is not None else RARITY_IDF_THRESHOLD
+    _conv_idf_power = convergence_idf_power if convergence_idf_power is not None else CONVERGENCE_IDF_POWER
+    _min_idf_threshold = min_idf_threshold if min_idf_threshold is not None else RARITY_MIN_IDF_THRESHOLD
+    _min_idf_penalty = min_idf_penalty if min_idf_penalty is not None else RARITY_MIN_IDF_PENALTY
+    _rarity_boost_weight = RARITY_BOOST_WEIGHT
+    _rarity_boost_cap = RARITY_BOOST_CAP
 
     pair_scores = defaultdict(lambda: {
         "score": 0.0,
         "channels": [],
+        "n_scoring_channels": 0,  # channels with raw_score > 0
         "best_result": None,
         "best_score": 0.0,
         "all_source_highlights": set(),
@@ -774,6 +1103,8 @@ def fuse_results(channel_results, weights=None, convergence_bonus=None,
             raw_score = r.get("overall_score") or r.get("score") or 0
             pair_scores[key]["score"] += raw_score * weight
             pair_scores[key]["channels"].append(ch_name)
+            if raw_score > 0:
+                pair_scores[key]["n_scoring_channels"] += 1
 
             # Accumulate highlight indices from all channels
             src = r.get("source", {})
@@ -797,16 +1128,145 @@ def fuse_results(channel_results, weights=None, convergence_bonus=None,
                 pair_scores[key]["best_result"] = r
                 pair_scores[key]["best_score"] = raw_score
 
-    # Apply convergence bonus and rarity multiplier
-    for key, info in pair_scores.items():
-        n = len(info["channels"])
-        if n > 1:
-            info["score"] += _convergence_bonus * (n - 1)
+    # ===================================================================
+    # RARITY SCORING: Three-layer system applied to every fused pair
+    # ===================================================================
+    #
+    # This section implements all three layers of rarity scoring in a
+    # single pass over all pairs. The logic is an inlined version of
+    # _compute_rarity_multiplier() plus Layer 2 and Layer 3, optimized
+    # to avoid per-pair function call overhead (~100K pairs typical;
+    # inlining reduced runtime from ~400s to ~58s for Aeneid x Met).
+    #
+    # Final formula for each pair:
+    #   fused_score = base_score * mult^2 + conv_score * mult^power
+    # where:
+    #   base_score  = sum of (channel_score * channel_weight) across channels
+    #   mult        = rarity multiplier from Layer 1 (piecewise linear on geom_idf)
+    #                 OR rarity boost from Layer 3 (log curve, for rare words)
+    #   conv_score  = convergence_bonus * (weighted_n - 1.0)   [Layer 2]
+    #   weighted_n  = n_scoring_channels * min(1.0, geom_idf)^2  [Layer 2]
+    #   power       = CONVERGENCE_IDF_POWER (currently 1.0)
+    #
+    # ===================================================================
 
-        # Rarity multiplier on total score
-        multiplier = _compute_rarity_multiplier(info["all_matched_words"],
-                                                penalty=_stopword_penalty)
-        info["score"] *= multiplier
+    # --- Pre-fetch corpus document frequencies in one batch ---
+    # Collect every unique lemma with nonzero IDF across all pairs, then
+    # query the inverted index once. This avoids per-pair DB queries
+    # (which would mean ~100K separate queries for large text pairs).
+    all_lexical_lemmas = set()
+    for key, info in pair_scores.items():
+        for lemma, mw in info["all_matched_words"].items():
+            if mw.get('idf', 0) > 0:
+                all_lexical_lemmas.add(lemma)
+    total_texts = _get_total_texts(language) if all_lexical_lemmas else 1429
+    doc_freq_map = _get_corpus_doc_freqs(list(all_lexical_lemmas), language) if all_lexical_lemmas else {}
+
+    # Pre-compute constants used in the inner loop to avoid repeated
+    # arithmetic on every iteration.
+    _log_total = math.log(total_texts)        # log(N) for IDF = log(N) - log(df)
+    _ramp_start = _idf_floor + 0.1            # multiplier at geom_idf = 0.1
+    _ramp_range = 1.0 - _ramp_start           # span of the linear ramp
+    _thresh_range = _idf_threshold - 0.1      # IDF span of the linear ramp
+
+    for key, info in pair_scores.items():
+        # ---------------------------------------------------------------
+        # LAYER 1: Compute geometric mean IDF and piecewise multiplier
+        # ---------------------------------------------------------------
+        # This is the inlined equivalent of _compute_rarity_multiplier().
+        # For each matched lemma with nonzero IDF, compute corpus IDF =
+        # log(N/df), then take the geometric mean. Map to a multiplier
+        # via the same piecewise linear curve defined in the constants.
+        mw_dict = info["all_matched_words"]
+        corpus_idfs = []
+        for lemma, mw in mw_dict.items():
+            if mw.get('idf', 0) > 0:
+                df = doc_freq_map.get(lemma, 0)
+                # Skip df=0: surface forms not in inverted index (see
+                # _compute_rarity_multiplier docstring for rationale)
+                if df > 0:
+                    corpus_idfs.append(_log_total - math.log(df))
+
+        if corpus_idfs:
+            # Geometric mean via exp(mean(log(x))), with floor of 0.001
+            # to avoid log(0) for words with corpus IDF very near zero
+            log_sum = 0.0
+            for cidf in corpus_idfs:
+                log_sum += math.log(cidf) if cidf > 0.001 else math.log(0.001)
+            geom_mean_idf = math.exp(log_sum / len(corpus_idfs))
+
+            # Piecewise multiplier: maps geom_mean_idf to [idf_floor, 1.0]
+            # for common words, or > 1.0 for rare multi-channel matches
+            if geom_mean_idf < 0.1:
+                # Zone 1: Near-stopwords. Flat at idf_floor (0.2).
+                # Examples: "est" (idf≈0.01), "et" (idf≈0.03)
+                multiplier = _idf_floor
+            elif geom_mean_idf < _idf_threshold:
+                # Zone 2: Graduated penalty. Linear ramp from 0.3 to 1.0.
+                # Example: "tum vero" with geom_idf=0.36 → t=0.19 → mult=0.33
+                t = (geom_mean_idf - 0.1) / _thresh_range
+                multiplier = _ramp_start + t * _ramp_range
+            else:
+                # -------------------------------------------------------
+                # LAYER 3: Rarity BOOST for rare multi-channel matches
+                # -------------------------------------------------------
+                # When geom_idf exceeds the threshold, the vocabulary is
+                # rare enough to deserve promotion rather than penalty.
+                # The boost is a log curve (diminishing returns for
+                # extremely rare words) scaled by channel convergence:
+                #   boost = weight * channel_factor * log(geom_idf / thresh)
+                # channel_factor = min(1.0, (n_channels - 1) / 5)
+                #   - n=1 → factor=0 → no boost (single-channel noise)
+                #   - n=3 → factor=0.4 → moderate boost
+                #   - n=6 → factor=1.0 → full boost (capped)
+                # This ensures only multi-channel convergence on rare
+                # vocabulary is promoted, preventing single-channel
+                # false positives from rising in the rankings.
+                n_for_boost = info["n_scoring_channels"]
+                channel_factor = min(1.0, (n_for_boost - 1) / 5.0)
+                multiplier = min(_rarity_boost_cap,
+                                 1.0 + _rarity_boost_weight * channel_factor * math.log(geom_mean_idf / _idf_threshold))
+
+            # Min-IDF gate (currently disabled: threshold=0.0, penalty=1.0)
+            if _min_idf_penalty < 1.0 and _min_idf_threshold > 0:
+                if min(corpus_idfs) < _min_idf_threshold:
+                    multiplier *= _min_idf_penalty
+        else:
+            # No corpus IDF data (all matched words had df=0 or idf=0):
+            # neutral multiplier — don't penalize or boost
+            multiplier = 1.0
+            geom_mean_idf = 1.0
+
+        # ---------------------------------------------------------------
+        # LAYER 2: IDF-weighted convergence bonus
+        # ---------------------------------------------------------------
+        # Instead of counting each confirming channel as 1.0 toward
+        # the convergence bonus, we weight each by min(1.0, geom_idf)^2.
+        # The squaring makes the penalty much steeper for common words:
+        #   geom_idf=0.36 ("tum vero")    → idf_weight=0.13
+        #     6 channels * 0.13 = weighted_n=0.78 → no bonus (needs > 1.0)
+        #   geom_idf=1.0+ ("centum angues") → idf_weight=1.0
+        #     4 channels * 1.0 = weighted_n=4.0 → bonus = 0.75 * 3.0 = 2.25
+        # This is the primary mechanism that eliminates convergence credit
+        # for common-word pairs, even when they match on many channels.
+        idf_weight = min(1.0, geom_mean_idf) ** 2
+        base_score = info["score"]
+        n = info["n_scoring_channels"]
+        weighted_n = n * idf_weight
+        conv_score = _convergence_bonus * (weighted_n - 1.0) if weighted_n > 1.0 else 0.0
+
+        # ---------------------------------------------------------------
+        # Final score assembly
+        # ---------------------------------------------------------------
+        # Layer 1 (penalty): base_score * mult^2
+        #   The squaring makes the penalty much steeper: mult=0.5 → 0.25,
+        #   mult=0.2 → 0.04. Rare words (mult=1.0) are unaffected.
+        # Layer 2 (convergence): conv_score * mult^power
+        #   The convergence bonus is also scaled by the rarity multiplier,
+        #   but only to the first power (not squared), since the IDF
+        #   weighting in weighted_n already provides steep suppression.
+        conv_mult = multiplier ** _conv_idf_power
+        info["score"] = base_score * (multiplier ** 2) + conv_score * conv_mult
 
     # Sort by fused score and build output
     sorted_pairs = sorted(pair_scores.items(), key=lambda x: x[1]["score"], reverse=True)
@@ -971,7 +1431,7 @@ def iter_fusion_search(source_units, target_units, matcher, scorer,
         # Cap intermediates at 500 (preview only) to avoid huge JSON payloads;
         # the full max_results set is sent in the final "complete" event.
         if count > 0 and line_channel_results:
-            fused = fuse_results(line_channel_results)
+            fused = fuse_results(line_channel_results, language=language)
             preview_cap = min(max_results, 500) if max_results > 0 else 500
             top = fused[:preview_cap]
             yield ("intermediate", {
@@ -981,7 +1441,7 @@ def iter_fusion_search(source_units, target_units, matcher, scorer,
                 "phase": "line",
             })
 
-    line_fused = fuse_results(line_channel_results)
+    line_fused = fuse_results(line_channel_results, language=language)
 
     if mode == 'line':
         final = line_fused[:max_results] if max_results > 0 else line_fused
@@ -1020,7 +1480,7 @@ def iter_fusion_search(source_units, target_units, matcher, scorer,
             "phase": "window",
         })
 
-    window_fused = fuse_results(window_channel_results)
+    window_fused = fuse_results(window_channel_results, language=language)
 
     if mode == 'window':
         final = window_fused[:max_results] if max_results > 0 else window_fused
@@ -1080,7 +1540,7 @@ def run_fusion_search(source_units, target_units, matcher, scorer,
         source_path, target_path, "line",
         progress_callback,
     )
-    line_fused = fuse_results(line_channel_results)
+    line_fused = fuse_results(line_channel_results, language=language)
 
     if mode == 'line':
         return line_fused[:max_results] if max_results > 0 else line_fused
@@ -1099,7 +1559,7 @@ def run_fusion_search(source_units, target_units, matcher, scorer,
         source_path, target_path, "window",
         progress_callback,
     )
-    window_fused = fuse_results(window_channel_results)
+    window_fused = fuse_results(window_channel_results, language=language)
 
     if mode == 'window':
         return window_fused[:max_results] if max_results > 0 else window_fused
