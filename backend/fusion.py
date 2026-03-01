@@ -188,13 +188,14 @@ RARITY_PENALTY_POWER = 2.0
 CONVERGENCE_IDF_POWER = 1.0
 
 # Min-IDF gate: an additional penalty if ANY single matched lemma has corpus
-# IDF below the threshold. This would catch pairs where the geometric mean
-# is pulled up by moderate-frequency companions but one word is truly
-# ubiquitous (e.g., "per" in all 1429 texts). DISABLED (threshold=0.0):
-# the optimizer grid search found no recall/ranking benefit — the geometric
-# mean already handles this case via its sensitivity to individual outliers.
-RARITY_MIN_IDF_THRESHOLD = 0.0
-RARITY_MIN_IDF_PENALTY = 1.0       # 1.0 = no effect (gate is disabled)
+# IDF below the threshold. Catches pairs where the geometric mean is pulled
+# up by one moderate/rare word while another word is truly ubiquitous.
+# Example: "nec absistit" — nec has idf=0.444, absisto has idf=2.65,
+# geometric mean ~1.08 lands in Zone 2 with only 42% penalty. The min-IDF
+# gate catches nec directly. Applied before Layer 1 squaring, so effective
+# penalty for a pair with one common word is 0.5 × mult, then squared.
+RARITY_MIN_IDF_THRESHOLD = 0.5
+RARITY_MIN_IDF_PENALTY = 0.5
 
 # Rarity boost (Layer 3): for pairs with geom_idf above the threshold,
 # the multiplier exceeds 1.0 to actively promote rare multi-channel matches.
@@ -804,6 +805,38 @@ def run_channel(channel_name, config, source_units, target_units,
 
 _corpus_doc_freq_cache = {}
 _total_texts_cache = {}
+_headword_map_cache = {}
+
+
+def _get_headword_map(language='la'):
+    """Load headword map from lemma table (cached at module level).
+
+    Returns dict mapping inflected/variant forms to their dictionary
+    headword. For Latin, uses data/lemma_tables/latin_lemmas.json (62K+
+    entries). This is the same file TextProcessor already uses.
+
+    Used by _get_corpus_doc_freqs() to normalize IDF lookups: "quem" →
+    headword "qui" → use max(df("quem"), df("qui")) so that oblique
+    forms of ultra-common words aren't treated as rare.
+    """
+    if language in _headword_map_cache:
+        return _headword_map_cache[language]
+
+    import json
+    from pathlib import Path
+
+    project_root = Path(__file__).resolve().parent.parent
+    table_map = {
+        'la': project_root / 'data' / 'lemma_tables' / 'latin_lemmas.json',
+        'grc': project_root / 'data' / 'lemma_tables' / 'greek_lemmas.json',
+    }
+    path = table_map.get(language)
+    if path and path.exists():
+        with open(path, 'r', encoding='utf-8') as f:
+            _headword_map_cache[language] = json.load(f)
+    else:
+        _headword_map_cache[language] = {}
+    return _headword_map_cache[language]
 
 
 def _get_corpus_doc_freqs(lemmas, language='la'):
@@ -847,6 +880,35 @@ def _get_corpus_doc_freqs(lemmas, language='la'):
             batch_result = get_document_frequencies_batch(set(uncached), language)
             for l in uncached:
                 _corpus_doc_freq_cache[l] = batch_result.get(l, 0)
+
+        # Headword normalization: for each lemma, check if its dictionary
+        # headword has a higher document frequency. This catches oblique
+        # forms of ultra-common function words that appear rare in the
+        # inverted index because they're stored under inflected forms:
+        #   "quem" (df=164) → headword "qui" (df=1426) → use 1426
+        #   "quos" (df=8)   → headword "qui" (df=1426) → use 1426
+        # Without this, these forms escape rarity penalties entirely.
+        headword_map = _get_headword_map(language)
+        if headword_map:
+            # Collect headwords that need df lookup but aren't cached yet
+            hw_to_fetch = set()
+            for l in uncached:
+                hw = headword_map.get(l)
+                if hw and hw != l and hw not in _corpus_doc_freq_cache:
+                    hw_to_fetch.add(hw)
+
+            if hw_to_fetch:
+                hw_batch = get_document_frequencies_batch(hw_to_fetch, language)
+                for hw in hw_to_fetch:
+                    _corpus_doc_freq_cache[hw] = hw_batch.get(hw, 0)
+
+            # Apply max(lemma_df, headword_df) normalization
+            for l in uncached:
+                hw = headword_map.get(l)
+                if hw and hw != l:
+                    hw_df = _corpus_doc_freq_cache.get(hw, 0)
+                    if hw_df > _corpus_doc_freq_cache[l]:
+                        _corpus_doc_freq_cache[l] = hw_df
 
     return {l: _corpus_doc_freq_cache.get(l, 0) for l in lemmas}
 
@@ -1079,7 +1141,7 @@ def fuse_results(channel_results, weights=None, convergence_bonus=None,
             if n_unique_words <= 1:
                 multiplier *= SINGLE_WORD_PENALTY
 
-            # Min-IDF gate (currently disabled: threshold=0.0, penalty=1.0)
+            # Min-IDF gate: extra penalty if ANY word has idf < threshold
             if _min_idf_penalty < 1.0 and _min_idf_threshold > 0:
                 if min(corpus_idfs) < _min_idf_threshold:
                     multiplier *= _min_idf_penalty

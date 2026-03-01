@@ -117,8 +117,8 @@ STOPWORD_PENALTY_GRID = [0.1, 0.2, 0.3, 0.5, 1.0]  # legacy, used as idf_floor
 IDF_FLOOR_GRID = [0.05, 0.1, 0.2]
 IDF_THRESHOLD_GRID = [0.5, 1.0, 1.5, 2.0]
 CONV_IDF_POWER_GRID = [1.0, 2.0, 3.0]  # re-enabled: u/v fix changes IDF landscape
-MIN_IDF_THRESHOLD_GRID = [0.0]  # gate disabled by optimizer in v5; keep disabled
-MIN_IDF_PENALTY_GRID = [1.0]   # N/A when threshold=0.0
+MIN_IDF_THRESHOLD_GRID = [0.3, 0.5, 0.7, 1.0]  # re-enabled: headword normalization fixes IDF accuracy
+MIN_IDF_PENALTY_GRID = [0.3, 0.5, 0.7]
 
 
 def log(msg):
