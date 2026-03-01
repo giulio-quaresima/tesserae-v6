@@ -218,6 +218,13 @@ RARITY_NEAR_STOPWORD_CUTOFF = 0.1
 RARITY_BOOST_WEIGHT = 0.5          # scaling factor on the log-curve boost
 RARITY_BOOST_CAP = 2.0             # hard ceiling on multiplier (prevents runaway)
 
+# Single-word match penalty: applied to multiplier when only one unique
+# lexical word is matched (n_unique_words <= 1). Since multiplier is squared
+# in Layer 1, the effective penalty is 0.5^2 = 0.25 (75% score reduction).
+# This demotes single rare-word matches (e.g., "erinys" alone) below
+# multi-word allusions that share 2+ distinct words.
+SINGLE_WORD_PENALTY = 0.5
+
 # ---------------------------------------------------------------------------
 # Channel classification for two-pass architecture
 # ---------------------------------------------------------------------------
@@ -1065,6 +1072,12 @@ def fuse_results(channel_results, weights=None, convergence_bonus=None,
                 boost_factor = min(channel_factor, word_factor)
                 multiplier = min(_rarity_boost_cap,
                                  1.0 + _rarity_boost_weight * boost_factor * math.log(geom_mean_idf / _idf_threshold))
+
+            # Single-word penalty: demote matches sharing only one
+            # distinct word. Applied before Layer 1 squaring, so
+            # effective penalty is SINGLE_WORD_PENALTY^2 (0.25).
+            if n_unique_words <= 1:
+                multiplier *= SINGLE_WORD_PENALTY
 
             # Min-IDF gate (currently disabled: threshold=0.0, penalty=1.0)
             if _min_idf_penalty < 1.0 and _min_idf_threshold > 0:

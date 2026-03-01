@@ -57,6 +57,7 @@ from backend.fusion import (
     RARITY_MIN_IDF_THRESHOLD, RARITY_MIN_IDF_PENALTY,
     RARITY_PENALTY_POWER, RARITY_BOOST_WEIGHT, RARITY_BOOST_CAP,
     RARITY_NEAR_STOPWORD_CUTOFF, RARITY_RAMP_OFFSET,
+    SINGLE_WORD_PENALTY,
     WINDOW_CHANNELS,
     run_channel, fuse_results, merge_line_and_window, make_window_units,
     _get_corpus_doc_freqs, _get_total_texts,
@@ -558,6 +559,11 @@ def evaluate_config_fast(summaries, weight_vector, bonus, idf_floor,
         multipliers = np.where(
             mean_idfs < _cutoff, idf_floor,
             np.where(mean_idfs < idf_threshold, ramp_values, boost_mult))
+
+        # Single-word penalty: demote matches sharing only one word
+        single_word_mask = n_words <= 1
+        multipliers = np.where(single_word_mask,
+                               multipliers * SINGLE_WORD_PENALTY, multipliers)
 
         # Min-IDF gate: if ANY lemma's corpus IDF < threshold, extra penalty
         if min_idf_threshold > 0 and min_idf_penalty < 1.0:
