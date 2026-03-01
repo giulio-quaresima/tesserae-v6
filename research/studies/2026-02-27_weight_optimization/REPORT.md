@@ -671,6 +671,49 @@ Total recall across all 5 benchmarks: 784/862 (91.0%) — unchanged.
 
 ---
 
+---
+
+## Single-Word Match Penalty (Feb 28 evening)
+
+**Commit:** `3f16a0b`
+
+After Config K's three fixes, single rare-word matches still dominated results 25–55 in diagnostic searches (e.g., Aen. 7 vs Punica 2). Fix C correctly gave them zero Layer 3 boost (`word_factor=0`), but they were not *penalized* either — they passed through at full base score with `multiplier=1.0` (their `geom_idf > 1.5` placed them in Zone 3).
+
+**Problem:** ~20 of 30 results in ranks 25–55 were single-word matches (one unique lexical word). Examples: "erinys" (df=17) at #28, #30, #42, #44, #45; "rutuli" (df=10) at #27, #37, #39; "acheronta" (df=40) at #40, #41, #46. Multi-word matches with moderate rarity were pushed below them: "umbonum + cratis + aenos" (3 words, score 5.88) at #33, "aggere + tumuli" (2 words, score 5.27) at #47.
+
+**Fix:** Added `SINGLE_WORD_PENALTY = 0.5`, applied to the rarity multiplier when `n_unique_words <= 1`, before Layer 1 squaring. The effective penalty is `0.5^2 = 0.25` (75% score reduction for single-word matches). Multi-word matches are completely unaffected.
+
+**Why this matters for scholars:** Sharing a single word between two passages — even a rare word like "Erinys" — is weaker evidence of literary allusion than sharing multiple words. When two passages share "cratis" (wicker shields) AND "umbonum" (shield bosses) AND "aenos" (bronze), the probability of coincidence is much lower than when they share only "Erinys" (a Fury). The single-word penalty encodes this principle directly: single shared words are still detected and reported, but they are ranked below multi-word parallels that provide stronger cumulative evidence of deliberate literary engagement.
+
+**Effect on ranking:**
+
+| Result | Words | Score Before | Score After (×0.25) |
+|--------|-------|-------------|-------------------|
+| "peltae" (1 word) | 1 | 6.38 | ~1.60 |
+| "erinys" (1 word) | 1 | 6.19 | ~1.55 |
+| "umbonum+cratis+aenos" (3 words) | 3 | 5.88 | 5.88 (unchanged) |
+| "Acheronta movebo" (multi-word) | 2+ | 10.03 | unchanged |
+| "centum angues" (multi-word) | 2+ | 14.02 | unchanged |
+
+Single-word matches move from ranks 25–55 to ~100–200 range.
+
+**Implementation:** Applied in both `backend/fusion.py` (production scoring loop) and `evaluation/scripts/run_weight_optimization.py` (optimizer, vectorized with `np.where`).
+
+### Test Results
+
+Total recall across all 5 benchmarks: 784/862 (91.0%) — unchanged.
+
+| Benchmark | Before | After | Diff |
+|-----------|--------|-------|------|
+| Lucan BC 1 - Vergil | 196/213 (92.0%) | 196/213 (92.0%) | 0 |
+| VF Argon. 1 - Vergil | 467/521 (89.6%) | 467/521 (89.6%) | 0 |
+| Achilleid - Vergil | 50/53 (94.3%) | 50/53 (94.3%) | 0 |
+| Achilleid - Ovid Met. | 21/23 (91.3%) | 21/23 (91.3%) | 0 |
+| Achilleid - Thebaid | 50/52 (96.2%) | 50/52 (96.2%) | 0 |
+| **Total** | **784/862 (91.0%)** | **784/862 (91.0%)** | **0** |
+
+---
+
 ### Implementation Notes
 
 Implementation Notes
@@ -691,10 +734,10 @@ source venv/bin/activate
 TESSERAE_USE_DIRECT_SEARCH=1 python evaluation/scripts/run_weight_optimization.py
 ```
 
-Script: `evaluation/scripts/run_weight_optimization.py` (v5: dedup fix + min-IDF gate)
+Script: `evaluation/scripts/run_weight_optimization.py` (v9: synced with Config K + single-word penalty)
 Modified: `backend/fusion.py` — `fuse_results()` accepts optional `weights`,
 `convergence_bonus`, `stopword_penalty`, `convergence_idf_power`,
-`min_idf_threshold`, `min_idf_penalty` overrides.
+`min_idf_threshold`, `min_idf_penalty` overrides. Constants: `SINGLE_WORD_PENALTY=0.5`.
 
 ## Session Log
 
