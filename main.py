@@ -30,18 +30,19 @@ except Exception as e:
     sys.exit(1)
 
 if __name__ == '__main__':
-    print("Backend API and Frontend on port 5000")
+    port = int(os.environ.get('PORT', 8080))
+    print(f"Backend API and Frontend on port {port}")
     print("=" * 50)
-    
+
     debug_mode = os.environ.get('FLASK_DEBUG', 'false').lower() == 'true'
-    
+
     try:
         start_cache_init()
         print("Cache initialization started in background")
     except Exception as e:
         print(f"Warning: Cache init failed (non-fatal): {e}")
-    
-    print("Starting Flask server on 0.0.0.0:5000...")
+
+    print(f"Starting Flask server on 0.0.0.0:{port}...")
     sys.stdout.flush()
-    
-    app.run(host='0.0.0.0', port=5000, debug=debug_mode, threaded=True)
+
+    app.run(host='0.0.0.0', port=port, debug=debug_mode, threaded=True)
