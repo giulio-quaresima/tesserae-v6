@@ -301,9 +301,11 @@ def extract_pair_summary(channel_results, parsed_gold, stop_words,
             # True unique word count = min of source-side and target-side
             n_unique_words_arr[i] = min(len(unique_src_words), len(unique_tgt_words))
         else:
-            # No recognized lexical lemmas → treat as neutral (no penalty)
-            rarity_mean_idfs[i] = 99.0
-            rarity_min_idfs[i] = 99.0
+            # No recognized lexical lemmas (all sub-lexical fragments from
+            # sound/edit_distance, or df=0). Treat as common-word match —
+            # absence of lexical evidence should not be rewarded.
+            rarity_mean_idfs[i] = 0.0
+            rarity_min_idfs[i] = 0.0
             n_unique_words_arr[i] = 0
 
         # Gold matching (precompute which gold entries this pair covers)

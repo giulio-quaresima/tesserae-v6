@@ -1154,10 +1154,12 @@ def fuse_results(channel_results, weights=None, convergence_bonus=None,
                 if min(corpus_idfs) < _min_idf_threshold:
                     multiplier *= _min_idf_penalty
         else:
-            # No corpus IDF data (all matched words had df=0 or idf=0):
-            # neutral multiplier — don't penalize or boost
-            multiplier = 1.0
-            geom_mean_idf = 1.0
+            # No corpus IDF data: either all matched words are sub-lexical
+            # fragments (sound/edit_distance) or had df=0. Treat as
+            # common-word match — absence of lexical evidence should not
+            # be rewarded with a free pass on rarity scoring.
+            multiplier = _idf_floor
+            geom_mean_idf = _idf_floor
 
         # ---------------------------------------------------------------
         # LAYER 2: IDF-weighted convergence bonus
