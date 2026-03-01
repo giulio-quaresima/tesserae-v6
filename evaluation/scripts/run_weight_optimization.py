@@ -1,26 +1,28 @@
 #!/usr/bin/env python3
 """
-Fusion Weight Optimization — Grid Search over Channel Weights
+Fusion Weight Optimization — Grid Search over Channel Weights (v9)
 
 Exploits the key insight that channel results are independent of fusion
 parameters: we run all 9 channels ONCE per benchmark (~10 min total),
 then re-fuse with thousands of weight/bonus/penalty configurations
 (milliseconds each) to find optimal settings.
 
-Key optimizations over the naive approach:
-  1. Extract lightweight pair summaries (just refs, raw scores, stopword flags,
-     gold matches) and discard heavy result dicts — reduces memory from ~7GB
-     to ~100MB
-  2. Use numpy for vectorized score computation — matrix multiply instead of
-     Python loops
-  3. Skip windows in the sweep — windows are appended AFTER all line results,
-     so they never affect recall@500 (there are always >100K line pairs)
-  4. Total recall is constant across configs (same pair set, different order),
-     so the 90% guard is checked once
+Scoring formula matches production fuse_results() exactly:
+  - Three-layer rarity scoring: penalty^2, IDF-weighted convergence,
+    rarity boost for rare multi-channel/multi-word matches
+  - Surface-form deduplication by (source_word, target_word)
+  - Corrected lemma filter: not lemma.startswith('[') (not idf > 0)
+  - Geometric mean corpus-IDF with named constants
+
+Key optimizations:
+  1. Extract lightweight pair summaries and discard heavy result dicts
+  2. Use numpy for vectorized score computation
+  3. Skip windows in sweep (appended after line results)
+  4. Total recall is constant across configs
 
 Two-phase sweep:
-  Phase 2a: Sweep all 34,992 weight configs with current bonus/penalty
-  Phase 2b: Sweep convergence_bonus × stopword_penalty with best weights
+  Phase 2a: Sweep all weight configs with current bonus/penalty
+  Phase 2b: Sweep convergence_bonus × IDF curve params with best weights
 
 Objective: recall@500 averaged across benchmarks (weighted by gold count),
 tiebreak on recall@100.
@@ -50,9 +52,11 @@ from backend.matcher import Matcher
 from backend.scorer import Scorer
 from backend.fusion import (
     CHANNEL_WEIGHTS, CHANNEL_CONFIGS, CHANNEL_ORDER,
-    CONVERGENCE_BONUS, CONVERGENCE_IDF_POWER, FUNCTION_WORD_PENALTY,
+    CONVERGENCE_BONUS, CONVERGENCE_IDF_POWER,
     RARITY_IDF_FLOOR, RARITY_IDF_THRESHOLD,
     RARITY_MIN_IDF_THRESHOLD, RARITY_MIN_IDF_PENALTY,
+    RARITY_PENALTY_POWER, RARITY_BOOST_WEIGHT, RARITY_BOOST_CAP,
+    RARITY_NEAR_STOPWORD_CUTOFF, RARITY_RAMP_OFFSET,
     WINDOW_CHANNELS,
     run_channel, fuse_results, merge_line_and_window, make_window_units,
     _get_corpus_doc_freqs, _get_total_texts,
@@ -232,16 +236,20 @@ def extract_pair_summary(channel_results, parsed_gold, stop_words,
                     pair_data[key]["matched_words"][lemma] = mw
 
     # Step 1b: Batch-fetch corpus document frequencies for all unique lemmas
+    # Include all lexical entries (not just idf>0) — rare_word, semantic,
+    # dictionary channels produce valid lemma matches with idf=0. Only
+    # exclude sub-lexical fragments (keys starting with '[').
     all_lemmas = set()
     for data in pair_data.values():
-        for lemma, info in data["matched_words"].items():
-            if info.get('idf', 0) > 0:  # only lexical entries
+        for lemma in data["matched_words"]:
+            if lemma and not lemma.startswith('['):
                 all_lemmas.add(lemma)
 
     log(f"    Fetching corpus doc frequencies for {len(all_lemmas):,} lemmas...")
     total_texts = _get_total_texts(language)
     corpus_dfs = _get_corpus_doc_freqs(list(all_lemmas), language)
     log(f"    -> total_texts={total_texts}, fetched {len(corpus_dfs)} DFs")
+    _log_total = math.log(total_texts)
 
     # Step 2: Build numpy arrays
     N = len(pair_data)
@@ -251,38 +259,46 @@ def extract_pair_summary(channel_results, parsed_gold, stop_words,
     n_channels = np.zeros(N, dtype=np.float64)
     rarity_mean_idfs = np.zeros(N, dtype=np.float64)
     rarity_min_idfs = np.zeros(N, dtype=np.float64)
+    n_unique_words_arr = np.zeros(N, dtype=np.float64)
     gold_matches = []
 
     for i, ((src_ref, tgt_ref), data) in enumerate(pair_data.items()):
         scores_matrix[i] = data["scores"]
         # Count only channels with raw_score > 0 for convergence bonus.
-        # Channels returning score 0.0 (e.g., edit_distance on common words
-        # where IDF → 0) are not meaningful convergence evidence.
         n_channels[i] = sum(1 for s in data["scores"] if s > 0)
 
-        # Compute corpus IDFs for this pair's matched lemmas.
-        # Skip entries with df=0 — these are surface forms (e.g. "auras")
-        # not canonical lemmas (e.g. "aura"). The inverted index stores
-        # lemmatized forms, so df=0 means the string isn't a recognized lemma.
+        # Compute corpus IDFs with surface-form deduplication.
+        # Group by (source_word, target_word) and keep highest-df entry
+        # to prevent inflected forms (e.g., "pugnas" df=1) from inflating
+        # the geometric mean when canonical lemma ("pugna" df=596) is present.
         mw = data["matched_words"]
-        corpus_idfs = []
+        word_pair_best = {}  # (src_word, tgt_word) -> (corpus_idf, df)
         for lemma, info in mw.items():
-            if info.get('idf', 0) <= 0:
-                continue  # skip sound/edit entries
+            if lemma.startswith('['):
+                continue  # sub-lexical fragment
             df = corpus_dfs.get(lemma, 0)
-            if df > 0:
-                corpus_idfs.append(math.log(total_texts / df))
-            # else: skip — not a canonical lemma in the index
+            if df <= 0:
+                continue  # not in inverted index
+            cidf = _log_total - math.log(df)
+            sw = info.get('source_word', '')
+            tw = info.get('target_word', '')
+            word_key = (sw, tw) if (sw or tw) else (lemma,)
+            existing = word_pair_best.get(word_key)
+            if existing is None or df > existing[1]:
+                word_pair_best[word_key] = (cidf, df)
+        corpus_idfs = [cidf for cidf, _ in word_pair_best.values()]
 
         if corpus_idfs:
             # Geometric mean (sensitive to individual ultra-common words)
             log_sum = sum(math.log(max(idf, 0.001)) for idf in corpus_idfs)
             rarity_mean_idfs[i] = math.exp(log_sum / len(corpus_idfs))
             rarity_min_idfs[i] = min(corpus_idfs)
+            n_unique_words_arr[i] = len(corpus_idfs)
         else:
             # No recognized lexical lemmas → treat as neutral (no penalty)
             rarity_mean_idfs[i] = 99.0
             rarity_min_idfs[i] = 99.0
+            n_unique_words_arr[i] = 0
 
         # Gold matching (precompute which gold entries this pair covers)
         src_b1, src_l1, src_b2, src_l2 = parse_range_ref(src_ref)
@@ -304,6 +320,7 @@ def extract_pair_summary(channel_results, parsed_gold, stop_words,
         "n_channels": n_channels,
         "rarity_mean_idfs": rarity_mean_idfs,
         "rarity_min_idfs": rarity_min_idfs,
+        "n_unique_words": n_unique_words_arr,
         "gold_matches": gold_matches,
         "n_pairs": N,
     }
@@ -471,20 +488,31 @@ def generate_weight_configs():
 def evaluate_config_fast(summaries, weight_vector, bonus, idf_floor,
                          idf_threshold, conv_idf_power=1.0,
                          min_idf_threshold=0.0, min_idf_penalty=1.0,
+                         penalty_power=None, boost_weight=None,
+                         boost_cap=None,
                          k_values=(100, 500)):
     """Evaluate a single config across all benchmarks.
 
-    Uses numpy vectorized operations:
+    Matches the production scoring formula in fuse_results() exactly:
       base = scores_matrix @ weight_vector
-      weighted_n = n_channels * min(1.0, geom_mean_idf)
-      conv = bonus * max(0, weighted_n - 1)
-      mult = graduated_idf_multiplier(mean_idfs, idf_floor, idf_threshold)
-      if min(corpus_idfs) < min_idf_threshold: mult *= min_idf_penalty
-      fused = base * mult + conv * mult^conv_idf_power
-      top_k = argpartition + argsort (O(N) + O(K log K))
+      mult = piecewise_linear(geom_mean_idf, idf_floor, idf_threshold)
+      Layer 3: mult > 1.0 for rare multi-channel/multi-word matches
+      idf_weight = min(1.0, geom_mean_idf)^2                   [Layer 2]
+      weighted_n = n_channels * idf_weight                      [Layer 2]
+      conv = bonus * max(0, weighted_n - 1)                     [Layer 2]
+      fused = base * mult^penalty_power + conv * mult^conv_power
 
     Returns dict with recall@K metrics.
     """
+    if penalty_power is None:
+        penalty_power = RARITY_PENALTY_POWER
+    if boost_weight is None:
+        boost_weight = RARITY_BOOST_WEIGHT
+    if boost_cap is None:
+        boost_cap = RARITY_BOOST_CAP
+    _cutoff = RARITY_NEAR_STOPWORD_CUTOFF
+    _ramp_offset = RARITY_RAMP_OFFSET
+
     total_gold = 0
     found_at_k = defaultdict(int)
     max_k = max(k_values)
@@ -495,6 +523,7 @@ def evaluate_config_fast(summaries, weight_vector, bonus, idf_floor,
         nc = s["n_channels"]
         mean_idfs = s["rarity_mean_idfs"]
         min_idfs = s["rarity_min_idfs"]
+        n_words = s["n_unique_words"]
         gm = s["gold_matches"]
         n_gold = s["n_gold"]
         total_gold += n_gold
@@ -503,21 +532,32 @@ def evaluate_config_fast(summaries, weight_vector, bonus, idf_floor,
         # Vectorized score computation
         base = sm @ weight_vector
 
-        # IDF-weighted convergence: weight each channel's convergence
-        # contribution by min(1.0, geom_mean_idf)^2. Squaring makes the
-        # penalty steeper for common words (0.36→0.13) while distinctive
-        # words (idf≥1.0) are unaffected.
+        # IDF-weighted convergence (Layer 2): weight each channel's
+        # contribution by min(1.0, geom_mean_idf)^2.
         idf_weights = np.minimum(1.0, mean_idfs) ** 2
         weighted_nc = nc * idf_weights
         conv = bonus * np.maximum(0.0, weighted_nc - 1.0)
 
         # Graduated IDF multiplier (vectorized piecewise linear)
-        ramp_start = idf_floor + 0.1
-        t = (mean_idfs - 0.1) / (idf_threshold - 0.1)
+        ramp_start = idf_floor + _ramp_offset
+        t = (mean_idfs - _cutoff) / (idf_threshold - _cutoff)
         ramp_values = ramp_start + t * (1.0 - ramp_start)
+
+        # Layer 3: Rarity boost for rare multi-channel/multi-word matches.
+        # Requires both channel_factor > 0 and word_factor > 0.
+        channel_factor = np.minimum(1.0, (nc - 1.0) / 5.0)
+        word_factor = np.minimum(1.0, (n_words - 1.0) / 3.0)
+        boost_factor = np.minimum(channel_factor, word_factor)
+        # Log-curve boost: 1.0 + weight * factor * log(geom_idf / threshold)
+        log_ratio = np.log(np.maximum(mean_idfs / idf_threshold, 1e-10))
+        boost_mult = np.minimum(boost_cap,
+                                1.0 + boost_weight * boost_factor * log_ratio)
+        # Only apply boost when geom_idf >= threshold (otherwise use penalty)
+        boost_mult = np.maximum(boost_mult, 1.0)  # floor at 1.0 for boost zone
+
         multipliers = np.where(
-            mean_idfs < 0.1, idf_floor,
-            np.where(mean_idfs < idf_threshold, ramp_values, 1.0))
+            mean_idfs < _cutoff, idf_floor,
+            np.where(mean_idfs < idf_threshold, ramp_values, boost_mult))
 
         # Min-IDF gate: if ANY lemma's corpus IDF < threshold, extra penalty
         if min_idf_threshold > 0 and min_idf_penalty < 1.0:
@@ -525,9 +565,10 @@ def evaluate_config_fast(summaries, weight_vector, bonus, idf_floor,
             multipliers = np.where(min_idf_mask,
                                    multipliers * min_idf_penalty, multipliers)
 
-        # Apply rarity multiplier: base * mult + conv * mult^power
+        # Apply rarity multiplier with penalty power (Layer 1):
+        #   fused = base * mult^penalty_power + conv * mult^conv_power
         conv_multipliers = np.power(multipliers, conv_idf_power)
-        fused = base * multipliers + conv * conv_multipliers
+        fused = base * np.power(multipliers, penalty_power) + conv * conv_multipliers
 
         # Get top-K indices efficiently
         actual_k = min(max_k, N)
@@ -684,7 +725,7 @@ def print_top_configs(weight_results, bonus_idf_results, summaries,
         min_idf_penalty=RARITY_MIN_IDF_PENALTY,
         k_values=(10, 50, 100, 500, 1000, 5000),
     )
-    log(f"\n--- Current Config G (baseline) ---")
+    log(f"\n--- Current Config K (baseline) ---")
     log(f"  Weights: {format_weights(current_weights)}")
     log(f"  Bonus: {current_bonus}, IDF floor: {current_idf_floor}, "
         f"IDF threshold: {current_idf_threshold}, "
@@ -722,7 +763,7 @@ def print_top_configs(weight_results, bonus_idf_results, summaries,
         f"R@100: {best_metrics.get('recall_at_100', 0):.1%} "
         f"({best_metrics.get('found_at_100', 0)}/{best_metrics['total_gold']})")
 
-    log(f"\n  Weight changes from Config G:")
+    log(f"\n  Weight changes from Config K:")
     any_change = False
     for k in CHANNEL_NAMES:
         if best_weights[k] != current_weights[k]:
@@ -792,7 +833,7 @@ def print_top_configs(weight_results, bonus_idf_results, summaries,
     rec_r500 = final_metrics.get("recall_at_500", 0)
     curr_r100 = current_metrics.get("recall_at_100", 0)
     rec_r100 = final_metrics.get("recall_at_100", 0)
-    log(f"\n  Improvement over Config G:")
+    log(f"\n  Improvement over Config K:")
     log(f"    R@500: {curr_r500:.1%} -> {rec_r500:.1%} "
         f"({rec_r500 - curr_r500:+.1%})")
     log(f"    R@100: {curr_r100:.1%} -> {rec_r100:.1%} "
@@ -858,9 +899,10 @@ def main():
     t_start = time.time()
 
     log("=" * 80)
-    log("FUSION WEIGHT OPTIMIZATION (v6 — u/v norm fix + zero-score conv + power sweep)")
+    log("FUSION WEIGHT OPTIMIZATION (v9 — synced with Config K production formula)")
     log("Grid search over channel weights, convergence bonus, IDF curve params,")
-    log("and conv_idf_power (u/v normalized DF lookups, zero-score conv filtering)")
+    log("and conv_idf_power. Uses three-layer rarity scoring: penalty^2, IDF-weighted")
+    log("convergence, and rarity boost for rare multi-channel/multi-word matches.")
     log("=" * 80)
 
     weight_configs = generate_weight_configs()
@@ -871,7 +913,7 @@ def main():
     log(f"  Weight configs: {len(weight_configs):,}")
     log(f"  Bonus x IDF params x min-IDF params: {idf_combos}")
     log(f"  Total (two-phase): {len(weight_configs):,} + {idf_combos}")
-    log(f"\nCurrent Config G:")
+    log(f"\nCurrent Config K:")
     log(f"  {format_weights(CHANNEL_WEIGHTS)}")
     log(f"  convergence_bonus={CONVERGENCE_BONUS}, "
         f"idf_floor={RARITY_IDF_FLOOR}, idf_threshold={RARITY_IDF_THRESHOLD}, "

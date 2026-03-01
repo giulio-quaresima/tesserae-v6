@@ -606,6 +606,71 @@ The Config K scoring system embodies three principles about intertextual detecti
 
 ---
 
+## Config K Fixes: Rarity Scoring Refinements (Feb 28 afternoon)
+
+**Commit:** `6732e0a`
+
+Three targeted fixes to Config K's three-layer rarity scoring, discovered through manual inspection of the top 30 results for Aen. 7 vs Punica 2. Each fix addresses a distinct way that the rarity computation could produce misleading scores. Total recall unchanged at 784/862 (91.0%) across all 5 benchmarks.
+
+### Fix A: Include idf=0 Lexical Entries in Rarity Computation
+
+**Problem:** The rarity multiplier was computed only from matched words with `idf > 0`. Three channels — rare_word, semantic, and dictionary — produce valid lemma matches but set their per-pair IDF to 0 (they use different scoring internally). These matches were silently excluded from the geometric mean IDF computation. In the top 50 results for Aen. 7 vs Punica 2, 17 pairs had at least one matched word bypassing rarity scoring entirely.
+
+**Fix:** Changed the filter from `mw.get('idf', 0) > 0` to `not lemma.startswith('[')`. All lexical entries (words with real lemma keys) are now included in rarity computation. Sub-lexical fragments from the sound and edit_distance channels — whose keys start with `[` (e.g., `[tri:abc]`) — are still excluded, since they represent character-level similarity rather than word-level meaning.
+
+**Why this matters for scholars:** Previously, a pair that happened to be detected by the dictionary channel (V3 synonym lookup) could escape rarity penalties that would normally suppress common-word matches. A phrase like "est locus" found via the synonym dictionary would be treated as if its words had no rarity information at all, rather than being correctly identified as extremely common vocabulary. Now all word-level matches contribute to the rarity assessment, ensuring that common-word pairs are demoted regardless of which channel found them.
+
+### Fix B: Surface Form Deduplication
+
+**Problem:** The `matched_words` dictionary for a pair can contain both canonical lemmas (e.g., "pugna" with df=596) and inflected surface forms (e.g., "pugnas" with df=1). When computing the geometric mean IDF, these were treated as independent words. Since inflected surface forms typically have very low document frequency (the inverted index stores canonical forms), they appeared ultra-rare and inflated the geometric mean, making the pair seem more distinctive than it actually is.
+
+**Example — "tum + pugnas" pair:**
+- Before: "pugna" (df=596), "pugnas" (df=1), "tum" (df=1073) → geometric mean inflated by "pugnas"
+- After: group by (source_word, target_word), keep only the entry with highest df → "pugna" (df=596) used, "pugnas" dropped
+
+**Fix:** Before computing the geometric mean, group matched words by their `(source_word, target_word)` pair and retain only the entry with the highest corpus document frequency. This ensures that the canonical lemma form — which accurately reflects how common the word is across the corpus — is used for rarity scoring, rather than an inflected variant that happens to be rare as a surface form.
+
+**Why this matters for scholars:** Without this fix, a pair sharing a common word like "pugna" (fight) could rank highly because an inflected form "pugnas" appeared only once in the corpus as a raw string. But the word itself — the concept "pugna" — appears in 596 of 1,429 texts and is not distinctive. Scholars want to find pairs sharing genuinely rare vocabulary, not pairs that happen to use an uncommon grammatical form of a common word. The fix ensures that word rarity reflects the underlying lemma's frequency, not surface-form artifacts.
+
+### Fix C: Word-Count Factor for Layer 3 Rarity Boost
+
+**Problem:** Config K's Layer 3 rarity boost was scaled only by channel count: `boost_factor = (n_channels - 1) / 5`. This correctly prevented single-channel matches from being boosted, but it did not account for cases where a single rare word was detected by many channels simultaneously. Example: "Erinys" (a Fury, extremely rare) found by 5 channels (lemma, exact, rare_word, sound, edit_distance) received `boost_factor = (5-1)/5 = 0.8`, ranking at #18 — above multi-word allusions like "ante aciem" (#23) that share two or more distinctive words.
+
+**Fix:** Added a word-count factor: `word_factor = min(1.0, (n_unique_words - 1) / 3)`, where `n_unique_words` is the number of distinct lexical entries in the matched_words dictionary (after Fix B deduplication). The effective boost is `min(channel_factor, word_factor)`. A pair sharing only 1 unique word gets `word_factor = 0`, regardless of how many channels found it. A pair sharing 4+ unique words gets the full channel-based boost.
+
+**Why this matters for scholars:** Sharing a single proper noun like "Erinys" across texts is noteworthy but not the same kind of evidence as sharing multiple distinctive words in a phrase like "centum angues" (a hundred snakes). Multi-word matches provide stronger evidence of deliberate literary allusion because the probability of coincidence drops dramatically with each additional shared word. This fix encodes that principle: single shared words are still detected and reported, but they no longer outrank multi-word parallels in the results list.
+
+### Combined Effect
+
+| Pair | Before Fixes | After Fixes | Assessment |
+|------|-------------|-------------|------------|
+| centum angues | #4 | **#2** | Multi-word rare — promoted |
+| Acheronta movebo | #10 | **#6** | Multi-word rare — promoted |
+| ante aciem | #36 | **#23** | Multi-word distinctive — promoted |
+| Erinys | #18 | **#28** | Single rare word — correctly demoted |
+| tum + pugnas (surface inflation) | #15 | **out of top 30** | Surface form artifact — eliminated |
+
+**Ranking quality summary:** The top 30 results are now dominated by multi-word allusions. Single rare words still appear but are appropriately ranked below multi-word parallels. Surface form inflation artifacts are eliminated entirely.
+
+### Additional: RARITY_PENALTY_POWER Constant
+
+Added `RARITY_PENALTY_POWER` as a named constant (default 2.0) controlling the exponent applied to the rarity multiplier in Layers 1 and 2. Previously this was hardcoded as `mult ** 2` and `idf_weight ** 2`. Extracting it as a parameter enables future optimizer sweeping over different penalty curves (e.g., power=1.5 for gentler penalties, power=3.0 for more aggressive suppression of common words).
+
+### Test Results
+
+Total recall across all 5 benchmarks: 784/862 (91.0%) — unchanged.
+
+| Benchmark | Before Fixes | After Fixes | Diff |
+|-----------|-------------|-------------|------|
+| Lucan BC 1 - Vergil | 196/213 (92.0%) | 196/213 (92.0%) | 0 |
+| VF Argon. 1 - Vergil | 467/521 (89.6%) | 467/521 (89.6%) | 0 |
+| Achilleid - Vergil | 50/53 (94.3%) | 50/53 (94.3%) | 0 |
+| Achilleid - Ovid Met. | 21/23 (91.3%) | 21/23 (91.3%) | 0 |
+| Achilleid - Thebaid | 50/52 (96.2%) | 50/52 (96.2%) | 0 |
+| **Total** | **784/862 (91.0%)** | **784/862 (91.0%)** | **0** |
+
+---
+
 ### Implementation Notes
 
 Implementation Notes
