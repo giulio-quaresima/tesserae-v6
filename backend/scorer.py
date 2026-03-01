@@ -141,7 +141,16 @@ class Scorer:
                 src_match_list = src_tokens_list if match_type == 'exact' else src_lemmas
                 tgt_match_list = tgt_tokens_list if match_type == 'exact' else tgt_lemmas
 
+                src_match_set = set(src_match_list)
+                tgt_match_set = set(tgt_match_list)
                 for lemma in matched_lemmas:
+                    # Skip lemmas not present on both sides — these come from
+                    # synonym pairs in the dictionary channel where e.g.
+                    # "agger" is in source but only "tumulus" in target.
+                    # The synonym partner covers the actual match.
+                    if match_basis == 'dictionary':
+                        if lemma not in src_match_set or lemma not in tgt_match_set:
+                            continue
                     lemma_freq = freq.get(lemma, 1)
                     idf = math.log((total_words + 1) / (lemma_freq + 1)) + 1
                     # Find corresponding surface tokens for this lemma

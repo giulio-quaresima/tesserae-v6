@@ -1072,6 +1072,8 @@ def fuse_results(channel_results, weights=None, convergence_bonus=None,
         # canonical lemmas (e.g., "pugna" df=596) for the same word —
         # keep the canonical form (highest df) for accurate rarity scoring.
         word_pair_best = {}  # (src_word, tgt_word) -> (corpus_idf, df)
+        unique_src_words = set()  # distinct source words
+        unique_tgt_words = set()  # distinct target words
         for lemma, mw in mw_dict.items():
             if lemma.startswith('['):
                 continue  # sub-lexical fragment
@@ -1085,8 +1087,14 @@ def fuse_results(channel_results, weights=None, convergence_bonus=None,
             existing = word_pair_best.get(word_key)
             if existing is None or df > existing[1]:
                 word_pair_best[word_key] = (cidf, df)
+            # Track unique words on each side (using lemma as fallback)
+            unique_src_words.add(sw.lower() if sw else lemma)
+            unique_tgt_words.add(tw.lower() if tw else lemma)
         corpus_idfs = [cidf for cidf, _ in word_pair_best.values()]
-        n_unique_words = len(corpus_idfs)  # distinct lexical words matched
+        # True unique word count = min of source-side and target-side
+        # distinct words. Prevents two source words mapping to one target
+        # word (e.g., "agger"+"tumulus" → "tumulus") from counting as 2.
+        n_unique_words = min(len(unique_src_words), len(unique_tgt_words)) if corpus_idfs else 0
 
         if corpus_idfs:
             # Geometric mean via exp(mean(log(x))), with floor of 0.001

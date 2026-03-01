@@ -274,6 +274,8 @@ def extract_pair_summary(channel_results, parsed_gold, stop_words,
         # the geometric mean when canonical lemma ("pugna" df=596) is present.
         mw = data["matched_words"]
         word_pair_best = {}  # (src_word, tgt_word) -> (corpus_idf, df)
+        unique_src_words = set()
+        unique_tgt_words = set()
         for lemma, info in mw.items():
             if lemma.startswith('['):
                 continue  # sub-lexical fragment
@@ -287,6 +289,8 @@ def extract_pair_summary(channel_results, parsed_gold, stop_words,
             existing = word_pair_best.get(word_key)
             if existing is None or df > existing[1]:
                 word_pair_best[word_key] = (cidf, df)
+            unique_src_words.add(sw.lower() if sw else lemma)
+            unique_tgt_words.add(tw.lower() if tw else lemma)
         corpus_idfs = [cidf for cidf, _ in word_pair_best.values()]
 
         if corpus_idfs:
@@ -294,7 +298,8 @@ def extract_pair_summary(channel_results, parsed_gold, stop_words,
             log_sum = sum(math.log(max(idf, 0.001)) for idf in corpus_idfs)
             rarity_mean_idfs[i] = math.exp(log_sum / len(corpus_idfs))
             rarity_min_idfs[i] = min(corpus_idfs)
-            n_unique_words_arr[i] = len(corpus_idfs)
+            # True unique word count = min of source-side and target-side
+            n_unique_words_arr[i] = min(len(unique_src_words), len(unique_tgt_words))
         else:
             # No recognized lexical lemmas → treat as neutral (no penalty)
             rarity_mean_idfs[i] = 99.0
