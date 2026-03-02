@@ -163,7 +163,7 @@ CONVERGENCE_BONUS = 0.75
 # geometric mean IDF is below 0.1 (i.e., all matched lemmata are extremely
 # common — words appearing in >90% of texts). Since mult is squared (Layer 1),
 # the effective floor is 0.2^2 = 0.04 (96% score reduction).
-RARITY_IDF_FLOOR = 0.2
+RARITY_IDF_FLOOR = 0.05
 
 # IDF threshold: the geometric mean IDF at which the multiplier reaches 1.0
 # (no penalty). With 1429 Latin texts, IDF = log(1429/df):
@@ -195,7 +195,7 @@ CONVERGENCE_IDF_POWER = 1.0
 # gate catches nec directly. Applied before Layer 1 squaring, so effective
 # penalty for a pair with one common word is 0.5 × mult, then squared.
 RARITY_MIN_IDF_THRESHOLD = 0.5
-RARITY_MIN_IDF_PENALTY = 0.25
+RARITY_MIN_IDF_PENALTY = 0.10
 
 # Rarity boost (Layer 3): for pairs with geom_idf above the threshold,
 # the multiplier exceeds 1.0 to actively promote rare multi-channel matches.
@@ -227,7 +227,7 @@ RARITY_BOOST_CAP = 2.0             # hard ceiling on multiplier (prevents runawa
 # shared word is inherently less valuable than two shared words.
 # Combined with convergence zeroing (Layer 2), single-word matches
 # score: base * (0.15 * mult)^2 = base * 0.0225 * mult^2.
-SINGLE_WORD_PENALTY = 0.15
+SINGLE_WORD_PENALTY = 0.10
 
 # No-significant-words penalty: applied when a multi-word match has NO word
 # with IDF >= RARITY_IDF_THRESHOLD.  These are bigrams of common vocabulary
@@ -238,7 +238,7 @@ SINGLE_WORD_PENALTY = 0.15
 #   score = base * (NO_SIG_PENALTY * mult)^2  (no convergence)
 # The convergence zeroing is the primary mechanism — it removes the
 # multi-channel inflation that made common-word pairs score so high.
-NO_SIGNIFICANT_WORDS_PENALTY = 0.25
+NO_SIGNIFICANT_WORDS_PENALTY = 0.12
 
 # ---------------------------------------------------------------------------
 # Channel classification for two-pass architecture
@@ -957,7 +957,7 @@ def fuse_results(channel_results, weights=None, convergence_bonus=None,
 
       base = sum(channel_score * channel_weight)
       mult = piecewise_linear(geom_mean_idf, idf_floor, threshold)
-      idf_weight = min(1.0, geom_mean_idf)^2                   [Layer 2]
+      idf_weight = min(1.0, min_word_idf)^2                     [Layer 2]
       weighted_n = n_scoring_channels * idf_weight              [Layer 2]
       conv = convergence_bonus * max(0, weighted_n - 1)         [Layer 2]
       fused = base * mult^penalty_power + conv * mult^conv_power
@@ -1198,30 +1198,23 @@ def fuse_results(channel_results, weights=None, convergence_bonus=None,
         # ---------------------------------------------------------------
         # LAYER 2: IDF-weighted convergence bonus
         # ---------------------------------------------------------------
-        # Instead of counting each confirming channel as 1.0 toward
-        # the convergence bonus, we weight each by min(1.0, geom_idf)^2.
-        # The squaring makes the penalty much steeper for common words:
-        #   geom_idf=0.36 ("tum vero")    → idf_weight=0.13
-        #     6 channels * 0.13 = weighted_n=0.78 → no bonus (needs > 1.0)
-        #   geom_idf=1.0+ ("centum angues") → idf_weight=1.0
-        #     4 channels * 1.0 = weighted_n=4.0 → bonus = 0.75 * 3.0 = 2.25
-        # This is the primary mechanism that eliminates convergence credit
-        # for common-word pairs, even when they match on many channels.
-        idf_weight = min(1.0, geom_mean_idf) ** 2
+        # Convergence IDF weight uses the MINIMUM word IDF (not geometric
+        # mean).  This provides continuous Zipf-like scaling: pairs with
+        # a very common word (IDF ~0.3) get weight ~0.09, pairs with a
+        # moderately common word (IDF ~0.7) get weight ~0.49, and pairs
+        # where all words have IDF > 1.0 get full weight (1.0).  Using
+        # min instead of geometric mean prevents a rare partner from
+        # masking a function word — "nec absistit" is gated by nec's
+        # low IDF, not rescued by absisto's high IDF.
+        min_word_idf = min(corpus_idfs) if corpus_idfs else 0
+        idf_weight = min(1.0, min_word_idf) ** 2
         base_score = info["score"]
         n = info["n_scoring_channels"]
         weighted_n = n * idf_weight
-        # Convergence adjustments:
-        # - Single-word: ZERO (one word isn't convergence)
-        # - No significant words: ZERO (common words agreeing is noise)
-        # - Min-IDF gate + has significant word: HALVED (there IS a
-        #   genuine allusion word, but the near-stopword inflates the
-        #   channel count; e.g., "Acheronta movebo" — acheron is real,
-        #   moueo is ubiquitous)
+        # Hard zeroing for single-word and no-significant-words matches:
+        # these categories shouldn't benefit from convergence at all.
         if n_unique_words <= 1 or n_significant_words == 0:
             weighted_n = 0.0
-        elif min_idf_gate_fired:
-            weighted_n *= 0.5
         conv_score = _convergence_bonus * (weighted_n - 1.0) if weighted_n > 1.0 else 0.0
 
         # ---------------------------------------------------------------
