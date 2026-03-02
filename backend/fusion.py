@@ -1121,23 +1121,17 @@ def fuse_results(channel_results, weights=None, convergence_bonus=None,
         # distinct words. Prevents two source words mapping to one target
         # word (e.g., "agger"+"tumulus" → "tumulus") from counting as 2.
         n_unique_words = min(len(unique_src_words), len(unique_tgt_words)) if corpus_idfs else 0
-        # Count "content" words — lemmas NOT on the curated function-word
-        # stoplist.  This replaces the IDF-based n_significant_words check:
-        # IDF can't distinguish "tum" (function word, common) from "pectore"
-        # (content word, common).  The curated stoplist can.
-        # A match where ALL words are function words (e.g., "tum + inde",
-        # "nec + sic") is penalized; matches with at least one content word
-        # (e.g., "pectore + curas", "nec + absisto") are treated normally.
-        n_content_words = 0
-        for lemma in mw_dict:
-            if lemma.startswith('['):
-                continue
-            if doc_freq_map.get(lemma, 0) <= 0:
-                continue
-            # Normalize lemma for stoplist comparison (u/v equivalence)
-            norm = lemma.lower().replace('v', 'u')
-            if norm not in _stoplist:
-                n_content_words += 1
+        # Count "content" words — unique surface words NOT on the curated
+        # function-word stoplist.  Must use the same unique word sets as
+        # n_unique_words (not the raw lemma dict, which can have duplicate
+        # entries like "fata" + "fatum" for the same surface word).
+        # IDF can't distinguish "tum" (function word) from "pectore"
+        # (content word, also common).  The curated stoplist can.
+        n_content_src = sum(1 for w in unique_src_words
+                           if w.replace('v', 'u') not in _stoplist)
+        n_content_tgt = sum(1 for w in unique_tgt_words
+                           if w.replace('v', 'u') not in _stoplist)
+        n_content_words = min(n_content_src, n_content_tgt)
 
         if corpus_idfs:
             # Geometric mean via exp(mean(log(x))), with floor of 0.001
@@ -1204,11 +1198,14 @@ def fuse_results(channel_results, weights=None, convergence_bonus=None,
             elif n_content_words < n_unique_words:
                 # Mixed penalty: some words are content, some are function
                 # words (e.g., "tum + vires", "nec + priorem", "ubi + fata").
-                # The function words add no allusion signal — "tum" appears
-                # in 70%+ of Latin texts.  Discount proportionally:
-                # 1 content + 1 function → 0.5, 1 content + 2 function → 0.33.
-                # After squaring (Layer 1), 0.5 → 0.25 effective penalty.
-                multiplier *= n_content_words / n_unique_words
+                # The function words add zero allusion signal — "tum" appears
+                # in 70%+ of Latin texts.  Treat as effectively a
+                # single-content-word match: apply the single-word penalty
+                # and zero convergence.  A match on "tum + vires" should
+                # rank like a match on just "vires", not like a genuine
+                # 2-content-word allusion.
+                multiplier *= SINGLE_WORD_PENALTY
+                min_idf_gate_fired = True
         else:
             # No corpus IDF data: either all matched words are sub-lexical
             # fragments (sound/edit_distance) or had df=0. Treat as
