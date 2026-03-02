@@ -544,6 +544,11 @@ def evaluate_config_fast(summaries, weight_vector, bonus, idf_floor,
         # contribution by min(1.0, geom_mean_idf)^2.
         idf_weights = np.minimum(1.0, mean_idfs) ** 2
         weighted_nc = nc * idf_weights
+        # No convergence bonus for single-word matches: convergence
+        # rewards multiple independent words confirming each other, not
+        # one word detected by multiple methods.
+        single_word_mask = n_words <= 1
+        weighted_nc = np.where(single_word_mask, 0.0, weighted_nc)
         conv = bonus * np.maximum(0.0, weighted_nc - 1.0)
 
         # Graduated IDF multiplier (vectorized piecewise linear)
