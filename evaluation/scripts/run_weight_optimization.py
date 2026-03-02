@@ -302,18 +302,14 @@ def extract_pair_summary(channel_results, parsed_gold, stop_words,
             rarity_min_idfs[i] = min(corpus_idfs)
             # True unique word count = min of source-side and target-side
             n_unique_words_arr[i] = min(len(unique_src_words), len(unique_tgt_words))
-            # Content words: lemmas NOT on the curated function-word
-            # stoplist.  Replaces IDF-based significance check.
-            n_cw = 0
-            for lemma in mw.keys():
-                if lemma.startswith('['):
-                    continue
-                if corpus_dfs.get(lemma, 0) <= 0:
-                    continue
-                norm = lemma.lower().replace('v', 'u')
-                if norm not in stoplist:
-                    n_cw += 1
-            n_content_words_arr[i] = n_cw
+            # Content words: unique surface words NOT on the curated
+            # function-word stoplist.  Uses same unique word sets as
+            # n_unique_words (not raw lemma dict which has duplicates).
+            n_cs = sum(1 for w in unique_src_words
+                       if w.replace('v', 'u') not in stoplist)
+            n_ct = sum(1 for w in unique_tgt_words
+                       if w.replace('v', 'u') not in stoplist)
+            n_content_words_arr[i] = min(n_cs, n_ct)
         else:
             # No recognized lexical lemmas (all sub-lexical fragments from
             # sound/edit_distance, or df=0). Treat as common-word match —
@@ -562,8 +558,9 @@ def evaluate_config_fast(summaries, weight_vector, bonus, idf_floor,
         # scaling gated by the WEAKEST word in the pair.
         idf_weights = np.minimum(1.0, min_idfs) ** 2
         weighted_nc = nc * idf_weights
-        # Hard zeroing for single-word and all-function-word matches.
-        no_signal_mask = (n_words <= 1) | ((n_words > 1) & (n_cw == 0))
+        # Hard zeroing for single-word, all-function-word, and mixed matches.
+        # Mixed = has function words hitchhiking on content words.
+        no_signal_mask = (n_words <= 1) | ((n_words > 1) & (n_cw == 0)) | ((n_words > 1) & (n_cw > 0) & (n_cw < n_words))
         weighted_nc = np.where(no_signal_mask, 0.0, weighted_nc)
         conv = bonus * np.maximum(0.0, weighted_nc - 1.0)
 
@@ -599,10 +596,10 @@ def evaluate_config_fast(summaries, weight_vector, bonus, idf_floor,
                                multipliers * NO_SIGNIFICANT_WORDS_PENALTY,
                                multipliers)
         # Mixed penalty: some content words + some function words.
-        # Discount proportionally: n_content / n_unique_words.
+        # Treat as single-content-word match (same penalty, zero convergence).
         mixed_mask = (n_words > 1) & (n_cw > 0) & (n_cw < n_words)
-        mixed_ratio = np.where(mixed_mask, n_cw / np.maximum(n_words, 1), 1.0)
-        multipliers = multipliers * mixed_ratio
+        multipliers = np.where(mixed_mask,
+                               multipliers * SINGLE_WORD_PENALTY, multipliers)
 
         # Apply rarity multiplier with penalty power (Layer 1):
         #   fused = base * mult^penalty_power + conv * mult^conv_power
