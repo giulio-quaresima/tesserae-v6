@@ -227,8 +227,8 @@ RARITY_RAMP_OFFSET = 0.1
 # ramps linearly from (idf_floor + RARITY_RAMP_OFFSET) to 1.0.
 RARITY_NEAR_STOPWORD_CUTOFF = 0.1
 
-RARITY_BOOST_WEIGHT = 0.5          # scaling factor on the log-curve boost
-RARITY_BOOST_CAP = 2.0             # hard ceiling on multiplier (prevents runaway)
+RARITY_BOOST_WEIGHT = 0.5          # Layer 3: scaling factor on the log-curve rarity boost for high-IDF pairs
+RARITY_BOOST_CAP = 2.0             # Layer 3: hard ceiling on the rarity boost multiplier (prevents runaway scores)
 
 # Single-word match penalty: applied to multiplier when only one unique
 # lexical word is matched (n_unique_words <= 1). Since multiplier is squared
@@ -932,8 +932,7 @@ def _get_corpus_doc_freqs(lemmas, language='la'):
                 hw = headword_map.get(l)
                 if hw and hw != l:
                     hw_df = _corpus_doc_freq_cache.get(hw, 0)
-                    if hw_df > _corpus_doc_freq_cache[l]:
-                        _corpus_doc_freq_cache[l] = hw_df
+                    _corpus_doc_freq_cache[l] = max(_corpus_doc_freq_cache[l], hw_df)
 
     return {l: _corpus_doc_freq_cache.get(l, 0) for l in lemmas}
 
