@@ -65,6 +65,15 @@ import re
 import sqlite3
 from collections import defaultdict
 
+from backend.matcher import DEFAULT_LATIN_STOP_WORDS, DEFAULT_GREEK_STOP_WORDS, DEFAULT_ENGLISH_STOP_WORDS
+
+# Stoplist lookup by language code
+_STOPLISTS = {
+    'la': DEFAULT_LATIN_STOP_WORDS,
+    'grc': DEFAULT_GREEK_STOP_WORDS,
+    'en': DEFAULT_ENGLISH_STOP_WORDS,
+}
+
 
 # ---------------------------------------------------------------------------
 # Config K channel weights (Feb 28 2026)
@@ -981,6 +990,7 @@ def fuse_results(channel_results, weights=None, convergence_bonus=None,
     _rarity_boost_weight = RARITY_BOOST_WEIGHT
     _rarity_boost_cap = RARITY_BOOST_CAP
     _penalty_power = RARITY_PENALTY_POWER
+    _stoplist = _STOPLISTS.get(language, set())
 
     pair_scores = defaultdict(lambda: {
         "score": 0.0,
@@ -1111,13 +1121,23 @@ def fuse_results(channel_results, weights=None, convergence_bonus=None,
         # distinct words. Prevents two source words mapping to one target
         # word (e.g., "agger"+"tumulus" → "tumulus") from counting as 2.
         n_unique_words = min(len(unique_src_words), len(unique_tgt_words)) if corpus_idfs else 0
-        # Count "significant" words — those with IDF at or above the
-        # rarity threshold (1.5).  A bigram where NEITHER word crosses
-        # this bar is just two common words co-occurring; it carries no
-        # allusion signal regardless of channel count.  Treated the same
-        # as a single-word match (penalty + convergence zeroing).
-        n_significant_words = sum(1 for cidf, _ in word_pair_best.values()
-                                  if cidf >= _idf_threshold)
+        # Count "content" words — lemmas NOT on the curated function-word
+        # stoplist.  This replaces the IDF-based n_significant_words check:
+        # IDF can't distinguish "tum" (function word, common) from "pectore"
+        # (content word, common).  The curated stoplist can.
+        # A match where ALL words are function words (e.g., "tum + inde",
+        # "nec + sic") is penalized; matches with at least one content word
+        # (e.g., "pectore + curas", "nec + absisto") are treated normally.
+        n_content_words = 0
+        for lemma in mw_dict:
+            if lemma.startswith('['):
+                continue
+            if doc_freq_map.get(lemma, 0) <= 0:
+                continue
+            # Normalize lemma for stoplist comparison (u/v equivalence)
+            norm = lemma.lower().replace('v', 'u')
+            if norm not in _stoplist:
+                n_content_words += 1
 
         if corpus_idfs:
             # Geometric mean via exp(mean(log(x))), with floor of 0.001
@@ -1172,32 +1192,15 @@ def fuse_results(channel_results, weights=None, convergence_bonus=None,
             min_idf_gate_fired = False
             if n_unique_words <= 1:
                 multiplier *= SINGLE_WORD_PENALTY
-            elif n_significant_words == 0:
-                # No-significant-words penalty: demote multi-word matches
-                # where no word is distinctive (IDF >= threshold).
-                # Convergence weighting (Layer 2) already provides
-                # proportional suppression via min_word_idf^2, so this
-                # penalty is moderate — just enough to reorder common-word
-                # bigrams below rare-word bigrams without destroying them.
+            elif n_content_words == 0:
+                # All-function-words penalty: every matched lemma is on the
+                # curated stoplist (e.g., "tum + inde", "nec + sic", "ubi").
+                # These matches arise from grammatical co-occurrence, not
+                # allusion.  Penalized more aggressively than content-word
+                # matches since the stoplist gives us certainty that no
+                # content word is present.
                 multiplier *= NO_SIGNIFICANT_WORDS_PENALTY
-                # Min-IDF gate: extra penalty if ANY word is truly
-                # ubiquitous (IDF < 0.15, i.e. in >86% of texts).
-                # Only stacks with NO_SIG for pairs containing true
-                # function words (per, cum, qui, hic).  Does NOT fire
-                # for moderately common content words (pectus, cura,
-                # arma) which have IDF 0.35-0.50.
-                if _min_idf_penalty < 1.0 and _min_idf_threshold > 0:
-                    if min(corpus_idfs) < _min_idf_threshold:
-                        multiplier *= _min_idf_penalty
-                        min_idf_gate_fired = True
-            else:
-                # Multi-word match with at least one significant word:
-                # min-IDF gate still applies to catch pairs where a
-                # function word hitchhikes on a rare partner.
-                if _min_idf_penalty < 1.0 and _min_idf_threshold > 0:
-                    if min(corpus_idfs) < _min_idf_threshold:
-                        multiplier *= _min_idf_penalty
-                        min_idf_gate_fired = True
+                min_idf_gate_fired = True
         else:
             # No corpus IDF data: either all matched words are sub-lexical
             # fragments (sound/edit_distance) or had df=0. Treat as
