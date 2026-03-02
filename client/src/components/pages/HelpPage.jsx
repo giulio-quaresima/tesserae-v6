@@ -291,7 +291,31 @@ export default function HelpPage() {
               <p className="text-gray-700 mb-3">
                 A <strong>convergence bonus</strong> rewards pairs found independently by multiple channels. If six out of nine channels all
                 flag the same pair of lines, that agreement is strong evidence of a real connection — stronger than any single channel's
-                score alone.
+                score alone. The convergence bonus is weighted by word rarity: pairs sharing rare vocabulary get the full bonus,
+                while pairs whose weakest word is very common receive a reduced bonus proportional to that word's frequency.
+              </p>
+
+              <h4 className="text-lg font-medium text-gray-900 mt-6 mb-3">Rarity Scoring and Function-Word Handling</h4>
+              <p className="text-gray-700 mb-3">
+                Not all shared words carry equal weight as evidence of allusion. Sharing the rare word <em>quercus</em> ("oak")
+                is far more significant than sharing <em>et</em> ("and"). Fusion scoring applies a <strong>three-layer rarity system</strong>:
+              </p>
+              <ul className="list-disc list-inside text-gray-600 text-sm space-y-2 ml-2 mb-3">
+                <li><strong>IDF multiplier:</strong> Each result's score is scaled by the geometric mean of its matched words' corpus
+                  rarity (inverse document frequency). Common-word pairs are reduced proportionally; rare-word pairs are preserved or boosted.</li>
+                <li><strong>Convergence weighting:</strong> The convergence bonus is gated by the rarest word's IDF. Pairs containing
+                  a very common word receive less convergence credit, since multiple channels agreeing on a common word is expected, not meaningful.</li>
+                <li><strong>Rarity boost:</strong> Rare multi-channel matches — where distinctive vocabulary is confirmed by several
+                  independent channels — receive a bonus that promotes them above common-word results.</li>
+              </ul>
+              <p className="text-gray-700 mb-3">
+                To cleanly separate function words from content words, the scoring uses a <strong>curated stoplist</strong> of
+                66 Latin, 88 Greek, and 60 English function words (pronouns, conjunctions, prepositions, and common verbs like <em>sum</em>).
+                Matches where all shared words are function words (e.g., sharing only <em>tum</em> + <em>inde</em>) are heavily
+                penalized. Matches where a function word co-occurs with a content word (e.g., <em>nec</em> + <em>priorem</em>)
+                are scored on the content word alone — the function word adds no allusion signal.
+                This approach is more precise than pure frequency-based filtering: it correctly penalizes <em>tum</em> (a function word)
+                without penalizing <em>pectore</em> (a content word that happens to be common).
               </p>
 
               <h4 className="text-lg font-medium text-gray-900 mt-6 mb-3">Sliding Windows</h4>
@@ -591,6 +615,16 @@ export default function HelpPage() {
               <p className="text-gray-700 mb-4">
                 {STOPLIST_INFO.description}
               </p>
+              <div className="bg-red-50 p-4 rounded-lg border border-red-200 mb-4">
+                <h4 className="font-medium text-red-900 mb-1">Stoplists in Fusion Mode</h4>
+                <p className="text-gray-700 text-sm">
+                  In Fusion mode, stoplists play a dual role. Individual channels run without stoplist filtering (to maximize recall),
+                  but the <strong>fusion scoring layer</strong> uses the curated function-word stoplist to identify and penalize
+                  matches built entirely on function words. This means that sharing <em>tum</em> + <em>nec</em> will be ranked
+                  far below sharing <em>pectore</em> + <em>curas</em>, even though both are two-word matches. The stoplist gives
+                  the scoring system a precise way to distinguish grammatical co-occurrence from genuine allusion.
+                </p>
+              </div>
               
               <h4 className="font-medium text-gray-900 mt-6 mb-2">How the Default Stoplist Works</h4>
               <ul className="list-disc list-inside text-gray-600 text-sm space-y-1 ml-2">
@@ -672,8 +706,10 @@ export default function HelpPage() {
                     <p className="text-sm text-gray-700">
                       <strong>Fusion mode (default):</strong> Each channel produces its own score, which is multiplied by a
                       channel-specific weight and summed. A <em>convergence bonus</em> rewards pairs detected by multiple
-                      independent channels. The result is a single combined score reflecting both the strength of individual
-                      signals and the breadth of agreement across methods.
+                      independent channels. The combined score is then scaled by the <em>rarity</em> of the matched vocabulary:
+                      pairs sharing rare content words score higher than pairs sharing common function words. A curated
+                      stoplist of function words (like <em>et</em>, <em>tum</em>, <em>nec</em>) ensures that grammatical
+                      co-occurrence does not inflate scores.
                     </p>
                   </div>
                   <div className="bg-gray-50 p-3 rounded mb-2">
