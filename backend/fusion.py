@@ -1201,6 +1201,14 @@ def fuse_results(channel_results, weights=None, convergence_bonus=None,
                 # content word is present.
                 multiplier *= NO_SIGNIFICANT_WORDS_PENALTY
                 min_idf_gate_fired = True
+            elif n_content_words < n_unique_words:
+                # Mixed penalty: some words are content, some are function
+                # words (e.g., "tum + vires", "nec + priorem", "ubi + fata").
+                # The function words add no allusion signal — "tum" appears
+                # in 70%+ of Latin texts.  Discount proportionally:
+                # 1 content + 1 function → 0.5, 1 content + 2 function → 0.33.
+                # After squaring (Layer 1), 0.5 → 0.25 effective penalty.
+                multiplier *= n_content_words / n_unique_words
         else:
             # No corpus IDF data: either all matched words are sub-lexical
             # fragments (sound/edit_distance) or had df=0. Treat as
