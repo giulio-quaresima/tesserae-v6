@@ -40,7 +40,7 @@ from backend.fusion import (
     RARITY_MIN_IDF_THRESHOLD, RARITY_MIN_IDF_PENALTY,
     RARITY_PENALTY_POWER, RARITY_BOOST_WEIGHT, RARITY_BOOST_CAP,
     RARITY_NEAR_STOPWORD_CUTOFF, RARITY_RAMP_OFFSET,
-    SINGLE_WORD_PENALTY,
+    SINGLE_WORD_PENALTY, NO_SIGNIFICANT_WORDS_PENALTY,
     run_fusion_search,
     _get_corpus_doc_freqs, _get_total_texts, _get_headword_map,
 )
@@ -112,6 +112,8 @@ def compute_rarity_details(result, doc_freq_map, headword_map, total_texts):
 
     corpus_idfs = [cidf for cidf, _, _ in word_pair_best.values()]
     n_unique_words = len(corpus_idfs)
+    n_significant_words = sum(1 for cidf in corpus_idfs
+                              if cidf >= RARITY_IDF_THRESHOLD)
 
     # Compute geometric mean IDF
     if corpus_idfs:
@@ -149,11 +151,16 @@ def compute_rarity_details(result, doc_freq_map, headword_map, total_texts):
                          math.log(geom_mean_idf / idf_threshold))
         zone = "zone3_boost"
 
-    # Single-word penalty
+    # Single-word penalty / no-significant-words penalty
     single_word_penalty_applied = False
-    if n_unique_words <= 1 and corpus_idfs:
-        multiplier *= SINGLE_WORD_PENALTY
-        single_word_penalty_applied = True
+    no_sig_penalty_applied = False
+    if corpus_idfs:
+        if n_unique_words <= 1:
+            multiplier *= SINGLE_WORD_PENALTY
+            single_word_penalty_applied = True
+        elif n_significant_words == 0:
+            multiplier *= NO_SIGNIFICANT_WORDS_PENALTY
+            no_sig_penalty_applied = True
 
     # Min-IDF gate
     min_idf_gate_triggered = False
@@ -174,8 +181,10 @@ def compute_rarity_details(result, doc_freq_map, headword_map, total_texts):
         "effective_mult_squared": multiplier ** RARITY_PENALTY_POWER,
         "zone": zone,
         "n_unique_words": n_unique_words,
+        "n_significant_words": n_significant_words,
         "n_channels": len(result.get("channels", [])),
         "single_word_penalty": single_word_penalty_applied,
+        "no_sig_penalty": no_sig_penalty_applied,
         "min_idf_gate": min_idf_gate_triggered,
         "has_low_idf": has_low_idf,
     }
@@ -282,6 +291,8 @@ def main():
             flags.append("MIN-GATE")
         if details["single_word_penalty"]:
             flags.append("SINGLE-WORD")
+        if details["no_sig_penalty"]:
+            flags.append("NO-SIG-WORDS")
         flag_str = " [" + ", ".join(flags) + "]" if flags else ""
 
         # Source/target text snippets
@@ -299,7 +310,8 @@ def main():
               f"mult={details['multiplier']:.4f}  "
               f"mult^2={details['effective_mult_squared']:.4f}  "
               f"zone={details['zone']}  "
-              f"n_words={details['n_unique_words']}")
+              f"n_words={details['n_unique_words']}  "
+              f"n_sig={details['n_significant_words']}")
 
         for wd in details["word_details"]:
             hw_info = ""

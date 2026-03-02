@@ -57,7 +57,7 @@ from backend.fusion import (
     RARITY_MIN_IDF_THRESHOLD, RARITY_MIN_IDF_PENALTY,
     RARITY_PENALTY_POWER, RARITY_BOOST_WEIGHT, RARITY_BOOST_CAP,
     RARITY_NEAR_STOPWORD_CUTOFF, RARITY_RAMP_OFFSET,
-    SINGLE_WORD_PENALTY,
+    SINGLE_WORD_PENALTY, NO_SIGNIFICANT_WORDS_PENALTY,
     WINDOW_CHANNELS,
     run_channel, fuse_results, merge_line_and_window, make_window_units,
     _get_corpus_doc_freqs, _get_total_texts,
@@ -261,6 +261,7 @@ def extract_pair_summary(channel_results, parsed_gold, stop_words,
     rarity_mean_idfs = np.zeros(N, dtype=np.float64)
     rarity_min_idfs = np.zeros(N, dtype=np.float64)
     n_unique_words_arr = np.zeros(N, dtype=np.float64)
+    n_significant_words_arr = np.zeros(N, dtype=np.float64)
     gold_matches = []
 
     for i, ((src_ref, tgt_ref), data) in enumerate(pair_data.items()):
@@ -300,6 +301,12 @@ def extract_pair_summary(channel_results, parsed_gold, stop_words,
             rarity_min_idfs[i] = min(corpus_idfs)
             # True unique word count = min of source-side and target-side
             n_unique_words_arr[i] = min(len(unique_src_words), len(unique_tgt_words))
+            # Significant words: those with IDF at or above the rarity
+            # threshold. Used to detect "all common words" bigrams.
+            n_significant_words_arr[i] = sum(
+                1 for cidf, _ in word_pair_best.values()
+                if cidf >= RARITY_IDF_THRESHOLD
+            )
         else:
             # No recognized lexical lemmas (all sub-lexical fragments from
             # sound/edit_distance, or df=0). Treat as common-word match —
@@ -307,6 +314,7 @@ def extract_pair_summary(channel_results, parsed_gold, stop_words,
             rarity_mean_idfs[i] = 0.0
             rarity_min_idfs[i] = 0.0
             n_unique_words_arr[i] = 0
+            n_significant_words_arr[i] = 0
 
         # Gold matching (precompute which gold entries this pair covers)
         src_b1, src_l1, src_b2, src_l2 = parse_range_ref(src_ref)
@@ -329,6 +337,7 @@ def extract_pair_summary(channel_results, parsed_gold, stop_words,
         "rarity_mean_idfs": rarity_mean_idfs,
         "rarity_min_idfs": rarity_min_idfs,
         "n_unique_words": n_unique_words_arr,
+        "n_significant_words": n_significant_words_arr,
         "gold_matches": gold_matches,
         "n_pairs": N,
     }
@@ -532,6 +541,7 @@ def evaluate_config_fast(summaries, weight_vector, bonus, idf_floor,
         mean_idfs = s["rarity_mean_idfs"]
         min_idfs = s["rarity_min_idfs"]
         n_words = s["n_unique_words"]
+        n_sig = s["n_significant_words"]
         gm = s["gold_matches"]
         n_gold = s["n_gold"]
         total_gold += n_gold
@@ -576,6 +586,12 @@ def evaluate_config_fast(summaries, weight_vector, bonus, idf_floor,
         single_word_mask = n_words <= 1
         multipliers = np.where(single_word_mask,
                                multipliers * SINGLE_WORD_PENALTY, multipliers)
+        # No-significant-words penalty: milder penalty for multi-word
+        # matches where no word has IDF >= threshold
+        no_sig_mask = (n_words > 1) & (n_sig == 0)
+        multipliers = np.where(no_sig_mask,
+                               multipliers * NO_SIGNIFICANT_WORDS_PENALTY,
+                               multipliers)
 
         # Min-IDF gate: if ANY lemma's corpus IDF < threshold, extra penalty
         if min_idf_threshold > 0 and min_idf_penalty < 1.0:
