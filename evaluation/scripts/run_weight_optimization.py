@@ -598,6 +598,11 @@ def evaluate_config_fast(summaries, weight_vector, bonus, idf_floor,
         multipliers = np.where(all_func_mask,
                                multipliers * NO_SIGNIFICANT_WORDS_PENALTY,
                                multipliers)
+        # Mixed penalty: some content words + some function words.
+        # Discount proportionally: n_content / n_unique_words.
+        mixed_mask = (n_words > 1) & (n_cw > 0) & (n_cw < n_words)
+        mixed_ratio = np.where(mixed_mask, n_cw / np.maximum(n_words, 1), 1.0)
+        multipliers = multipliers * mixed_ratio
 
         # Apply rarity multiplier with penalty power (Layer 1):
         #   fused = base * mult^penalty_power + conv * mult^conv_power
