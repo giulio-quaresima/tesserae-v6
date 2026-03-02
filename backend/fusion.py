@@ -195,7 +195,7 @@ CONVERGENCE_IDF_POWER = 1.0
 # gate catches nec directly. Applied before Layer 1 squaring, so effective
 # penalty for a pair with one common word is 0.5 × mult, then squared.
 RARITY_MIN_IDF_THRESHOLD = 0.5
-RARITY_MIN_IDF_PENALTY = 0.5
+RARITY_MIN_IDF_PENALTY = 0.25
 
 # Rarity boost (Layer 3): for pairs with geom_idf above the threshold,
 # the multiplier exceeds 1.0 to actively promote rare multi-channel matches.
@@ -238,7 +238,7 @@ SINGLE_WORD_PENALTY = 0.25
 #   score = base * (NO_SIG_PENALTY * mult)^2  (no convergence)
 # The convergence zeroing is the primary mechanism — it removes the
 # multi-channel inflation that made common-word pairs score so high.
-NO_SIGNIFICANT_WORDS_PENALTY = 0.5
+NO_SIGNIFICANT_WORDS_PENALTY = 0.25
 
 # ---------------------------------------------------------------------------
 # Channel classification for two-pass architecture
@@ -1178,10 +1178,14 @@ def fuse_results(channel_results, weights=None, convergence_bonus=None,
             elif n_significant_words == 0:
                 multiplier *= NO_SIGNIFICANT_WORDS_PENALTY
 
-            # Min-IDF gate: extra penalty if ANY word has idf < threshold
+            # Min-IDF gate: extra penalty if ANY word has idf < threshold.
+            # When triggered, also zeroes convergence (below) — multi-channel
+            # agreement driven by a near-stopword is noise, not signal.
+            min_idf_gate_fired = False
             if _min_idf_penalty < 1.0 and _min_idf_threshold > 0:
                 if min(corpus_idfs) < _min_idf_threshold:
                     multiplier *= _min_idf_penalty
+                    min_idf_gate_fired = True
         else:
             # No corpus IDF data: either all matched words are sub-lexical
             # fragments (sound/edit_distance) or had df=0. Treat as
@@ -1189,6 +1193,7 @@ def fuse_results(channel_results, weights=None, convergence_bonus=None,
             # be rewarded with a free pass on rarity scoring.
             multiplier = _idf_floor
             geom_mean_idf = _idf_floor
+            min_idf_gate_fired = False
 
         # ---------------------------------------------------------------
         # LAYER 2: IDF-weighted convergence bonus
@@ -1206,15 +1211,13 @@ def fuse_results(channel_results, weights=None, convergence_bonus=None,
         base_score = info["score"]
         n = info["n_scoring_channels"]
         weighted_n = n * idf_weight
-        # No convergence bonus for single-word matches: convergence
-        # rewards multiple independent words confirming each other across
-        # channels. One rare word detected by multiple methods is not
-        # convergence — it's just one word.
-        # Note: "no significant words" bigrams keep their convergence
-        # (already reduced by IDF weighting) — the multiplier penalty
-        # (NO_SIGNIFICANT_WORDS_PENALTY) handles their demotion. Zeroing
-        # convergence for no-sig pairs was too aggressive (killed recall).
-        if n_unique_words <= 1:
+        # No convergence bonus for single-word matches, matches with
+        # no significant words, or matches where one word is a near-
+        # stopword (min-IDF gate fired).  Convergence rewards multiple
+        # independent DISTINCTIVE words confirming each other across
+        # channels.  A near-stopword matches trivially on every channel
+        # — that multi-channel agreement is noise, not signal.
+        if n_unique_words <= 1 or n_significant_words == 0 or min_idf_gate_fired:
             weighted_n = 0.0
         conv_score = _convergence_bonus * (weighted_n - 1.0) if weighted_n > 1.0 else 0.0
 

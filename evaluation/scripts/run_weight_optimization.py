@@ -554,11 +554,12 @@ def evaluate_config_fast(summaries, weight_vector, bonus, idf_floor,
         # contribution by min(1.0, geom_mean_idf)^2.
         idf_weights = np.minimum(1.0, mean_idfs) ** 2
         weighted_nc = nc * idf_weights
-        # No convergence bonus for single-word matches: convergence
-        # rewards multiple independent words confirming each other, not
-        # one word detected by multiple methods.
-        single_word_mask = n_words <= 1
-        weighted_nc = np.where(single_word_mask, 0.0, weighted_nc)
+        # No convergence bonus for single-word matches, matches with
+        # no significant words, or matches where min-IDF gate fires
+        # (one word is a near-stopword → channel agreement is noise).
+        min_idf_gate_mask = (min_idfs < min_idf_threshold) if (min_idf_threshold > 0 and min_idf_penalty < 1.0) else np.zeros(N, dtype=bool)
+        no_signal_mask = (n_words <= 1) | (n_sig == 0) | min_idf_gate_mask
+        weighted_nc = np.where(no_signal_mask, 0.0, weighted_nc)
         conv = bonus * np.maximum(0.0, weighted_nc - 1.0)
 
         # Graduated IDF multiplier (vectorized piecewise linear)
