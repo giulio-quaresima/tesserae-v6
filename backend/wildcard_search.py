@@ -60,12 +60,18 @@ def normalize_greek(text: str) -> str:
 
 def normalize_latin(text: str) -> str:
     """
-    Normalize Latin text for searching (v/u and j/i equivalence).
-    Classical Latin texts often vary between v/u and j/i.
+    Normalize Latin orthographic variants for searching.
+    - v/u and j/i equivalence (classical convention variation)
+    - Word-final -om → -um (archaic genitive plural/accusative singular,
+      e.g. divom → divum, servom → servum, quom → quum)
     Normalizing both the search pattern and the text being searched
     ensures matches regardless of which convention the text uses.
     """
-    return text.replace('v', 'u').replace('V', 'U').replace('j', 'i').replace('J', 'I')
+    text = text.replace('v', 'u').replace('V', 'U').replace('j', 'i').replace('J', 'I')
+    text = re.sub(r'om\b', 'um', text)
+    text = re.sub(r'Om\b', 'Um', text)
+    text = re.sub(r'OM\b', 'UM', text)
+    return text
 
 
 TEXTS_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'texts')
