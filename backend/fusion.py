@@ -221,10 +221,13 @@ RARITY_BOOST_CAP = 2.0             # hard ceiling on multiplier (prevents runawa
 
 # Single-word match penalty: applied to multiplier when only one unique
 # lexical word is matched (n_unique_words <= 1). Since multiplier is squared
-# in Layer 1, the effective penalty is 0.5^2 = 0.25 (75% score reduction).
-# This demotes single rare-word matches (e.g., "erinys" alone) below
-# multi-word allusions that share 2+ distinct words.
-SINGLE_WORD_PENALTY = 0.5
+# in Layer 1, the effective penalty is 0.25^2 = 0.0625 (94% score reduction).
+# This pushes single-word matches (e.g., "erinys", "pelta", "acheron")
+# hundreds of ranks below multi-word allusions. A single shared word,
+# even a rare one, is almost never more valuable than two shared words.
+# Combined with convergence zeroing (Layer 2), single-word matches
+# score: base * (0.25 * mult)^2 = base * 0.0625 * mult^2.
+SINGLE_WORD_PENALTY = 0.25
 
 # ---------------------------------------------------------------------------
 # Channel classification for two-pass architecture
@@ -1145,7 +1148,7 @@ def fuse_results(channel_results, weights=None, convergence_bonus=None,
 
             # Single-word penalty: demote matches sharing only one
             # distinct word. Applied before Layer 1 squaring, so
-            # effective penalty is SINGLE_WORD_PENALTY^2 (0.25).
+            # effective penalty is SINGLE_WORD_PENALTY^2 (0.0625).
             if n_unique_words <= 1:
                 multiplier *= SINGLE_WORD_PENALTY
 
@@ -1177,6 +1180,12 @@ def fuse_results(channel_results, weights=None, convergence_bonus=None,
         base_score = info["score"]
         n = info["n_scoring_channels"]
         weighted_n = n * idf_weight
+        # No convergence bonus for single-word matches: convergence
+        # rewards multiple independent words confirming each other across
+        # channels. One rare word detected by multiple methods is not
+        # convergence — it's just one word.
+        if n_unique_words <= 1:
+            weighted_n = 0.0
         conv_score = _convergence_bonus * (weighted_n - 1.0) if weighted_n > 1.0 else 0.0
 
         # ---------------------------------------------------------------
