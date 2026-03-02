@@ -188,14 +188,16 @@ RARITY_PENALTY_POWER = 2.0
 CONVERGENCE_IDF_POWER = 1.0
 
 # Min-IDF gate: an additional penalty if ANY single matched lemma has corpus
-# IDF below the threshold. Catches pairs where the geometric mean is pulled
-# up by one moderate/rare word while another word is truly ubiquitous.
-# Example: "nec absistit" — nec has idf=0.444, absisto has idf=2.65,
-# geometric mean ~1.08 lands in Zone 2 with only 42% penalty. The min-IDF
-# gate catches nec directly. Applied before Layer 1 squaring, so effective
-# penalty for a pair with one common word is 0.5 × mult, then squared.
-RARITY_MIN_IDF_THRESHOLD = 0.5
-RARITY_MIN_IDF_PENALTY = 0.10
+# IDF below the threshold. Catches pairs containing truly ubiquitous words
+# (per idf=0.046, cum idf=0.023, qui idf=0.002, hic idf=0.011) that
+# inflate scores through multi-channel detection. Threshold 0.15 corresponds
+# to words appearing in >86% of texts. Does NOT fire for moderately common
+# content words like pectus (0.49), cura (0.35), arma (0.48), nec (0.44)
+# which are allusive vocabulary in Latin epic despite being common in the
+# corpus. Only stacks with NO_SIGNIFICANT_WORDS_PENALTY (not with normal
+# multi-word matches that have at least one significant word).
+RARITY_MIN_IDF_THRESHOLD = 0.15
+RARITY_MIN_IDF_PENALTY = 0.30
 
 # Rarity boost (Layer 3): for pairs with geom_idf above the threshold,
 # the multiplier exceeds 1.0 to actively promote rare multi-channel matches.
@@ -227,7 +229,7 @@ RARITY_BOOST_CAP = 2.0             # hard ceiling on multiplier (prevents runawa
 # shared word is inherently less valuable than two shared words.
 # Combined with convergence zeroing (Layer 2), single-word matches
 # score: base * (0.15 * mult)^2 = base * 0.0225 * mult^2.
-SINGLE_WORD_PENALTY = 0.10
+SINGLE_WORD_PENALTY = 0.12
 
 # No-significant-words penalty: applied when a multi-word match has NO word
 # with IDF >= RARITY_IDF_THRESHOLD.  These are bigrams of common vocabulary
@@ -238,7 +240,7 @@ SINGLE_WORD_PENALTY = 0.10
 #   score = base * (NO_SIG_PENALTY * mult)^2  (no convergence)
 # The convergence zeroing is the primary mechanism — it removes the
 # multi-channel inflation that made common-word pairs score so high.
-NO_SIGNIFICANT_WORDS_PENALTY = 0.12
+NO_SIGNIFICANT_WORDS_PENALTY = 0.50
 
 # ---------------------------------------------------------------------------
 # Channel classification for two-pass architecture
@@ -1166,26 +1168,36 @@ def fuse_results(channel_results, weights=None, convergence_bonus=None,
 
             # Single-word penalty: demote matches sharing only one
             # distinct word.  Applied before Layer 1 squaring, so
-            # effective penalty is SINGLE_WORD_PENALTY^2 (0.0625).
+            # effective penalty is SINGLE_WORD_PENALTY^2.
+            min_idf_gate_fired = False
             if n_unique_words <= 1:
                 multiplier *= SINGLE_WORD_PENALTY
-            # No-significant-words penalty: demote multi-word matches
-            # where no word is distinctive (IDF ≥ threshold).  Milder
-            # than single-word penalty because two common content words
-            # still carry some signal.  Combined with convergence
-            # zeroing (below), these pairs lose their multi-channel
-            # inflation.  Example: "num + campus" both < IDF 1.5.
             elif n_significant_words == 0:
+                # No-significant-words penalty: demote multi-word matches
+                # where no word is distinctive (IDF >= threshold).
+                # Convergence weighting (Layer 2) already provides
+                # proportional suppression via min_word_idf^2, so this
+                # penalty is moderate — just enough to reorder common-word
+                # bigrams below rare-word bigrams without destroying them.
                 multiplier *= NO_SIGNIFICANT_WORDS_PENALTY
-
-            # Min-IDF gate: extra penalty if ANY word has idf < threshold.
-            # When triggered, also zeroes convergence (below) — multi-channel
-            # agreement driven by a near-stopword is noise, not signal.
-            min_idf_gate_fired = False
-            if _min_idf_penalty < 1.0 and _min_idf_threshold > 0:
-                if min(corpus_idfs) < _min_idf_threshold:
-                    multiplier *= _min_idf_penalty
-                    min_idf_gate_fired = True
+                # Min-IDF gate: extra penalty if ANY word is truly
+                # ubiquitous (IDF < 0.15, i.e. in >86% of texts).
+                # Only stacks with NO_SIG for pairs containing true
+                # function words (per, cum, qui, hic).  Does NOT fire
+                # for moderately common content words (pectus, cura,
+                # arma) which have IDF 0.35-0.50.
+                if _min_idf_penalty < 1.0 and _min_idf_threshold > 0:
+                    if min(corpus_idfs) < _min_idf_threshold:
+                        multiplier *= _min_idf_penalty
+                        min_idf_gate_fired = True
+            else:
+                # Multi-word match with at least one significant word:
+                # min-IDF gate still applies to catch pairs where a
+                # function word hitchhikes on a rare partner.
+                if _min_idf_penalty < 1.0 and _min_idf_threshold > 0:
+                    if min(corpus_idfs) < _min_idf_threshold:
+                        multiplier *= _min_idf_penalty
+                        min_idf_gate_fired = True
         else:
             # No corpus IDF data: either all matched words are sub-lexical
             # fragments (sound/edit_distance) or had df=0. Treat as
@@ -1211,9 +1223,14 @@ def fuse_results(channel_results, weights=None, convergence_bonus=None,
         base_score = info["score"]
         n = info["n_scoring_channels"]
         weighted_n = n * idf_weight
-        # Hard zeroing for single-word and no-significant-words matches:
-        # these categories shouldn't benefit from convergence at all.
-        if n_unique_words <= 1 or n_significant_words == 0:
+        # Hard zeroing for single-word matches and min-IDF gate hits.
+        # Single-word: convergence from one shared word is noise.
+        # Gate-fired: a ubiquitous function word (per, cum, qui)
+        # drives multi-channel detection but carries no signal.
+        # Common content-word pairs (pectus+cura, arma+genus) do NOT
+        # get zeroed — their convergence is naturally suppressed by
+        # the min-word-IDF^2 weighting in idf_weight above.
+        if n_unique_words <= 1 or min_idf_gate_fired:
             weighted_n = 0.0
         conv_score = _convergence_bonus * (weighted_n - 1.0) if weighted_n > 1.0 else 0.0
 
