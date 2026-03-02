@@ -229,6 +229,17 @@ RARITY_BOOST_CAP = 2.0             # hard ceiling on multiplier (prevents runawa
 # score: base * (0.25 * mult)^2 = base * 0.0625 * mult^2.
 SINGLE_WORD_PENALTY = 0.25
 
+# No-significant-words penalty: applied when a multi-word match has NO word
+# with IDF >= RARITY_IDF_THRESHOLD.  These are bigrams of common vocabulary
+# (e.g., "num + campus", "ter + centum") that carry weak allusion signal.
+# Milder than SINGLE_WORD_PENALTY because having two common content words
+# IS more informative than one word, just not as much as normal scoring
+# suggests.  Combined with convergence zeroing, these pairs get:
+#   score = base * (NO_SIG_PENALTY * mult)^2  (no convergence)
+# The convergence zeroing is the primary mechanism — it removes the
+# multi-channel inflation that made common-word pairs score so high.
+NO_SIGNIFICANT_WORDS_PENALTY = 0.5
+
 # ---------------------------------------------------------------------------
 # Channel classification for two-pass architecture
 # ---------------------------------------------------------------------------
@@ -1098,6 +1109,13 @@ def fuse_results(channel_results, weights=None, convergence_bonus=None,
         # distinct words. Prevents two source words mapping to one target
         # word (e.g., "agger"+"tumulus" → "tumulus") from counting as 2.
         n_unique_words = min(len(unique_src_words), len(unique_tgt_words)) if corpus_idfs else 0
+        # Count "significant" words — those with IDF at or above the
+        # rarity threshold (1.5).  A bigram where NEITHER word crosses
+        # this bar is just two common words co-occurring; it carries no
+        # allusion signal regardless of channel count.  Treated the same
+        # as a single-word match (penalty + convergence zeroing).
+        n_significant_words = sum(1 for cidf, _ in word_pair_best.values()
+                                  if cidf >= _idf_threshold)
 
         if corpus_idfs:
             # Geometric mean via exp(mean(log(x))), with floor of 0.001
@@ -1147,10 +1165,18 @@ def fuse_results(channel_results, weights=None, convergence_bonus=None,
                                  1.0 + _rarity_boost_weight * boost_factor * math.log(geom_mean_idf / _idf_threshold))
 
             # Single-word penalty: demote matches sharing only one
-            # distinct word. Applied before Layer 1 squaring, so
+            # distinct word.  Applied before Layer 1 squaring, so
             # effective penalty is SINGLE_WORD_PENALTY^2 (0.0625).
             if n_unique_words <= 1:
                 multiplier *= SINGLE_WORD_PENALTY
+            # No-significant-words penalty: demote multi-word matches
+            # where no word is distinctive (IDF ≥ threshold).  Milder
+            # than single-word penalty because two common content words
+            # still carry some signal.  Combined with convergence
+            # zeroing (below), these pairs lose their multi-channel
+            # inflation.  Example: "num + campus" both < IDF 1.5.
+            elif n_significant_words == 0:
+                multiplier *= NO_SIGNIFICANT_WORDS_PENALTY
 
             # Min-IDF gate: extra penalty if ANY word has idf < threshold
             if _min_idf_penalty < 1.0 and _min_idf_threshold > 0:
@@ -1184,6 +1210,10 @@ def fuse_results(channel_results, weights=None, convergence_bonus=None,
         # rewards multiple independent words confirming each other across
         # channels. One rare word detected by multiple methods is not
         # convergence — it's just one word.
+        # Note: "no significant words" bigrams keep their convergence
+        # (already reduced by IDF weighting) — the multiplier penalty
+        # (NO_SIGNIFICANT_WORDS_PENALTY) handles their demotion. Zeroing
+        # convergence for no-sig pairs was too aggressive (killed recall).
         if n_unique_words <= 1:
             weighted_n = 0.0
         conv_score = _convergence_bonus * (weighted_n - 1.0) if weighted_n > 1.0 else 0.0
