@@ -221,13 +221,13 @@ RARITY_BOOST_CAP = 2.0             # hard ceiling on multiplier (prevents runawa
 
 # Single-word match penalty: applied to multiplier when only one unique
 # lexical word is matched (n_unique_words <= 1). Since multiplier is squared
-# in Layer 1, the effective penalty is 0.25^2 = 0.0625 (94% score reduction).
-# This pushes single-word matches (e.g., "erinys", "pelta", "acheron")
-# hundreds of ranks below multi-word allusions. A single shared word,
-# even a rare one, is almost never more valuable than two shared words.
+# in Layer 1, the effective penalty is 0.15^2 = 0.0225 (97.75% reduction).
+# This ensures unigrams ALWAYS rank below multi-word matches, even
+# penalized common-word bigrams (which get ~96% reduction). A single
+# shared word is inherently less valuable than two shared words.
 # Combined with convergence zeroing (Layer 2), single-word matches
-# score: base * (0.25 * mult)^2 = base * 0.0625 * mult^2.
-SINGLE_WORD_PENALTY = 0.25
+# score: base * (0.15 * mult)^2 = base * 0.0225 * mult^2.
+SINGLE_WORD_PENALTY = 0.15
 
 # No-significant-words penalty: applied when a multi-word match has NO word
 # with IDF >= RARITY_IDF_THRESHOLD.  These are bigrams of common vocabulary
@@ -1211,14 +1211,17 @@ def fuse_results(channel_results, weights=None, convergence_bonus=None,
         base_score = info["score"]
         n = info["n_scoring_channels"]
         weighted_n = n * idf_weight
-        # No convergence bonus for single-word matches, matches with
-        # no significant words, or matches where one word is a near-
-        # stopword (min-IDF gate fired).  Convergence rewards multiple
-        # independent DISTINCTIVE words confirming each other across
-        # channels.  A near-stopword matches trivially on every channel
-        # — that multi-channel agreement is noise, not signal.
-        if n_unique_words <= 1 or n_significant_words == 0 or min_idf_gate_fired:
+        # Convergence adjustments:
+        # - Single-word: ZERO (one word isn't convergence)
+        # - No significant words: ZERO (common words agreeing is noise)
+        # - Min-IDF gate + has significant word: HALVED (there IS a
+        #   genuine allusion word, but the near-stopword inflates the
+        #   channel count; e.g., "Acheronta movebo" — acheron is real,
+        #   moueo is ubiquitous)
+        if n_unique_words <= 1 or n_significant_words == 0:
             weighted_n = 0.0
+        elif min_idf_gate_fired:
+            weighted_n *= 0.5
         conv_score = _convergence_bonus * (weighted_n - 1.0) if weighted_n > 1.0 else 0.0
 
         # ---------------------------------------------------------------
