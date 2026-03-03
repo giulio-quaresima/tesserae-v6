@@ -37,7 +37,9 @@ const Navigation = ({
       <div className="max-w-7xl mx-auto px-3 sm:px-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
           <div className="flex overflow-x-auto scrollbar-hide -mx-3 px-3 sm:mx-0 sm:px-0">
-            {mainTabs.map(tab => (
+            {mainTabs
+              .filter(tab => tab.code !== 'admin')
+              .map(tab => (
               <button
                 key={tab.code}
                 onClick={() => setPageType(tab.code)}

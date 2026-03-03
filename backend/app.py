@@ -304,6 +304,39 @@ def init_db():
                 )
             ''')
             cur.execute('''
+                ALTER TABLE text_requests ADD COLUMN IF NOT EXISTS text_date TEXT
+            ''')
+            cur.execute('''
+                ALTER TABLE text_requests ADD COLUMN IF NOT EXISTS approved_filename VARCHAR(255)
+            ''')
+            cur.execute('''
+                ALTER TABLE text_requests ADD COLUMN IF NOT EXISTS official_author VARCHAR(255)
+            ''')
+            cur.execute('''
+                ALTER TABLE text_requests ADD COLUMN IF NOT EXISTS official_work VARCHAR(255)
+            ''')
+            cur.execute('''
+                ALTER TABLE text_requests ADD COLUMN IF NOT EXISTS admin_updated_at TIMESTAMP
+            ''')
+            cur.execute('''
+                ALTER TABLE text_requests ADD COLUMN IF NOT EXISTS author_era VARCHAR(100)
+            ''')
+            cur.execute('''
+                ALTER TABLE text_requests ADD COLUMN IF NOT EXISTS author_year INTEGER
+            ''')
+            cur.execute('''
+                ALTER TABLE text_requests ADD COLUMN IF NOT EXISTS e_source VARCHAR(255)
+            ''')
+            cur.execute('''
+                ALTER TABLE text_requests ADD COLUMN IF NOT EXISTS e_source_url TEXT
+            ''')
+            cur.execute('''
+                ALTER TABLE text_requests ADD COLUMN IF NOT EXISTS print_source TEXT
+            ''')
+            cur.execute('''
+                ALTER TABLE text_requests ADD COLUMN IF NOT EXISTS added_by VARCHAR(255)
+            ''')
+            cur.execute('''
                 CREATE TABLE IF NOT EXISTS feedback (
                     id SERIAL PRIMARY KEY,
                     name VARCHAR(255),
@@ -319,6 +352,17 @@ def init_db():
                 CREATE TABLE IF NOT EXISTS settings (
                     key VARCHAR(255) PRIMARY KEY,
                     value TEXT
+                )
+            ''')
+            cur.execute('''
+                CREATE TABLE IF NOT EXISTS admin_audit_log (
+                    id SERIAL PRIMARY KEY,
+                    admin_username VARCHAR(255) NOT NULL,
+                    action VARCHAR(255) NOT NULL,
+                    target_type VARCHAR(255),
+                    target_id VARCHAR(255),
+                    details JSONB,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             ''')
             cur.execute('''
@@ -349,6 +393,9 @@ def init_db():
             ''')
             cur.execute('''
                 CREATE INDEX IF NOT EXISTS idx_search_logs_language ON search_logs(language)
+            ''')
+            cur.execute('''
+                ALTER TABLE users ADD COLUMN IF NOT EXISTS must_reset_password BOOLEAN DEFAULT FALSE
             ''')
         app_logger.info("Database initialized successfully")
     except Exception as e:

@@ -25,6 +25,7 @@ class User(UserMixin, db.Model):
     institution = db.Column(db.String, nullable=True)
     orcid = db.Column(db.String(19), nullable=True)
     orcid_name = db.Column(db.String, nullable=True)
+    must_reset_password = db.Column(db.Boolean, default=False)
     share_to_public_default = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.now)
     updated_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now)
