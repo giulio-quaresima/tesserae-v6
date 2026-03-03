@@ -112,22 +112,6 @@
     "added_by": "Anna Glenn"
   },
   {
-    "author": "Alcuin",
-    "work": "Carmina",
-    "e_source": "",
-    "e_source_url": "",
-    "print_source": "",
-    "added_by": "M. Paccara & F. Stella (University of Siena)"
-  },
-  {
-    "author": "Alcuin",
-    "work": "Carmina Rhytmica",
-    "e_source": "",
-    "e_source_url": "",
-    "print_source": "",
-    "added_by": "M. Paccara & F. Stella (University of Siena)"
-  },
-  {
     "author": "Ambrose",
     "work": "Apologia David Altera",
     "e_source": "Open Greek and Latin",
@@ -296,6 +280,38 @@
     "added_by": "Katherine Roache"
   },
   {
+    "author": "Andocides",
+    "work": "De Mysteriis",
+    "e_source": "Perseus",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a1999.01.0019%3aspeech%3d1",
+    "print_source": "Karl Fuhr. Orationes. Stutgardiae: Teubner. 1966.",
+    "added_by": "V3 Legacy Import"
+  },
+  {
+    "author": "Andocides",
+    "work": "De Pace",
+    "e_source": "Perseus",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a1999.01.0019%3aspeech%3d1",
+    "print_source": "Karl Fuhr. Orationes. Stutgardiae: Teubner. 1966.",
+    "added_by": "V3 Legacy Import"
+  },
+  {
+    "author": "Andocides",
+    "work": "De Reditu Suo",
+    "e_source": "Perseus",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a1999.01.0019%3aspeech%3d1",
+    "print_source": "Karl Fuhr. Orationes. Stutgardiae: Teubner. 1966.",
+    "added_by": "V3 Legacy Import"
+  },
+  {
+    "author": "Andocides",
+    "work": "In Alcibiadem",
+    "e_source": "Perseus",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a1999.01.0019%3aspeech%3d1",
+    "print_source": "Karl Fuhr. Orationes. Stutgardiae: Teubner. 1966.",
+    "added_by": "V3 Legacy Import"
+  },
+  {
     "author": "Anonymous",
     "work": "Laudes Domini",
     "e_source": "Divus Angelus",
@@ -345,6 +361,14 @@
   },
   {
     "author": "Antiphon",
+    "work": "Speeches",
+    "e_source": "Perseus",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a1999.01.0019%3aspeech%3d3",
+    "print_source": "Maidment, K. J., ed. Minor Attic Orators. Cambridge: Harvard UP, 1941.",
+    "added_by": "V3 Legacy Import"
+  },
+  {
+    "author": "Antiphon",
     "work": "Third Tetralogy",
     "e_source": "Perseus",
     "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a1999.01.0019%3aspeech%3d4",
@@ -376,12 +400,36 @@
     "added_by": "Katherine Roache"
   },
   {
+    "author": "Appian",
+    "work": "The Foreign Wars",
+    "e_source": "Perseus",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3Atext%3A1999.01.0229%3Atext%3DReg",
+    "print_source": "L. Mendelssohn. The Foreign Wars. L. Mendelssohn. Leipzig. Teubner. 1879.",
+    "added_by": "V3 Legacy Import"
+  },
+  {
     "author": "Appolonius",
     "work": "Argonautica",
     "e_source": "Perseus",
     "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a1999.01.0227",
     "print_source": "George W. Mooney, Argonautica. London: Longmans, Green, 1912.",
     "added_by": "Chris Forstall"
+  },
+  {
+    "author": "Apuleius",
+    "work": "Apologia",
+    "e_source": "Perseus",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0501",
+    "print_source": "Apuleius.Apulei Platonici Madaurensis, Pro se de magia liber (Apologia).Rudolf Helm. Lipsiae: B.G. Teubneri. 1912.",
+    "added_by": "V3 Legacy Import"
+  },
+  {
+    "author": "Apuleius",
+    "work": "De Deo Socratis",
+    "e_source": "Forum Romanum",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.forumromanum.org/literature/deo_socratis.html",
+    "print_source": "Jean Beaujeu. Paris 1973.",
+    "added_by": "V3 Legacy Import"
   },
   {
     "author": "Apuleius",
@@ -414,6 +462,30 @@
     "e_source_url": "http://www.forumromanum.org/literature/deo_socratis.html",
     "print_source": "Jean Beaujeu. Paris 1973.",
     "added_by": "Caitlin Diddams"
+  },
+  {
+    "author": "Aratus Solensis",
+    "work": "Phaenomena",
+    "e_source": "Perseus",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a1999.01.0019%3aspeech%3d1",
+    "print_source": "Arati Phaenomena. Berolini: Apvd Weidmannos. 1893.",
+    "added_by": "V3 Legacy Import"
+  },
+  {
+    "author": "Aretaeus",
+    "work": "De Causis et Signis Acutorum Morborum",
+    "e_source": "Perseus",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a1999.01.0019%3aspeech%3d1",
+    "print_source": "Francis Adams. The Extant Works of Aretaeus, the Cappadocian. Boston: Milford House. 1856.",
+    "added_by": "V3 Legacy Import"
+  },
+  {
+    "author": "Aretaeus",
+    "work": "De Curatione Acutorum Morborum Libri Duo",
+    "e_source": "Perseus",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a1999.01.0019%3aspeech%3d1",
+    "print_source": "Francis Adams. The Extant Works of Aretaeus, the Cappadocian. Boston: Milford House. 1856.",
+    "added_by": "V3 Legacy Import"
   },
   {
     "author": "Aristophanes",
@@ -584,12 +656,36 @@
     "added_by": "Caitlin Diddams"
   },
   {
+    "author": "Arrian",
+    "work": "Anabasis",
+    "e_source": "Perseus",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0530",
+    "print_source": "A.G. Roos. Flavii Arriani Anabasis Alexandri. Teubner: Leipzig. 1907.",
+    "added_by": "V3 Legacy Import"
+  },
+  {
+    "author": "Arrian",
+    "work": "Cynegeticus",
+    "e_source": "Perseus",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0532",
+    "print_source": "Rudolf Hercher and Alfred Eberhard. Arriani Nicomediensis Scripta Minora. Teubner: Leipzig. 1885.",
+    "added_by": "V3 Legacy Import"
+  },
+  {
     "author": "Athenaeus",
     "work": "The Deipnosophists",
     "e_source": "Perseus",
     "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0405",
     "print_source": "Charles Burton Gulick, The Deipnosophists. Cambridge, MA: Harvard University Press, 1927.",
     "added_by": "Emilie Redwood"
+  },
+  {
+    "author": "Augurelli, Giovanni Aurelio",
+    "work": "Chrysopoeia",
+    "e_source": "Perseus",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://http//www.perseus.tufts.edu/hopper/searchresults?q=chrysopoeia",
+    "print_source": "Christophe Plantin. Chrysopoeia ad Leonem X Pontificem Maximum Antwerpen. 1582.",
+    "added_by": "V3 Legacy Import"
   },
   {
     "author": "Augustine",
@@ -1112,6 +1208,30 @@
     "added_by": "Caitlin Diddams"
   },
   {
+    "author": "Augustine (Pseudo)",
+    "work": "Quaestiones Veteris et Novi Testamenti",
+    "e_source": "Open Greek and Latin",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://opengreekandlatin.github.io/csel-dev/",
+    "print_source": "Alexander Souter. Pseudo-Augustini Quaestiones Veteris et Novi Testamenti CXXVII. Vindobonae: Gerold. 1908.",
+    "added_by": "V3 Legacy Import"
+  },
+  {
+    "author": "Aurelius Victor",
+    "work": "De Caesaribus",
+    "e_source": "Forum Romanum",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.forumromanum.org/literature/victor_caes.html",
+    "print_source": "Franz Pichlmayr. Teubner 1911. Entered by Igor Makhankov (2000)",
+    "added_by": "V3 Legacy Import"
+  },
+  {
+    "author": "Aurelius Victor",
+    "work": "Epitome de Caesaribus",
+    "e_source": "Forum Romanum",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.forumromanum.org/literature/victor_ep.html",
+    "print_source": "Franz Pichlmayr. Teubner 1911. Entered by Igor Makhankov (2000)",
+    "added_by": "V3 Legacy Import"
+  },
+  {
     "author": "Ausonius",
     "work": "Ausonii Burdigalensis Vasatis Gratiarum Actio Ad Grati Angratianum Imperatorem Pro Consulatu",
     "e_source": "Perseus",
@@ -1288,12 +1408,60 @@
     "added_by": "Katherine Roache"
   },
   {
+    "author": "Avitus of Vienne",
+    "work": "De Consolatoria Laude Casitatis",
+    "e_source": "Corpus Corporum",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://mlat.uzh.ch/?c=2&amp;w=AviVie.DeMoHiG",
+    "print_source": "J.P. Migne (ed.). Patrologia Latina 59 Avitus Viennesis De Spiritalis Historiae Gestis. Classical Latin Orthography. Paris. 1847.",
+    "added_by": "V3 Legacy Import"
+  },
+  {
+    "author": "Avitus of Vienne",
+    "work": "De Spiritalis Historiae Gestis",
+    "e_source": "Corpus Corporum",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://mlat.uzh.ch/?c=2&amp;w=AviVie.DeMoHiG",
+    "print_source": "J.P. Migne (ed.). Patrologia Latina 59 Avitus Viennesis De Spiritalis Historiae Gestis. Classical Latin Orthography. Paris. 1847.",
+    "added_by": "V3 Legacy Import"
+  },
+  {
+    "author": "Bacchylides",
+    "work": "Dithyrambs",
+    "e_source": "Perseus",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a1999.01.0019%3aspeech%3d1",
+    "print_source": "Bruno Snell. Carmina cum Fragmentis. Lipsiae: B. B. Teubner. 1970.",
+    "added_by": "V3 Legacy Import"
+  },
+  {
+    "author": "Bacchylides",
+    "work": "Epinicians",
+    "e_source": "Perseus",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a1999.01.0019%3aspeech%3d1",
+    "print_source": "Bruno Snell. Carmina cum Fragmentis. Lipsiae: B. B. Teubner. 1970.",
+    "added_by": "V3 Legacy Import"
+  },
+  {
     "author": "Barnabas",
     "work": "Barnabae Epistula",
     "e_source": "Perseus",
     "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0629",
     "print_source": "Kirsopp Lake, The Apostolic Fathers, Vol 1. London; New York: William Heinemann; The Macmillan Co., 1912.",
     "added_by": "Anna Glenn"
+  },
+  {
+    "author": "Basil of Caesarea",
+    "work": "De Legendis Gentilium Libris",
+    "e_source": "Perseus",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3Atext%3A2008.01.0638",
+    "print_source": "Roy J. Deferrari. St. Basil The Letters, in Four Volumes William Heinemann; G.P. Putnam's Sons. London; New York. 1926.",
+    "added_by": "V3 Legacy Import"
+  },
+  {
+    "author": "Basil of Caesarea",
+    "work": "Epistulae",
+    "e_source": "Perseus",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3Atext%3A2008.01.0638",
+    "print_source": "Roy J. Deferrari. St. Basil The Letters, in Four Volumes William Heinemann; G.P. Putnam's Sons. London; New York. 1926.",
+    "added_by": "V3 Legacy Import"
   },
   {
     "author": "Bede",
@@ -1318,6 +1486,14 @@
     "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0671",
     "print_source": "J. M. (John Maxwell) Edmonds, The Greek Bucolic Poets. London; New York: William Heinemann; G. P. Putnam's Sons, 1919.",
     "added_by": "Anna Glenn"
+  },
+  {
+    "author": "Bion of Phlossa",
+    "work": "Fragmenta",
+    "e_source": "Perseus",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0672",
+    "print_source": "J. M. (John Maxwell) Edmonds, The Greek Bucolic Poets. London: Heinemann, 1919.",
+    "added_by": "V3 Legacy Import"
   },
   {
     "author": "Boethius",
@@ -1376,12 +1552,36 @@
     "added_by": "Emilie Bétrix"
   },
   {
+    "author": "Callimachus",
+    "work": "Epigrams",
+    "e_source": "Perseus",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0672",
+    "print_source": "G.R. Mair,Callimachus and Lycophron.. London; New York: W. Heinemann; G. P. Putnam's Sons, 1921.",
+    "added_by": "V3 Legacy Import"
+  },
+  {
+    "author": "Callimachus",
+    "work": "Hymns",
+    "e_source": "Perseus",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0672",
+    "print_source": "Ulrich von Wilamowitz-Moellendorff,Callimachi Hymni et Epigrammata.. Berlin: Wedimann, 1897.",
+    "added_by": "V3 Legacy Import"
+  },
+  {
     "author": "Callistratus",
     "work": "Statuaram Descriptiones",
     "e_source": "Perseus",
     "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3Atext%3A2008.01.0594%3Achapter%3D1",
     "print_source": "Flavii Philostrati Opera, Vol 2. Callistratus. Carl Ludwig Kayser. in aedibus B. G. Teubneri. Lipsiae. 1871.",
     "added_by": "Katherine Roache"
+  },
+  {
+    "author": "Cato the Elder",
+    "work": "De Agricultura",
+    "e_source": "The Latin Library",
+    "e_source_url": "https://web.archive.org/web/20240812080521/https://www.thelatinlibrary.com/cato/cato.agri.html",
+    "print_source": "F. Speranza, Scriptorum Romanorum De Re Rustica Reliquiae, Vol. 1.. Univ. degli Studi 1974.",
+    "added_by": "V3 Legacy Import"
   },
   {
     "author": "Catullus",
@@ -1430,6 +1630,14 @@
     "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a1999.02.0014",
     "print_source": "Albert Clark, M. Tulli Ciceronis Orationes: Recognovit brevique adnotatione critica instruxit Albertus Curtis Clark. Oxonii: e Typographeo Clarendoniano, 1909.",
     "added_by": "Anna Glenn"
+  },
+  {
+    "author": "Cicero",
+    "work": "Cum Senatui Gratias Egit",
+    "e_source": "Perseus",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a1999.02.0014%3atext%3dRed.+Sen",
+    "print_source": "Albert Clark, M. Tulli Ciceronis Orationes: Recognovit brevique adnotatione critica instruxit Albertus Curtis Clark. Oxonii: e Typographeo Clarendoniano, 1909.",
+    "added_by": "V3 Legacy Import"
   },
   {
     "author": "Cicero",
@@ -1665,6 +1873,14 @@
   },
   {
     "author": "Cicero",
+    "work": "Post reditum in senatu",
+    "e_source": "Perseus",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a1999.02.0015",
+    "print_source": "Albert Clark, M. Tulli Ciceronis Orationes: Recognovit breviqve adnotatione critica instrvxit Albertus Curtis Clark Collegii Reginae Socius. Oxford: e Typographeo Clarendoniano, 1918.",
+    "added_by": "V3 Legacy Import"
+  },
+  {
+    "author": "Cicero",
     "work": "Pro A. Caecina",
     "e_source": "Perseus",
     "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a1999.02.0013",
@@ -1872,6 +2088,22 @@
     "added_by": "Anna Glenn"
   },
   {
+    "author": "Cicero (Pseudo)",
+    "work": "Pridie Quam in Exilium Iret Oratio",
+    "e_source": "Nobbe",
+    "e_source_url": "https://web.archive.org/web/20240812080521/https://drive.google.com/file/d/0B59Y3skKEZuqWGhKdXBOUk5yam5KcU1mX18yZFFIdVB0TmFR/view?usp=sharing",
+    "print_source": "Carolus Fridericus Augustus Nobbe, ed. Opera Omnia Uno Volumine Comprehensa (Carolus Tauchnitius [suntibus et typis Caroli Tauchnitii]). Leipzig and London. 1850. ( edited by Anthony Corbeill, University of Virginia",
+    "added_by": "V3 Legacy Import"
+  },
+  {
+    "author": "Claudianus",
+    "work": "de Bello Gildonico",
+    "e_source": "Perseus",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0698",
+    "print_source": "Maurice Platnaeur, Claudian, Vol 1. London; New York: William Heinemann; G.P. Putnam's Sons, 1922.",
+    "added_by": "V3 Legacy Import"
+  },
+  {
     "author": "Claudianus",
     "work": "de Bello Gothico",
     "e_source": "Perseus",
@@ -1902,6 +2134,62 @@
     "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0691",
     "print_source": "Maurice Platnaeur, Claudian, Vol 1. London; New York: William Heinemann; G.P. Putnam's Sons, 1922.",
     "added_by": ""
+  },
+  {
+    "author": "Claudianus",
+    "work": "In Consulatum Olybrii et Probini",
+    "e_source": "Perseus",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0694",
+    "print_source": "Maurice Platnaeur, Claudian, Vol 1. London; New York: William Heinemann; G.P. Putnam's Sons, 1922.",
+    "added_by": "V3 Legacy Import"
+  },
+  {
+    "author": "Claudianus",
+    "work": "In Eutropium",
+    "e_source": "Perseus",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0697",
+    "print_source": "Maurice Platnaeur, Claudian, Vol 1. London; New York: William Heinemann; G.P. Putnam's Sons, 1922.",
+    "added_by": "V3 Legacy Import"
+  },
+  {
+    "author": "Claudianus",
+    "work": "In Rufinum",
+    "e_source": "Perseus",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0689",
+    "print_source": "Maurice Platnaeur, Claudian, Vol 1. London; New York: William Heinemann; G.P. Putnam's Sons, 1922.",
+    "added_by": "V3 Legacy Import"
+  },
+  {
+    "author": "Claudianus",
+    "work": "Panegyricus De Quarto Consolatu Honorii Augusti",
+    "e_source": "Perseus",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0695",
+    "print_source": "Maurice Platnaeur, Claudian, Vol 1. London; New York: William Heinemann; G.P. Putnam's Sons, 1922.",
+    "added_by": "V3 Legacy Import"
+  },
+  {
+    "author": "Claudianus",
+    "work": "Panegyricus De Sexto Consulatu Honorii Augusti",
+    "e_source": "Perseus",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0687",
+    "print_source": "Maurice Platnaeur, Claudian, Vol 2. London; New York: William Heinemann; G.P. Putnam's Sons, 1922.",
+    "added_by": "V3 Legacy Import"
+  },
+  {
+    "author": "Claudianus",
+    "work": "Panegyricus De Tertio Consulatu Honorii Augusti",
+    "e_source": "Perseus",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0696",
+    "print_source": "Maurice Platnaeur, Claudian, Vol 1. London; New York: William Heinemann; G.P. Putnam's Sons, 1922.",
+    "added_by": "V3 Legacy Import"
+  },
+  {
+    "author": "Claudianus",
+    "work": "Panegyricus Dictus Manlio Theodoro",
+    "e_source": "Perseus",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0692",
+    "print_source": "Maurice Platnaeur, Claudian, Vol 1. London; New York: William Heinemann; G.P. Putnam's Sons, 1922.",
+    "added_by": "V3 Legacy Import"
   },
   {
     "author": "Claudius Mamertinus",
@@ -2105,6 +2393,14 @@
   },
   {
     "author": "Cyprian (Pseudo)",
+    "work": "Ad Flavium Felicem Resurrectione Mortuorum",
+    "e_source": "",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.tertullian.org/latin/carmen_de_iudicio_domini.htm",
+    "print_source": "J.H. Wasink. Carmen ad Flavium Felicem de resurrectione mortuorum et de iudicio Domini, recensuit, prolegomenis commentario indicibus instruxit J.H.W, Florilegium Patristicum Supplementum I. Bonn. 1937.",
+    "added_by": "V3 Legacy Import"
+  },
+  {
+    "author": "Cyprian (Pseudo)",
     "work": "Ad Novatianum",
     "e_source": "Open Greek and Latin",
     "e_source_url": "http://opengreekandlatin.github.io/csel-dev/",
@@ -2217,6 +2513,14 @@
   },
   {
     "author": "Cyprian (Pseudo)",
+    "work": "Genesis",
+    "e_source": "",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.tertullian.org/latin/carmen_genesis.htm",
+    "print_source": "G. Hartel. S. Thasci Caecili Cypriani Opera Omnia, Corpus Scriptorum Ecclesiasticorum Latinorum 3.1868.",
+    "added_by": "V3 Legacy Import"
+  },
+  {
+    "author": "Cyprian (Pseudo)",
     "work": "Liber de Aleatoribus",
     "e_source": "Open Greek and Latin",
     "e_source_url": "http://opengreekandlatin.github.io/csel-dev/",
@@ -2240,6 +2544,14 @@
     "added_by": "Caitlin Diddams"
   },
   {
+    "author": "Cyprian (Pseudo)",
+    "work": "Sodoma",
+    "e_source": "Open Greek and Latin",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://opengreekandlatin.github.io/csel-dev/",
+    "print_source": "Rudolfus Peiper. Cyprianus Heptateuchos. Österreichische Akademie der Wissenschaften: Wien, Österreich. 1891.",
+    "added_by": "V3 Legacy Import"
+  },
+  {
     "author": "Cyprianus Gallus",
     "work": "Heptateuchos",
     "e_source": "Open Greek and Latin",
@@ -2254,6 +2566,14 @@
     "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a1999.01.0065",
     "print_source": "Demades. Minor Attic Orators in two volumes, 2, with an English translation by J. O. Burtt, M.A. Cambridge, MA, Harvard University Press; London, William Heinemann Ltd. 1962.",
     "added_by": "Katherine Roache"
+  },
+  {
+    "author": "Demetrius of Phaleron",
+    "work": "Libro de Elocutione",
+    "e_source": "Perseus",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0672",
+    "print_source": "W. Rhys Roberts,Demetrius on Style.. Cambridge: The University Press, 1902.",
+    "added_by": "V3 Legacy Import"
   },
   {
     "author": "Demosthenes",
@@ -2760,6 +3080,14 @@
     "added_by": "Katherine Roache"
   },
   {
+    "author": "Descartes",
+    "work": "Meditations",
+    "e_source": "The Latin Library",
+    "e_source_url": "https://web.archive.org/web/20240812080521/https://www.thelatinlibrary.com/des.html",
+    "print_source": "René Descartes. Oeuvres de Descartes. eds. Adam and Tannery. Paris:Lèopold Cerf. 1904.",
+    "added_by": "V3 Legacy Import"
+  },
+  {
     "author": "Dinarchus",
     "work": "Against Aristogiton",
     "e_source": "Perseus",
@@ -2920,12 +3248,12 @@
     "added_by": "Caitlin Diddams"
   },
   {
-    "author": "Einhardus",
-    "work": "Rythmus de Passione Marcellini et Petri",
-    "e_source": "",
-    "e_source_url": "",
-    "print_source": "",
-    "added_by": "M. Paccara & F. Stella (University of Siena)"
+    "author": "Ennius",
+    "work": "Annales",
+    "e_source": "MQDQ",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.attalus.org/latin/ennius.html",
+    "print_source": "E.H. Warmington  Remains of Old Latin Volume One, Ennius and Caecilius. Harvard University Press. 1935.",
+    "added_by": "V3 Legacy Import"
   },
   {
     "author": "Ennodius",
@@ -2950,6 +3278,38 @@
     "e_source_url": "http://opengreekandlatin.github.io/csel-dev/   ",
     "print_source": "Hartel, Wilhelm August, Ritter von Opera Omnia. Vindobonae: Gerold, 1882.",
     "added_by": "Cari Haas"
+  },
+  {
+    "author": "Eobanus Hessus",
+    "work": "Iliad",
+    "e_source": "CAMENA",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://mateo.uni-mannheim.de/camena/hessus3/hessusilias1_6.html",
+    "print_source": "Harry Vredeveld, The Poetic Works of Helius Eobanus Hessus. Tempe: ACMRS Press, 2004–2008; Leiden: Brill, 2012–ongoing.",
+    "added_by": "V3 Legacy Import"
+  },
+  {
+    "author": "Epictetus",
+    "work": "Discourses",
+    "e_source": "Perseus",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0672",
+    "print_source": "Henricus Schenkl,Dissertationes ab Arriano digestae ad fidem codicis Bodleiani.. Lipsiae: B.G. Teubneri, 1916.",
+    "added_by": "V3 Legacy Import"
+  },
+  {
+    "author": "Epictetus",
+    "work": "Enchiridion",
+    "e_source": "Perseus",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0672",
+    "print_source": "Henricus Schenkl,Dissertationes ab Arriano digestae ad fidem codicis Bodleiani.. Lipsiae: B.G. Teubneri, 1916.",
+    "added_by": "V3 Legacy Import"
+  },
+  {
+    "author": "Epictetus",
+    "work": "Fragments",
+    "e_source": "Perseus",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0672",
+    "print_source": "Henricus Schenkl,Dissertationes ab Arriano digestae ad fidem codicis Bodleiani.. Lipsiae: B.G. Teubneri, 1916.",
+    "added_by": "V3 Legacy Import"
   },
   {
     "author": "Euclid",
@@ -3200,6 +3560,14 @@
     "added_by": "Jessica Micceri"
   },
   {
+    "author": "Flavius Josephus",
+    "work": "Josephi Vitaii",
+    "e_source": "Perseus",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a1999.01.0149",
+    "print_source": "B. Niese, Flavii Iosephi opera. Berlin: Weidmann, 1890.",
+    "added_by": "V3 Legacy Import"
+  },
+  {
     "author": "Florus",
     "work": "Epitome Rerum Romanorum",
     "e_source": "Perseus",
@@ -3216,6 +3584,14 @@
     "added_by": "Caitlin Diddams"
   },
   {
+    "author": "Fulcher of Chartres",
+    "work": "Historia Hierosolymitana",
+    "e_source": "archive.org",
+    "e_source_url": "https://web.archive.org/web/20240812080521/https://archive.org/details/historiahierosol00foucuoft/mode/2up",
+    "print_source": "Fulcheri Carnotensis Historia Hierosolymitana (1095-1127). Mit Erläuterungen und einem Anhange herausgegeben von Heinrich Hagenmeyer. Heidelberg, Carl Winters Universitätsbuchhandlung, 1913.",
+    "added_by": "V3 Legacy Import"
+  },
+  {
     "author": "Galen",
     "work": "On the Natural Faculties.",
     "e_source": "Perseus",
@@ -3230,6 +3606,14 @@
     "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2007.01.0071",
     "print_source": "John C. Rolfe, With An English Translation. Cambridge: Camb ridge, Mass., Harvard University Press; London, William Heinemann, Ltd., 1927.&lt;/td&gt;",
     "added_by": "Anna Glenn"
+  },
+  {
+    "author": "Giovanni Aurelio Augurelli",
+    "work": "Chrysopoeia",
+    "e_source": "Perseus",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3Atext%3A2011.01.0913",
+    "print_source": "Augurelli, Giovanni Aurelio Rimini 1456 - Treviso 1524, chrysopoeia, chrysopoeia chrys. Chrysopoeia ad Leonem X pontificem maximum.",
+    "added_by": "V3 Legacy Import"
   },
   {
     "author": "Glass",
@@ -3254,6 +3638,14 @@
     "e_source_url": "http://opengreekandlatin.github.io/csel-dev/",
     "print_source": "Maurice Jourjon. Lettres Theologiques. Paris: Editions du Cerf. 1974.",
     "added_by": "Caitlin Diddams"
+  },
+  {
+    "author": "Hegesippus (Pseudo)",
+    "work": "De Excidio Hierosolymitano",
+    "e_source": "digilibLT",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://digiliblt.lett.unipmn.it/xtf/view?docId=dlt000241/dlt000241.xml;brand=default",
+    "print_source": "Vincentius Ussani (a cura di), Hegesippi qui dicitur Historiae libri 5, Vindobonae. Hoelder, Pinchler, Tempsky, 1932. Reprint New York/London, Johnson reprint corporation, 1960.",
+    "added_by": "V3 Legacy Import"
   },
   {
     "author": "Herodotus",
@@ -3377,11 +3769,75 @@
   },
   {
     "author": "Hippocrates",
+    "work": "De Aere Aquis et Locis",
+    "e_source": "Perseus",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a1999.01.0249%3atext%3dAer",
+    "print_source": "W. H. S. Jones, Hippocrates Collected Works I. Cambridge: Harvard University Press, 1868",
+    "added_by": "V3 Legacy Import"
+  },
+  {
+    "author": "Hippocrates",
+    "work": "De Alimento",
+    "e_source": "Perseus",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a1999.01.0249%3atext%3dAlim",
+    "print_source": "W. H. S. Jones, Hippocrates Collected Works I. Cambridge: Harvard University Press, 1868",
+    "added_by": "V3 Legacy Import"
+  },
+  {
+    "author": "Hippocrates",
+    "work": "De Morbis Popularibus",
+    "e_source": "Perseus",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a1999.01.0249%3atext%3dEpid",
+    "print_source": "W. H. S. Jones, Hippocrates Collected Works I. Cambridge: Harvard University Press, 1868",
+    "added_by": "V3 Legacy Import"
+  },
+  {
+    "author": "Hippocrates",
+    "work": "De Prisca Medicina",
+    "e_source": "Perseus",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a1999.01.0249%3atext%3dVM",
+    "print_source": "W. H. S. Jones, Hippocrates Collected Works I. Cambridge: Harvard University Press, 1868",
+    "added_by": "V3 Legacy Import"
+  },
+  {
+    "author": "Hippocrates",
     "work": "Hippocrates Collected Works I",
     "e_source": "Perseus",
     "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a1999.01.0249",
     "print_source": "W. H. S. Jones, Hippocrates Collected Works I. Cambridge: Harvard University Press, February 1, 2005.",
     "added_by": "Jessica Micceri"
+  },
+  {
+    "author": "Hippocrates",
+    "work": "Jusjurandum",
+    "e_source": "Perseus",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a1999.01.0249%3atext%3dJusj.",
+    "print_source": "W. H. S. Jones, Hippocrates Collected Works I. Cambridge: Harvard University Press, 1868",
+    "added_by": "V3 Legacy Import"
+  },
+  {
+    "author": "Hippocrates",
+    "work": "Praeceptiones",
+    "e_source": "Perseus",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a1999.01.0249%3atext%3dPraec.",
+    "print_source": "W. H. S. Jones, Hippocrates Collected Works I. Cambridge: Harvard University Press, 1868",
+    "added_by": "V3 Legacy Import"
+  },
+  {
+    "author": "Homer",
+    "work": "Iliad",
+    "e_source": "Perseus",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0672",
+    "print_source": "Thomas W. Allen,Homeri Ilias.. Oxonii: Clarendoniano, 1931.",
+    "added_by": "V3 Legacy Import"
+  },
+  {
+    "author": "Homer",
+    "work": "Odyssey",
+    "e_source": "Perseus",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0672",
+    "print_source": "Thomas W. Allen,Homeri Opera Tomus III Odysseae.. Oxonii: Clarendoniano, 1962.",
+    "added_by": "V3 Legacy Import"
   },
   {
     "author": "Horace",
@@ -3448,6 +3904,22 @@
     "added_by": "Jessica Micceri"
   },
   {
+    "author": "Isocrates",
+    "work": "Letters",
+    "e_source": "Perseus",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0672",
+    "print_source": "Rudolf Hercher,Epistolographoi Hellenikoi, Epistolographi Graeci.. Paris: A.F. Didot, 1873.",
+    "added_by": "V3 Legacy Import"
+  },
+  {
+    "author": "Isocrates",
+    "work": "Speeches",
+    "e_source": "Perseus",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a1999.01.0143%3aspeech%3d1",
+    "print_source": "George Norlin,Isocrates with an English translation in three volumes.. Harvard University Press; London, William Heinemann Ltd. 1980.",
+    "added_by": "V3 Legacy Import"
+  },
+  {
     "author": "Jerome",
     "work": "Epistulae. Selections.",
     "e_source": "Perseus",
@@ -3494,6 +3966,14 @@
     "e_source_url": "http://opengreekandlatin.github.io/csel-dev/",
     "print_source": "Michael Petschenig. Johannis Cassiani Opera, Pars 1. Vindobonae: Gerold. 1888.",
     "added_by": "Caitlin Diddams"
+  },
+  {
+    "author": "Julius Caesar",
+    "work": "De Bello Civilli",
+    "e_source": "Perseus",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a1999.02.0075",
+    "print_source": "C. Iuli Caesaris Commentariorum, pars posterior. Renatus du Pontet.. Oxonii: e Typographeo Clarendoniano, Scriptorum Classicorum Bibliotheca Oxoniensis. 1901.",
+    "added_by": "V3 Legacy Import"
   },
   {
     "author": "Julius Caesar",
@@ -4216,12 +4696,36 @@
     "added_by": "Jessica Micceri"
   },
   {
+    "author": "Lysias",
+    "work": "Speeches",
+    "e_source": "Perseus",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a1999.01.0153%3aspeech%3d1",
+    "print_source": "W.R.M. Lamb.Lysias. Lysias with an English translation by W.R.M. Lamb.Cambridge, MA, Harvard University Press; London, William Heinemann Ltd., 1930.",
+    "added_by": "V3 Legacy Import"
+  },
+  {
     "author": "Macrobius",
     "work": "In Somnium Scipionis commentarii",
     "e_source": "DigilibLT",
     "e_source_url": "http://digiliblt.lett.unipmn.it/opera.php?gruppo=opere&amp;iniziale=all&amp;id=dlt000338",
     "print_source": "M. Armisen-Marchetti. Macrobe, Commentaire au songe du ScipionParis 2001-2003 (Collection des Universités de France).",
     "added_by": "Tessa Little"
+  },
+  {
+    "author": "Macrobius",
+    "work": "Saturnalia",
+    "e_source": "",
+    "e_source_url": "https://web.archive.org/web/20240812080521/https://penelope.uchicago.edu/Thayer/L/Roman/Texts/Macrobius/Saturnalia/1*.html",
+    "print_source": "Ludwig von Jan. Macrobii Ambrosii Theodosii . . . Saturnaliorum libri VIIQuedlinburg and Leipzig. 1852.",
+    "added_by": "V3 Legacy Import"
+  },
+  {
+    "author": "Manilius",
+    "work": "Astronomica",
+    "e_source": "The Latin Library",
+    "e_source_url": "https://web.archive.org/web/20240812080521/https://www.thelatinlibrary.com/manilius.html",
+    "print_source": "Iacobus van Wageningen, M. Manili Astronomica. Leipzig: in aedibus B. G. Teubneri, 1915.",
+    "added_by": "V3 Legacy Import"
   },
   {
     "author": "Marcus Aurelius",
@@ -4248,12 +4752,28 @@
     "added_by": "Chris Forstall"
   },
   {
+    "author": "Maximianus",
+    "work": "Elegiae",
+    "e_source": "The Latin Library",
+    "e_source_url": "https://web.archive.org/web/20240812080521/https://www.thelatinlibrary.com/maximianus.html",
+    "print_source": "Richard Webster, The New Maximianus-The Elegies of Maximianus. Princeton University Press, 1900.",
+    "added_by": "V3 Legacy Import"
+  },
+  {
     "author": "Nepos",
     "work": "Vitae",
     "e_source": "Perseus",
     "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a1999.02.0136",
     "print_source": "Albert Fleckeisen, Vitae. Leipzig: Teubner, 1886.",
     "added_by": "Anna Glenn"
+  },
+  {
+    "author": "Nithardus",
+    "work": "Historiae",
+    "e_source": "The Latin Library",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.thelatinlibrary.com/nithardus.html",
+    "print_source": "Text submitted by Hansulrich Guhl (Frauenfeld, Switzerland) from an unidentified edition.",
+    "added_by": "V3 Legacy Import"
   },
   {
     "author": "Nonnus of Panopolis",
@@ -4360,22 +4880,6 @@
     "added_by": "Chris Forstall"
   },
   {
-    "author": "Paulinus of Aquileia",
-    "work": "Carmina",
-    "e_source": "",
-    "e_source_url": "",
-    "print_source": "",
-    "added_by": "M. Paccara & F. Stella (University of Siena)"
-  },
-  {
-    "author": "Paulinus of Aquileia",
-    "work": "Versus de Destructione Aquilegiae",
-    "e_source": "",
-    "e_source_url": "",
-    "print_source": "",
-    "added_by": "M. Paccara & F. Stella (University of Siena)"
-  },
-  {
     "author": "Paulinus of Nola",
     "work": "Carmina",
     "e_source": "Open Greek and Latin",
@@ -4390,6 +4894,14 @@
     "e_source_url": "http://opengreekandlatin.github.io/csel-dev/",
     "print_source": "Wilhelm August Ritter von Hartel. Sancti Pontii Meropii Paulini Carmina. Vindobonae: Gerold. 1894.",
     "added_by": "Caitlin Diddams"
+  },
+  {
+    "author": "Paulus Diaconus",
+    "work": "Carmina",
+    "e_source": "The Latin Library",
+    "e_source_url": "https://web.archive.org/web/20240812080521/https://www.thelatinlibrary.com/pauldeacon/carmina.shtml",
+    "print_source": "G. Waitz. Pauli Historia Langobardorum. Hannover: Hahn 1878.",
+    "added_by": "V3 Legacy Import"
   },
   {
     "author": "Paulus Orosius",
@@ -4929,6 +5441,14 @@
   },
   {
     "author": "Plautus",
+    "work": "Pseudolus",
+    "e_source": "Perseus",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a1999.02.0045",
+    "print_source": "T. Maccius Plautus. Plauti Comoediae. F. Leo. Berlin. Weidmann. 1895.",
+    "added_by": "V3 Legacy Import"
+  },
+  {
+    "author": "Plautus",
     "work": "Rudens",
     "e_source": "Perseus",
     "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a1999.02.0046",
@@ -5070,6 +5590,22 @@
     "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0328-1",
     "print_source": "Gregorius N. Bernardakis, Moralia. Leipzig: Teubner, 1893.",
     "added_by": "Elizabeth Hunter"
+  },
+  {
+    "author": "Plutarch",
+    "work": "An Virtus Doceri Possit",
+    "e_source": "Perseus",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0254",
+    "print_source": "Gregorius N. Bernardakis, Moralia 3. Leipzig: Teubner, 1891.",
+    "added_by": "V3 Legacy Import"
+  },
+  {
+    "author": "Plutarch",
+    "work": "An Vitiositas Infelicitatem Sufficia",
+    "e_source": "Perseus",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0278",
+    "print_source": "Gregorius N. Bernardakis, Moralia 3. Leipzig: Teubner, 1891.",
+    "added_by": "V3 Legacy Import"
   },
   {
     "author": "Plutarch",
@@ -5262,6 +5798,14 @@
     "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0096-1",
     "print_source": "Bernadotte Perrin, Plutarch's Lives. Cambridge, MA: Harvard University Press, 1919.",
     "added_by": "Elizabeth Hunter"
+  },
+  {
+    "author": "Plutarch",
+    "work": "Comparison of Dion and Brutus",
+    "e_source": "Perseus",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0097",
+    "print_source": "Bernadotte Perrin, Plutarch's Lives. Cambridge, MA: Harvard University Press, 1918.",
+    "added_by": "V3 Legacy Import"
   },
   {
     "author": "Plutarch",
@@ -5672,6 +6216,374 @@
     "added_by": "Elizabeth Hunter"
   },
   {
+    "author": "Plutarch",
+    "work": "Demetrius",
+    "e_source": "Perseus",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0076",
+    "print_source": "Bernadotte Perin, Plutarch. Plutarch's Lives. with an English Translation by. Bernadotte Perrin. . Cambridge, MA. Harvard University Press London. William Heinemann Ltd, 1920.",
+    "added_by": "V3 Legacy Import"
+  },
+  {
+    "author": "Plutarch",
+    "work": "Fabius Maximus",
+    "e_source": "Perseus",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0114",
+    "print_source": "Bernadotte Perin, Plutarch. Plutarch's Lives. with an English Translation by. Bernadotte Perrin. . Cambridge, MA. Harvard University Press London. William Heinemann Ltd, 1916.",
+    "added_by": "V3 Legacy Import"
+  },
+  {
+    "author": "Plutarch",
+    "work": "Galba",
+    "e_source": "Perseus",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0116",
+    "print_source": "Bernadotte Perin, Plutarch. Plutarch's Lives. with an English Translation by. Bernadotte Perrin. . Cambridge, MA. Harvard University Press London. William Heinemann Ltd, 1926.",
+    "added_by": "V3 Legacy Import"
+  },
+  {
+    "author": "Plutarch",
+    "work": "Instituta Laconica",
+    "e_source": "Perseus",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0199",
+    "print_source": "Frank Cole Babbitt.Plutarch. Moralia. with an English Translation by. Frank Cole Babbitt. . . Cambridge, MA. Harvard University Press London. William Heinemann Ltd, 1931.",
+    "added_by": "V3 Legacy Import"
+  },
+  {
+    "author": "Plutarch",
+    "work": "Lacaenarum Apophthegmata",
+    "e_source": "Perseus",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0202",
+    "print_source": "Frank Cole Babbitt.Plutarch. Moralia. with an English Translation by. Frank Cole Babbitt. . . Cambridge, MA. Harvard University Press London. William Heinemann Ltd, 1931.",
+    "added_by": "V3 Legacy Import"
+  },
+  {
+    "author": "Plutarch",
+    "work": "Lucullus",
+    "e_source": "Perseus",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0117",
+    "print_source": "Bernadotte Perin, Plutarch. Plutarch's Lives. with an English Translation by. Bernadotte Perrin. . Cambridge, MA. Harvard University Press London. William Heinemann Ltd, 1914.",
+    "added_by": "V3 Legacy Import"
+  },
+  {
+    "author": "Plutarch",
+    "work": "Lycurgus",
+    "e_source": "Perseus",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0131",
+    "print_source": "Bernadotte Perin, Plutarch. Plutarch's Lives. with an English Translation by. Bernadotte Perrin. . Cambridge, MA. Harvard University Press London. William Heinemann Ltd, 1914.",
+    "added_by": "V3 Legacy Import"
+  },
+  {
+    "author": "Plutarch",
+    "work": "Marcellus",
+    "e_source": "Perseus",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0118",
+    "print_source": "Bernadotte Perin, Plutarch. Plutarch's Lives. with an English Translation by. Bernadotte Perrin. . Cambridge, MA. Harvard University Press London. William Heinemann Ltd, 1917.",
+    "added_by": "V3 Legacy Import"
+  },
+  {
+    "author": "Plutarch",
+    "work": "Marcus Cato",
+    "e_source": "Perseus",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0087",
+    "print_source": "Bernadotte Perin, Plutarch. Plutarch's Lives. with an English Translation by. Bernadotte Perrin. . Cambridge, MA. Harvard University Press London. William Heinemann Ltd, 1914.",
+    "added_by": "V3 Legacy Import"
+  },
+  {
+    "author": "Plutarch",
+    "work": "Maxime cum princibus philsopho esse diserendum",
+    "e_source": "Perseus",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0320",
+    "print_source": "Gregorius N. Bernardakis.Moralia. Leipzig. Teubner. 1893.",
+    "added_by": "V3 Legacy Import"
+  },
+  {
+    "author": "Plutarch",
+    "work": "Mulierum Virtutes",
+    "e_source": "Perseus",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0205",
+    "print_source": "Frank Cole Babbitt.Plutarch. Moralia. with an English Translation by. Frank Cole Babbitt. . . Cambridge, MA. Harvard University Press London. William Heinemann Ltd, 1931.",
+    "added_by": "V3 Legacy Import"
+  },
+  {
+    "author": "Plutarch",
+    "work": "Nicias",
+    "e_source": "Perseus",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0071",
+    "print_source": "Bernadotte Perin, Plutarch. Plutarch's Lives. with an English Translation by. Bernadotte Perrin. . Cambridge, MA. Harvard University Press London. William Heinemann Ltd, 1916.",
+    "added_by": "V3 Legacy Import"
+  },
+  {
+    "author": "Plutarch",
+    "work": "Non posse suaviter vivi secundum epicurum",
+    "e_source": "Perseus",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0394",
+    "print_source": "Gregorius N. Bernardakis.Moralia. Leipzig. Teubner. 1895.",
+    "added_by": "V3 Legacy Import"
+  },
+  {
+    "author": "Plutarch",
+    "work": "Numa",
+    "e_source": "Perseus",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0133",
+    "print_source": "Bernadotte Perin, Plutarch. Plutarch's Lives. with an English Translation by. Bernadotte Perrin. . Cambridge, MA. Harvard University Press London. William Heinemann Ltd, 1914.",
+    "added_by": "V3 Legacy Import"
+  },
+  {
+    "author": "Plutarch",
+    "work": "Otho",
+    "e_source": "Perseus",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0119",
+    "print_source": "Bernadotte Perin, Plutarch. Plutarch's Lives. with an English Translation by. Bernadotte Perrin. . Cambridge, MA. Harvard University Press London. William Heinemann Ltd, 1926.",
+    "added_by": "V3 Legacy Import"
+  },
+  {
+    "author": "Plutarch",
+    "work": "Parallela Minora",
+    "e_source": "Perseus",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0217",
+    "print_source": "Frank Cole Babbitt.Plutarch. Moralia. with an English Translation by. Frank Cole Babbitt. . . Cambridge, MA. Harvard University Press London. William Heinemann Ltd, 1936.",
+    "added_by": "V3 Legacy Import"
+  },
+  {
+    "author": "Plutarch",
+    "work": "Pelopidas",
+    "e_source": "Perseus",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0120",
+    "print_source": "Bernadotte Perin, Plutarch. Plutarch's Lives. with an English Translation by. Bernadotte Perrin. . Cambridge, MA. Harvard University Press London. William Heinemann Ltd, 1917.",
+    "added_by": "V3 Legacy Import"
+  },
+  {
+    "author": "Plutarch",
+    "work": "Pericles",
+    "e_source": "Perseus",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0072",
+    "print_source": "Bernadotte Perin, Plutarch. Plutarch's Lives. with an English Translation by. Bernadotte Perrin. . Cambridge, MA. Harvard University Press London. William Heinemann Ltd, 1916.",
+    "added_by": "V3 Legacy Import"
+  },
+  {
+    "author": "Plutarch",
+    "work": "Philopoemen",
+    "e_source": "Perseus",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0121",
+    "print_source": "Bernadotte Perin, Plutarch. Plutarch's Lives. with an English Translation by. Bernadotte Perrin. . Cambridge, MA. Harvard University Press London. William Heinemann Ltd, 1921.",
+    "added_by": "V3 Legacy Import"
+  },
+  {
+    "author": "Plutarch",
+    "work": "Phocion",
+    "e_source": "Perseus",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0122",
+    "print_source": "Bernadotte Perin, Plutarch. Plutarch's Lives. with an English Translation by. Bernadotte Perrin. . Cambridge, MA. Harvard University Press London. William Heinemann Ltd, 1919.",
+    "added_by": "V3 Legacy Import"
+  },
+  {
+    "author": "Plutarch",
+    "work": "Platonicae Quaestiones",
+    "e_source": "Perseus",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0383",
+    "print_source": "Gregorius N. Bernardakis.Moralia. Leipzig. Teubner. 1895.",
+    "added_by": "V3 Legacy Import"
+  },
+  {
+    "author": "Plutarch",
+    "work": "Pompey",
+    "e_source": "Perseus",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0123",
+    "print_source": "Bernadotte Perin, Plutarch. Plutarch's Lives. with an English Translation by. Bernadotte Perrin. . Cambridge, MA. Harvard University Press London. William Heinemann Ltd, 1917.",
+    "added_by": "V3 Legacy Import"
+  },
+  {
+    "author": "Plutarch",
+    "work": "Praecepta Gerendae Reipublicae",
+    "e_source": "Perseus",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0332",
+    "print_source": "Gregorius N. Bernardakis.Moralia. Leipzig. Teubner. 1893.",
+    "added_by": "V3 Legacy Import"
+  },
+  {
+    "author": "Plutarch",
+    "work": "Publicola",
+    "e_source": "Perseus",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0124",
+    "print_source": "Bernadotte Perin, Plutarch. Plutarch's Lives. with an English Translation by. Bernadotte Perrin. . Cambridge, MA. Harvard University Press London. William Heinemann Ltd, 1914.",
+    "added_by": "V3 Legacy Import"
+  },
+  {
+    "author": "Plutarch",
+    "work": "Pyrrhus",
+    "e_source": "Perseus",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0134",
+    "print_source": "Bernadotte Perin, Plutarch. Plutarch's Lives. with an English Translation by. Bernadotte Perrin. . Cambridge, MA. Harvard University Press London. William Heinemann Ltd, 1920.",
+    "added_by": "V3 Legacy Import"
+  },
+  {
+    "author": "Plutarch",
+    "work": "Quaestiones Graecae",
+    "e_source": "Perseus",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0213",
+    "print_source": "Frank Cole BabbittPlutarch. Moralia. with an English Translation by. Frank Cole Babbitt. Vol 1. Cambridge, MA. Harvard University Press. London. William Heinemann Ltd. 1936. 4.",
+    "added_by": "V3 Legacy Import"
+  },
+  {
+    "author": "Plutarch",
+    "work": "Quaestiones Naturales",
+    "e_source": "Perseus",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0353",
+    "print_source": "Gregorius N. Bernardakis.Plutarch. Moralia. Gregorius N. Bernardakis.. Leipzig. Teubner. 1893. 5.",
+    "added_by": "V3 Legacy Import"
+  },
+  {
+    "author": "Plutarch",
+    "work": "Quaestiones Romanae",
+    "e_source": "Perseus",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0209",
+    "print_source": "Frank Cole BabbittPlutarch. Moralia. with an English Translation by. Frank Cole Babbitt.. Cambridge, MA. Harvard University Press. London. William Heinemann Ltd. 1936. 4.  4.",
+    "added_by": "V3 Legacy Import"
+  },
+  {
+    "author": "Plutarch",
+    "work": "Quomodo Adolescens Poetas Audire Debeat",
+    "e_source": "Perseus",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0140",
+    "print_source": "Gregorius N. Bernardakis.Plutarch. Moralia. Gregorius N. Bernardakis.. Leipzig. Teubner. 1888. 1.",
+    "added_by": "V3 Legacy Import"
+  },
+  {
+    "author": "Plutarch",
+    "work": "Quomodo Adulator ab Amico Internoscatur",
+    "e_source": "Perseus",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0148",
+    "print_source": "Gregorius N. Bernardakis.Plutarch. Moralia. Gregorius N. Bernardakis.. Leipzig. Teubner. 1888. 1.",
+    "added_by": "V3 Legacy Import"
+  },
+  {
+    "author": "Plutarch",
+    "work": "Quomodo Quis suos in Virtute Sentiat Profectus",
+    "e_source": "Perseus",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0152",
+    "print_source": "Gregorius N. Bernardakis.Plutarch. Moralia. Gregorius N. Bernardakis.. Leipzig. Teubner. 1888. 1.",
+    "added_by": "V3 Legacy Import"
+  },
+  {
+    "author": "Plutarch",
+    "work": "Regum et Imperatorum Apophthegmata",
+    "e_source": "Perseus",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0191",
+    "print_source": "Frank Cole Babbitt.Plutarch. Moralia. with an English Translation by. Frank Cole Babbitt.. Cambridge, MA. Harvard University Press. London. William Heinemann Ltd. 1931. 3.",
+    "added_by": "V3 Legacy Import"
+  },
+  {
+    "author": "Plutarch",
+    "work": "Romulus",
+    "e_source": "Perseus",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0079",
+    "print_source": "Bernadotte Perrin.Plutarch. Plutarch's Lives. with an English Translation by. Bernadotte Perrin.. Cambridge, MA. Harvard University Press. London. William Heinemann Ltd. 1914. 1.",
+    "added_by": "V3 Legacy Import"
+  },
+  {
+    "author": "Plutarch",
+    "work": "Septem Sapientium Convivium",
+    "e_source": "Perseus",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0184",
+    "print_source": "Gregorius N. Bernardakis.Plutarch. Moralia. Gregorius N. Bernardakis.. Leipzig. Teubner. 1888. 1.",
+    "added_by": "V3 Legacy Import"
+  },
+  {
+    "author": "Plutarch",
+    "work": "Sertorius",
+    "e_source": "Perseus",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0125",
+    "print_source": "Bernadotte Perrin.Plutarch. Plutarch's Lives. with an English Translation by. Bernadotte Perrin.. Cambridge, MA. Harvard University Press. London. William Heinemann Ltd. 1919. 8.",
+    "added_by": "V3 Legacy Import"
+  },
+  {
+    "author": "Plutarch",
+    "work": "Solon",
+    "e_source": "Perseus",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0073",
+    "print_source": "Bernadotte Perrin.Plutarch. Plutarch's Lives. with an English Translation by. Bernadotte Perrin.. Cambridge, MA. Harvard University Press. London. William Heinemann Ltd. 1914. 1.",
+    "added_by": "V3 Legacy Import"
+  },
+  {
+    "author": "Plutarch",
+    "work": "Sulla",
+    "e_source": "Perseus",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0126",
+    "print_source": "Bernadotte Perrin.Plutarch. Plutarch's Lives. with an English Translation by. Bernadotte Perrin.. Cambridge, MA. Harvard University Press. London. William Heinemann Ltd. 1916. 4.",
+    "added_by": "V3 Legacy Import"
+  },
+  {
+    "author": "Plutarch",
+    "work": "Themistocles",
+    "e_source": "Perseus",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0074",
+    "print_source": "Bernadotte Perrin.Plutarch. Plutarch's Lives. with an English Translation by. Bernadotte Perrin.. Cambridge, MA. Harvard University Press. London. William Heinemann Ltd. 1914. 2.",
+    "added_by": "V3 Legacy Import"
+  },
+  {
+    "author": "Plutarch",
+    "work": "Theseus",
+    "e_source": "Perseus",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0075",
+    "print_source": "Bernadotte Perrin.Plutarch. Plutarch's Lives. with an English Translation by. Bernadotte Perrin.. Cambridge, MA. Harvard University Press. London. William Heinemann Ltd. 1914. 1.",
+    "added_by": "V3 Legacy Import"
+  },
+  {
+    "author": "Plutarch",
+    "work": "Tiberius Gracchus",
+    "e_source": "Perseus",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0127",
+    "print_source": "Bernadotte Perrin.Plutarch. Plutarch's Lives. with an English Translation by. Bernadotte Perrin.. Cambridge, MA. Harvard University Press. London. William Heinemann Ltd. 1921. 10.",
+    "added_by": "V3 Legacy Import"
+  },
+  {
+    "author": "Plutarch",
+    "work": "Timoleon",
+    "e_source": "Perseus",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0128",
+    "print_source": "Bernadotte Perrin.Plutarch. Plutarch's Lives. with an English Translation by. Bernadotte Perrin.. Cambridge, MA. Harvard University Press. London. William Heinemann Ltd. 1918. 6.",
+    "added_by": "V3 Legacy Import"
+  },
+  {
+    "author": "Plutarch",
+    "work": "Titus Flaminius",
+    "e_source": "Perseus",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0115",
+    "print_source": "Bernadotte Perrin.Plutarch. Plutarch's Lives. with an English Translation by. Bernadotte Perrin.. Cambridge, MA. Harvard University Press. London. William Heinemann Ltd. 1921. 10.",
+    "added_by": "V3 Legacy Import"
+  },
+  {
+    "author": "Plutarch",
+    "work": "Vitae Decem Oratorum",
+    "e_source": "Perseus",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0344",
+    "print_source": "Gregorius N. Bernardakis.Plutarch. Moralia. Gregorius N. Bernardakis.. Leipzig. Teubner. 1893. 5.",
+    "added_by": "V3 Legacy Import"
+  },
+  {
+    "author": "Plutarch (Pseudo)",
+    "work": "De Musica",
+    "e_source": "Perseus",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3Atext%3A2008.01.0401",
+    "print_source": "Plutarch.  Moralia. Gregorius N. Bernardakis. Leipzig. Teubner. 1895. 6..",
+    "added_by": "V3 Legacy Import"
+  },
+  {
+    "author": "Plutarch (Pseudo)",
+    "work": "Placita Philosophorum",
+    "e_source": "Perseus",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3Atext%3A2008.01.0403",
+    "print_source": "Plutarch.  Moralia. Gregorius N. Bernardakis. Leipzig. Teubner. 1895. 6..",
+    "added_by": "V3 Legacy Import"
+  },
+  {
+    "author": "Plutarch",
+    "work": "Quaestiones Convivales",
+    "e_source": "Perseus",
+    "e_source_url": "",
+    "print_source": "George N. Bernadakis. Plutarch. Moralia. Leipzig. Teubner. 1892. 4.",
+    "added_by": "V3 Legacy Import"
+  },
+  {
     "author": "Polybius",
     "work": "Histories",
     "e_source": "Perseus",
@@ -5824,6 +6736,14 @@
     "added_by": "Emilie Bétrix"
   },
   {
+    "author": "Quintilian (Pseudo)",
+    "work": "Major Declamations",
+    "e_source": "The Latin Library",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.thelatinlibrary.com/quintilian/quintilian.decl.mai1.shtml",
+    "print_source": "L. Håkanson,Declamationes XIX maiores Quintiliano falso ascriptae. Stuttgart, 1982",
+    "added_by": "V3 Legacy Import"
+  },
+  {
     "author": "Quintus Smyrnaeus",
     "work": "Fall of Troy",
     "e_source": "Perseus",
@@ -5848,12 +6768,36 @@
     "added_by": "Caitlin Diddams"
   },
   {
+    "author": "Rutilius",
+    "work": "De Reditu Suo",
+    "e_source": "",
+    "e_source_url": "https://web.archive.org/web/20240812080521/https://penelope.uchicago.edu/Thayer/L/Roman/Texts/Rutilius_Namatianus/text*.html",
+    "print_source": "J. Wight Duff and Arnold M. Duff. Minor Latin Poets Volume II Harvard University Press. 1934.",
+    "added_by": "V3 Legacy Import"
+  },
+  {
     "author": "Sallust",
     "work": "Catilina, Iugurtha, Orationes Et Epistulae Excerptae De Historiis",
     "e_source": "Perseus",
     "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0002",
     "print_source": "Axel W. Ahlberg, Catilina, Iugurtha, Orationes Et Epistulae Excerptae De Historiis. Leipzig: Teubner, 1919.",
     "added_by": "Tony R Waleszczak"
+  },
+  {
+    "author": "Salutati, Coluccio",
+    "work": "Opera Minora, De Laboribus Herculis",
+    "e_source": "",
+    "e_source_url": "",
+    "print_source": "B.L. UllmanDe laboribus Herculis, 2 vol.. Turici, 1951.",
+    "added_by": "V3 Legacy Import"
+  },
+  {
+    "author": "Salutati, Coluccio",
+    "work": "Opera Minora, De Tyranno",
+    "e_source": "",
+    "e_source_url": "",
+    "print_source": "S.U. BaldassarriPolitical Writings. Cambridge, 2014.",
+    "added_by": "V3 Legacy Import"
   },
   {
     "author": "Salvianus",
@@ -5870,6 +6814,14 @@
     "e_source_url": "http://opengreekandlatin.github.io/csel-dev/",
     "print_source": "Pauly, Franz Salviani presbyteri Massiliensis opera omnia. Vindobonae: Gerold, 1883.",
     "added_by": "Cari Haas"
+  },
+  {
+    "author": "Sappho",
+    "work": "Fragments",
+    "e_source": "The Digital Sappho",
+    "e_source_url": "https://web.archive.org/web/20240812080521/https://digitalsappho.org/",
+    "print_source": "Print sources listed at The Digital Sappho",
+    "added_by": "V3 Legacy Import"
   },
   {
     "author": "Scriptores Historiae Augustae",
@@ -6192,6 +7144,14 @@
     "added_by": "Timothy Tilbe"
   },
   {
+    "author": "Silius Italicus",
+    "work": "Punica",
+    "e_source": "Perseus",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0674",
+    "print_source": "Walter Coventry Summers and John Percival Postgate, Silius Italicus. Corpus Poetarum Latinorum Vol. 2.. London. Sumptibus G. Bell et Filiorum. 1905.",
+    "added_by": "V3 Legacy Import"
+  },
+  {
     "author": "Sophocles",
     "work": "Ajax",
     "e_source": "Perseus",
@@ -6350,6 +7310,22 @@
     "e_source_url": "http://opengreekandlatin.github.io/csel-dev/",
     "print_source": "Karl Halm. Sulpicii Severi Libri Qui Supersunt. Vindobonae: Gerold. 1866.",
     "added_by": "Caitlin Diddams"
+  },
+  {
+    "author": "Tacitus",
+    "work": "Agricola",
+    "e_source": "Perseus",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a1999.02.0084",
+    "print_source": "Henry Furneaux, Opera Minora. Clarendon Press. Oxford. 1900.",
+    "added_by": "V3 Legacy Import"
+  },
+  {
+    "author": "Tacitus",
+    "work": "Annales",
+    "e_source": "Perseus",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a1999.02.0077",
+    "print_source": "Charles Dennis Fisher, Annales ab excessu divi Augusti. Cornelius Tacitus.. Clarendon Press. Oxford. 1906.",
+    "added_by": "V3 Legacy Import"
   },
   {
     "author": "Tacitus",
@@ -6608,36 +7584,20 @@
     "added_by": "Caitlin Diddams"
   },
   {
-    "author": "Theodulf of Orleans",
-    "work": "Carmina",
-    "e_source": "",
-    "e_source_url": "",
-    "print_source": "",
-    "added_by": "M. Paccara & F. Stella (University of Siena)"
-  },
-  {
-    "author": "Theodulf of Orleans",
-    "work": "Carmina Appendix",
-    "e_source": "",
-    "e_source_url": "",
-    "print_source": "",
-    "added_by": "M. Paccara & F. Stella (University of Siena)"
-  },
-  {
-    "author": "Theodulf of Orleans",
-    "work": "Epitaphia",
-    "e_source": "",
-    "e_source_url": "",
-    "print_source": "",
-    "added_by": "M. Paccara & F. Stella (University of Siena)"
-  },
-  {
     "author": "Theophrastus",
     "work": "Characters",
     "e_source": "Perseus",
     "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a1999.01.0225",
     "print_source": "Hermann Diels, Characters. Oxford: Oxford University Press, 1909.",
     "added_by": "James Gawley"
+  },
+  {
+    "author": "Thucydides",
+    "work": "The Peleponnesian War",
+    "e_source": "Perseus",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a1999.01.0199",
+    "print_source": "Thucydides Historiae in Two Volumes. Oxford,\n\tOxford University Press. 1942.",
+    "added_by": "V3 Legacy Import"
   },
   {
     "author": "Tibullus",
@@ -6656,12 +7616,28 @@
     "added_by": "Bridget Murray"
   },
   {
+    "author": "Valerius Flaccus",
+    "work": "Argonautica",
+    "e_source": "Perseus",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2007.01.0058",
+    "print_source": "Otto Kramer, C. Valeri Flacci Setini Balbi Argonauticon Libri Octo. Leipsig: Teubner, 1913.",
+    "added_by": "V3 Legacy Import"
+  },
+  {
     "author": "Valerius Maximus",
     "work": "Facta et Dicta Memorabilia",
     "e_source": "Perseus",
     "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0675",
     "print_source": "Karl Friedrich Kempf, Factorvm et Dictorvm Memorabilivm, Libri Novem. Leipsig: Teubner, 1888.",
     "added_by": "Elizabeth Hunter"
+  },
+  {
+    "author": "Veggio, Maffeo",
+    "work": "Aeneid",
+    "e_source": "Vergil.org",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://virgil.org/",
+    "print_source": "Brinton, Anna Cox, Maphaeus Vegius and his Thirteenth Book of the Aeneid: A Chapter on Virgil in the Renaissance. Stanford: Stanford University Press, 1930.",
+    "added_by": "V3 Legacy Import"
   },
   {
     "author": "Vergil",
@@ -6768,6 +7744,14 @@
     "added_by": "Caitlin Diddams"
   },
   {
+    "author": "Vergil (Pseudo)",
+    "work": "Priapea",
+    "e_source": "Forum Romanum",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.forumromanum.org/literature/priapea.html",
+    "print_source": "Unknown Edition.",
+    "added_by": "V3 Legacy Import"
+  },
+  {
     "author": "Victorinus",
     "work": "De Machabeis",
     "e_source": "Open Greek and Latin",
@@ -6776,12 +7760,36 @@
     "added_by": "Caitlin Diddams"
   },
   {
+    "author": "Vitensis",
+    "work": "Historia Persecutionis Africanae Provinciae",
+    "e_source": "",
+    "e_source_url": "https://web.archive.org/web/20240812080521/https://archive.org/details/victorisvitensi00victgoog/page/n20/mode/2up",
+    "print_source": "Carolus Halm. Victoris Vitensis Historia Persecutionis Africanae Provinciae sub Geiserico et Hunrico regibus wandalorum. Berolini: Apud Weidmannos. 1879.",
+    "added_by": "V3 Legacy Import"
+  },
+  {
+    "author": "Vitensis (Pseudo)",
+    "work": "Notitia provinciarum et civitatum africae",
+    "e_source": "",
+    "e_source_url": "https://web.archive.org/web/20240812080521/http://www.mlat.uzh.ch/MLS/xanfang.php?tabelle=Victor_Vitensis_cps19&amp;corpus=19&amp;allow_download=0&amp;lang=0",
+    "print_source": "Michael Petschenig Notitia provinciarum et civitatum Africae. Osterreichische Akademie der Wissenschaften, Wien, Osterreich, 1881.",
+    "added_by": "V3 Legacy Import"
+  },
+  {
     "author": "Vitruvius Pollio",
     "work": "De Architectura",
     "e_source": "Perseus",
     "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a1999.02.0072",
     "print_source": "F. Krohn, On Architecture. Lipsiae: B.G. Teubner, 1912.",
     "added_by": "Anna Glenn"
+  },
+  {
+    "author": "William of Tyre",
+    "work": "Historia Rerum in Partibus Transmarinis Gestarum",
+    "e_source": "The Latin Library",
+    "e_source_url": "https://web.archive.org/web/20240812080521/https://www.thelatinlibrary.com/williamtyre.html",
+    "print_source": "Print edition unknown",
+    "added_by": "V3 Legacy Import"
   },
   {
     "author": "Xenophon",
