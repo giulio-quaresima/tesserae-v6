@@ -357,8 +357,34 @@ const formatLocation = (loc) => {
 
 export const formatReference = (ref, language = null) => {
   if (!ref) return '';
-  
+
   const cleanRef = ref.replace(/<\/?.*?>/g, '').trim();
+
+  // Handle range refs from window results (e.g., "verg. aen. 1.469-verg. aen. 1.470")
+  if (cleanRef.includes('-')) {
+    const dashIdx = cleanRef.indexOf('-');
+    const left = cleanRef.slice(0, dashIdx).trim();
+    const right = cleanRef.slice(dashIdx + 1).trim();
+    // Only treat as range if right side looks like a ref (has letters), not just a number
+    if (right && /[a-z]/i.test(right)) {
+      const formattedLeft = formatReference(left, language);
+      const formattedRight = formatReference(right, language);
+      // If same author+work, abbreviate: "Vergil, Aeneid 1.469–470"
+      // Find where the two formatted strings diverge
+      const leftParts = formattedLeft.split(/\s+/);
+      const rightParts = formattedRight.split(/\s+/);
+      // Find the last numeric part of the right side (the line number)
+      const rightLoc = rightParts[rightParts.length - 1];
+      const rightLineMatch = rightLoc?.match(/(\d+)$/);
+      // Check if everything except the final number matches
+      const leftPrefix = leftParts.slice(0, -1).join(' ');
+      const rightPrefix = rightParts.slice(0, -1).join(' ');
+      if (leftPrefix === rightPrefix && rightLineMatch) {
+        return `${formattedLeft}\u2013${rightLineMatch[1]}`;
+      }
+      return `${formattedLeft}\u2013${formattedRight}`;
+    }
+  }
   
   if (language === 'en' || (!language && /^[a-z_]+\s+[IVX\d]/i.test(cleanRef))) {
     const parts = cleanRef.split(/\s+/);

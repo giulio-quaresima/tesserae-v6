@@ -408,7 +408,7 @@ def make_window_units(line_units):
         u2 = line_units[i + 1]
         window = {
             'ref': f"{u1['ref']}-{u2['ref']}",
-            'text': u1['text'] + ' ' + u2['text'],
+            'text': u1['text'] + '\n' + u2['text'],
             'tokens': u1['tokens'] + u2['tokens'],
             'original_tokens': (
                 u1.get('original_tokens', u1['tokens'])
@@ -417,6 +417,7 @@ def make_window_units(line_units):
             'lemmas': u1['lemmas'] + u2['lemmas'],
             'pos_tags': u1.get('pos_tags', []) + u2.get('pos_tags', []),
             'line_refs': [u1['ref'], u2['ref']],
+            'line_token_counts': [len(u1['tokens']), len(u2['tokens'])],
         }
         windows.append(window)
     return windows
@@ -1279,12 +1280,51 @@ def fuse_results(channel_results, weights=None, convergence_bonus=None,
     return merged
 
 
+def filter_single_line_windows(window_results):
+    """Remove window results where matches don't span both lines on either side.
+
+    Window results are meant to capture enjambed allusions — words split across
+    a line break. If all highlighted words fall on a single line of both the
+    source and target windows, the second line adds nothing and the result is
+    redundant with the line-level pass.
+    """
+    filtered = []
+    for r in window_results:
+        src = r.get('source', {})
+        tgt = r.get('target', {})
+        src_counts = src.get('line_token_counts')
+        tgt_counts = tgt.get('line_token_counts')
+        if not src_counts or not tgt_counts:
+            filtered.append(r)  # not a window result, keep
+            continue
+
+        src_boundary = src_counts[0]
+        tgt_boundary = tgt_counts[0]
+        src_indices = set(src.get('highlight_indices', []))
+        tgt_indices = set(tgt.get('highlight_indices', []))
+
+        if not src_indices or not tgt_indices:
+            continue  # no highlights at all, drop
+
+        # Check if matches span both lines on at least one side
+        src_spans = (any(i < src_boundary for i in src_indices)
+                     and any(i >= src_boundary for i in src_indices))
+        tgt_spans = (any(i < tgt_boundary for i in tgt_indices)
+                     and any(i >= tgt_boundary for i in tgt_indices))
+
+        if src_spans or tgt_spans:
+            filtered.append(r)
+    return filtered
+
+
 def merge_line_and_window(line_results, window_results):
     """Merge line and window results with smart dedup.
 
-    Line results come first (preserving precision). Window results are
-    appended only if they contain at least one source×target line pair
-    not already found in line results (i.e., not fully subsumed).
+    Window results are included only if they contain at least one
+    source×target line pair not already found in line results (i.e.,
+    not fully subsumed). The merged list is sorted by fused_score so
+    that high-scoring window results (enjambed allusions) appear at
+    their natural rank rather than being buried below all line results.
     """
     # Build set of (book, line, book, line) tuples from line results
     line_ref_tuples = set()
@@ -1319,6 +1359,7 @@ def merge_line_and_window(line_results, window_results):
         if not fully_subsumed:
             merged.append(r)
 
+    merged.sort(key=lambda r: r.get('fused_score', 0), reverse=True)
     return merged
 
 
@@ -1467,6 +1508,7 @@ def iter_fusion_search(source_units, target_units, matcher, scorer,
         })
 
     window_fused = fuse_results(window_channel_results, language=language)
+    window_fused = filter_single_line_windows(window_fused)
 
     if mode == 'window':
         final = window_fused[:max_results] if max_results > 0 else window_fused
@@ -1546,6 +1588,7 @@ def run_fusion_search(source_units, target_units, matcher, scorer,
         progress_callback,
     )
     window_fused = fuse_results(window_channel_results, language=language)
+    window_fused = filter_single_line_windows(window_fused)
 
     if mode == 'window':
         return window_fused[:max_results] if max_results > 0 else window_fused
