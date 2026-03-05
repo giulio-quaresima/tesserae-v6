@@ -165,7 +165,7 @@ def parse_ref(ref_str):
 def parse_range_ref(ref_str):
     """Parse a ref that might be a range (e.g., 'luc. 1.1-luc. 1.2').
     Returns (book1, line1, book2, line2)."""
-    if '-' in ref_str and ref_str.count('.') > 2:
+    if '-' in ref_str:
         parts = ref_str.split('-')
         if len(parts) == 2:
             b1, l1 = parse_ref(parts[0])
