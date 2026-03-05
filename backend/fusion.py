@@ -387,7 +387,7 @@ CHANNEL_CONFIGS = {
         "min_matches": 1,
         "language": "la",
         "unbounded_scoring": True,
-        "rare_word_max_occurrences": 50,
+        "rare_word_max_occurrences": 100,
         "use_edit_distance": False,
         "use_sound": False,
         "use_pos": False,
