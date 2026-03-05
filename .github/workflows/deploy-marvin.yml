@@ -12,7 +12,6 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    environment: marvin
     steps:
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
