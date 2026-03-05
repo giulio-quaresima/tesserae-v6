@@ -1423,47 +1423,58 @@ def penalize_single_line_windows(window_results):
 
 
 def merge_line_and_window(line_results, window_results):
-    """Merge line and window results with smart dedup.
+    """Merge line and window results, with windows superseding overlapping lines.
 
-    Window results are included only if they contain at least one
-    source×target line pair not already found in line results (i.e.,
-    not fully subsumed). The merged list is sorted by fused_score so
-    that high-scoring window results (enjambed allusions) appear at
-    their natural rank rather than being buried below all line results.
+    When a window result overlaps any line result (shares at least one
+    source×target line pair), the window replaces those line results,
+    providing richer two-line context without duplicates.  Window results
+    that are fully subsumed by line results (all their line pairs already
+    covered) are dropped.  The merged list is sorted by fused_score.
     """
-    # Build set of (book, line, book, line) tuples from line results
-    line_ref_tuples = set()
-    for r in line_results:
+    # Index line results by their (book, line, book, line) tuple
+    line_by_ref = {}
+    for i, r in enumerate(line_results):
         rs = r.get("source", {}).get("ref", "")
         rt = r.get("target", {}).get("ref", "")
         sb, sl = parse_ref(rs)
         tb, tl = parse_ref(rt)
         if sb is not None and tb is not None:
-            line_ref_tuples.add((sb, sl, tb, tl))
+            line_by_ref[(sb, sl, tb, tl)] = i
 
-    # Only keep window results that have novel line-pair coverage
-    merged = list(line_results)
+    # Track which line results get superseded by windows
+    superseded = set()
+
+    kept_windows = []
     for r in window_results:
         rs = r.get("source", {}).get("ref", "")
         rt = r.get("target", {}).get("ref", "")
         rs_b, rs_start, rs_end = parse_range_ref(rs)
         rt_b, rt_start, rt_end = parse_range_ref(rt)
 
-        fully_subsumed = True
-        if rs_b is not None and rt_b is not None:
-            for sl in range(rs_start, rs_end + 1):
-                for tl in range(rt_start, rt_end + 1):
-                    if (rs_b, sl, rt_b, tl) not in line_ref_tuples:
-                        fully_subsumed = False
-                        break
-                if not fully_subsumed:
-                    break
-        else:
-            fully_subsumed = False
+        if rs_b is None or rt_b is None:
+            kept_windows.append(r)
+            continue
 
-        if not fully_subsumed:
-            merged.append(r)
+        # Find all line results this window overlaps
+        overlapping = []
+        novel = False
+        for sl in range(rs_start, rs_end + 1):
+            for tl in range(rt_start, rt_end + 1):
+                key = (rs_b, sl, rt_b, tl)
+                if key in line_by_ref:
+                    overlapping.append(line_by_ref[key])
+                else:
+                    novel = True
 
+        if novel:
+            # Window covers at least one new line pair — keep it,
+            # and supersede any overlapping line results
+            kept_windows.append(r)
+            superseded.update(overlapping)
+        # If fully subsumed (no novel pairs), drop the window
+
+    merged = [r for i, r in enumerate(line_results) if i not in superseded]
+    merged.extend(kept_windows)
     merged.sort(key=lambda r: r.get('fused_score', 0), reverse=True)
     return merged
 
