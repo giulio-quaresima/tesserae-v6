@@ -1280,41 +1280,146 @@ def fuse_results(channel_results, weights=None, convergence_bonus=None,
     return merged
 
 
-def filter_single_line_windows(window_results):
-    """Remove window results where matches don't span both lines on either side.
+# Exponential distance decay for window results based on cross-break gap:
+# the number of tokens between the last matched word on line 1 and the
+# first matched word on line 2.  Tight enjambments (gap 0–1) get no/minimal
+# penalty; wide gaps (8+) are heavily penalized.
+WINDOW_DISTANCE_ALPHA = 0.25
 
-    Window results are meant to capture enjambed allusions — words split across
-    a line break. If all highlighted words fall on a single line of both the
-    source and target windows, the second line adds nothing and the result is
-    redundant with the line-level pass.
+
+def _matched_word_indices(tokens, word):
+    """Find indices of a matched word in a token array (case-insensitive)."""
+    if not word or not tokens:
+        return []
+    w = word.lower()
+    return [i for i, t in enumerate(tokens) if t.lower() == w]
+
+
+def _check_line_span(positions, boundary):
+    """Check if any positions fall on both sides of a line boundary."""
+    if not positions:
+        return False
+    return any(i < boundary for i in positions) and any(i >= boundary for i in positions)
+
+
+def _which_line_has_matches(positions, boundary):
+    """Return which line (0 or 1) has the most matched-word positions.
+    Falls back to line 0 on tie."""
+    if not positions:
+        return 0
+    on_line0 = sum(1 for i in positions if i < boundary)
+    on_line1 = sum(1 for i in positions if i >= boundary)
+    return 1 if on_line1 > on_line0 else 0
+
+
+def _trim_to_line(side, line_num):
+    """Trim a window unit dict to show only one line of text.
+
+    Keeps the original range ref (so benchmark gold-matching still works)
+    but trims text, tokens, and highlight_indices to the relevant line.
+    Removes line_token_counts so the frontend renders as single line.
     """
-    filtered = []
+    counts = side.get('line_token_counts', [])
+    if not counts or len(counts) < 2:
+        return side
+    boundary = counts[0]
+    tokens = side.get('tokens', [])
+    text_lines = side.get('text', '').split('\n')
+    highlights = side.get('highlight_indices', [])
+
+    if line_num == 0:
+        new_tokens = tokens[:boundary]
+        new_text = text_lines[0] if text_lines else ''
+        new_highlights = [i for i in highlights if i < boundary]
+    else:
+        new_tokens = tokens[boundary:]
+        new_text = text_lines[1] if len(text_lines) > 1 else ''
+        new_highlights = [i - boundary for i in highlights if i >= boundary]
+
+    side['tokens'] = new_tokens
+    side['text'] = new_text
+    side['highlight_indices'] = sorted(new_highlights)
+    # Remove window metadata so frontend renders as single line
+    side.pop('line_token_counts', None)
+    side.pop('line_refs', None)
+    # Keep original range ref for gold-matching compatibility
+    return side
+
+
+def penalize_single_line_windows(window_results):
+    """Filter and penalize window results based on enjambment quality.
+
+    Three outcomes per result:
+    1. Matched words span lines → genuine enjambment.  Apply exponential
+       distance decay; keep as 2-line display.
+    2. Matched words all on one line → not a genuine enjambment.  Trim to
+       show only the line with matched words (single-line display).
+       Preserves recall without visual clutter.
+    3. No positions determinable → fall back to highlight_indices for the
+       span check (handles scorer fallback to lemma forms).
+    """
+    out = []
     for r in window_results:
         src = r.get('source', {})
         tgt = r.get('target', {})
         src_counts = src.get('line_token_counts')
         tgt_counts = tgt.get('line_token_counts')
         if not src_counts or not tgt_counts:
-            filtered.append(r)  # not a window result, keep
+            out.append(r)  # not a window result, keep as-is
             continue
 
+        matched_words = r.get('matched_words', [])
+        if not matched_words:
+            continue  # no matched words at all, drop
+
+        src_tokens = src.get('tokens', [])
+        tgt_tokens = tgt.get('tokens', [])
         src_boundary = src_counts[0]
         tgt_boundary = tgt_counts[0]
-        src_indices = set(src.get('highlight_indices', []))
-        tgt_indices = set(tgt.get('highlight_indices', []))
 
-        if not src_indices or not tgt_indices:
-            continue  # no highlights at all, drop
+        # Find positions of actual matched words
+        src_positions = []
+        tgt_positions = []
+        for mw in matched_words:
+            src_positions.extend(_matched_word_indices(src_tokens, mw.get('source_word', '')))
+            tgt_positions.extend(_matched_word_indices(tgt_tokens, mw.get('target_word', '')))
 
-        # Check if matches span both lines on at least one side
-        src_spans = (any(i < src_boundary for i in src_indices)
-                     and any(i >= src_boundary for i in src_indices))
-        tgt_spans = (any(i < tgt_boundary for i in tgt_indices)
-                     and any(i >= tgt_boundary for i in tgt_indices))
+        # Fall back to highlight_indices if matched-word lookup failed
+        # (happens when scorer falls back to lemma form for source_word)
+        if not src_positions:
+            src_positions = list(src.get('highlight_indices', []))
+        if not tgt_positions:
+            tgt_positions = list(tgt.get('highlight_indices', []))
+
+        src_spans = _check_line_span(src_positions, src_boundary)
+        tgt_spans = _check_line_span(tgt_positions, tgt_boundary)
 
         if src_spans or tgt_spans:
-            filtered.append(r)
-    return filtered
+            # Genuine enjambment — penalize by cross-break gap (tokens between
+            # last matched word on line 1 and first matched word on line 2).
+            # Tight enjambments (gap=0) get no penalty; wide gaps get heavy decay.
+            gaps = []
+            if src_spans:
+                last_on_l1 = max(i for i in src_positions if i < src_boundary)
+                first_on_l2 = min(i for i in src_positions if i >= src_boundary)
+                gaps.append(first_on_l2 - last_on_l1 - 1)
+            if tgt_spans:
+                last_on_l1 = max(i for i in tgt_positions if i < tgt_boundary)
+                first_on_l2 = min(i for i in tgt_positions if i >= tgt_boundary)
+                gaps.append(first_on_l2 - last_on_l1 - 1)
+            max_gap = max(gaps) if gaps else 0
+            distance_factor = math.exp(-WINDOW_DISTANCE_ALPHA * max_gap)
+            r['fused_score'] = round(r.get('fused_score', 0) * distance_factor, 4)
+            out.append(r)
+        else:
+            # Not a genuine enjambment — trim to single-line display
+            r['source'] = _trim_to_line(
+                dict(src), _which_line_has_matches(src_positions, src_boundary))
+            r['target'] = _trim_to_line(
+                dict(tgt), _which_line_has_matches(tgt_positions, tgt_boundary))
+            out.append(r)
+
+    return out
 
 
 def merge_line_and_window(line_results, window_results):
@@ -1508,7 +1613,7 @@ def iter_fusion_search(source_units, target_units, matcher, scorer,
         })
 
     window_fused = fuse_results(window_channel_results, language=language)
-    window_fused = filter_single_line_windows(window_fused)
+    window_fused = penalize_single_line_windows(window_fused)
 
     if mode == 'window':
         final = window_fused[:max_results] if max_results > 0 else window_fused
@@ -1588,7 +1693,7 @@ def run_fusion_search(source_units, target_units, matcher, scorer,
         progress_callback,
     )
     window_fused = fuse_results(window_channel_results, language=language)
-    window_fused = filter_single_line_windows(window_fused)
+    window_fused = penalize_single_line_windows(window_fused)
 
     if mode == 'window':
         return window_fused[:max_results] if max_results > 0 else window_fused
