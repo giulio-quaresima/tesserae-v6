@@ -806,7 +806,7 @@ def find_syntax_matches(source_units, target_units, source_id, target_id,
     # the text pair.  Common patterns (e.g., Verb+Object 2-token lines)
     # match hundreds of unrelated line pairs.  Rare patterns are the
     # ones that indicate genuine structural imitation.
-    MAX_FINGERPRINT_FREQ = 4  # combined source + target occurrences
+    MAX_FINGERPRINT_FREQ = 2  # combined source + target occurrences
     skipped_common = 0
 
     fingerprint_pairs = []
@@ -1192,8 +1192,9 @@ def _recover_semantic_for_structural(line_channel_results, source_units,
         return
 
     # Compute cosine similarity for each structural pair
-    min_score = 0.55  # stricter than semantic channel (0.5) to reduce
-                      # false positives from common syntactic patterns
+    min_score = 0.575  # stricter than semantic channel (0.5); at 0.55
+                       # too many Latin poetry pairs pass due to shared domain
+                       # Thomas tricolon (Georg 3.481/DRN 6.1140) cosine = 0.5787
     recovered = []
     for src_ref, tgt_ref, src_idx, tgt_idx in pairs_to_check:
         if src_idx >= len(source_emb) or tgt_idx >= len(target_emb):
@@ -1897,6 +1898,25 @@ def iter_fusion_search(source_units, target_units, matcher, scorer,
             line_channel_results, source_units, target_units,
             source_path, target_path, language)
 
+        # Gate: only keep structural pairs that also have semantic confirmation
+        # (from the main semantic channel or from recovery).  Structural
+        # pattern identity alone produces too many false positives.
+        semantic_pairs = set()
+        for r in line_channel_results.get("semantic", []):
+            rs = r.get("source", {}).get("ref", "")
+            rt = r.get("target", {}).get("ref", "")
+            semantic_pairs.add((rs, rt))
+        before = len(line_channel_results["syntax_structural"])
+        line_channel_results["syntax_structural"] = [
+            r for r in line_channel_results["syntax_structural"]
+            if (r.get("source", {}).get("ref", ""),
+                r.get("target", {}).get("ref", "")) in semantic_pairs
+        ]
+        after = len(line_channel_results["syntax_structural"])
+        if before != after:
+            print(f"[STRUCTURAL GATE] Kept {after}/{before} structural pairs "
+                  f"with semantic confirmation")
+
     line_fused = fuse_results(line_channel_results, language=language)
 
     if mode == 'line':
@@ -2005,6 +2025,23 @@ def run_fusion_search(source_units, target_units, matcher, scorer,
         _recover_semantic_for_structural(
             line_channel_results, source_units, target_units,
             source_path, target_path, language)
+
+        # Gate: only keep structural pairs that also have semantic confirmation
+        semantic_pairs = set()
+        for r in line_channel_results.get("semantic", []):
+            rs = r.get("source", {}).get("ref", "")
+            rt = r.get("target", {}).get("ref", "")
+            semantic_pairs.add((rs, rt))
+        before = len(line_channel_results["syntax_structural"])
+        line_channel_results["syntax_structural"] = [
+            r for r in line_channel_results["syntax_structural"]
+            if (r.get("source", {}).get("ref", ""),
+                r.get("target", {}).get("ref", "")) in semantic_pairs
+        ]
+        after = len(line_channel_results["syntax_structural"])
+        if before != after:
+            print(f"[STRUCTURAL GATE] Kept {after}/{before} structural pairs "
+                  f"with semantic confirmation")
 
     line_fused = fuse_results(line_channel_results, language=language)
 

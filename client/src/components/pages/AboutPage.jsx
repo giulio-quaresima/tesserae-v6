@@ -18,9 +18,18 @@ export default function AboutPage({ onNavigate }) {
         <section>
           <h3 className="text-lg font-semibold text-gray-900 mb-3">What is Tesserae?</h3>
           <p className="text-gray-700 leading-relaxed mb-3">
-            Tesserae is an intertextual analysis tool for discovering textual parallels in classical literature. 
-            It helps scholars find passages where one author may have been influenced by, alluding to, or directly 
-            quoting another text. Founded by Neil Coffee and J. P. Koenig in 2008 at the University at Buffalo, SUNY, 
+            Tesserae is an intertextual analysis tool for discovering textual parallels in classical literature.
+            It helps scholars find passages where one author may have been influenced by, alluding to, or directly
+            quoting another text. Founded in 2008 by Neil Coffee (Department of Classics) and{' '}
+            <a
+              href="https://arts-sciences.buffalo.edu/linguistics/faculty/faculty-directory/koenig.html"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-amber-600 hover:underline"
+            >
+              J.&nbsp;P. Koenig
+            </a>{' '}
+            (Department of Linguistics) at the University at Buffalo, SUNY,
             this is Version 6, a modern reimplementation of the V3 algorithm.
           </p>
           <p className="text-gray-700 leading-relaxed">

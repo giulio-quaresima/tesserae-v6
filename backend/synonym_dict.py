@@ -454,7 +454,24 @@ def get_latin_lookup():
         v3_path = os.path.join(_DATA_DIR, 'fixed_latin_syn.csv')
         v3 = _load_v3_synonym_file(v3_path)
         _LATIN_LOOKUP = _merge_lookups(curated, v3)
-        print(f"Loaded {len(_LATIN_LOOKUP)} Latin synonym entries (V3 + curated)")
+        # U/V normalization: the V3 dictionary uses v-forms (validus, via)
+        # while the UD lemmatizer produces u-forms (ualidus, uia).  Group
+        # all spelling variants under a canonical (u-normalized) form and
+        # merge their synonym sets so lookups work regardless of spelling.
+        def _uv_canonical(word):
+            return word.replace('v', 'u')
+        canonical_groups = {}
+        for key in _LATIN_LOOKUP:
+            canon = _uv_canonical(key)
+            canonical_groups.setdefault(canon, []).append(key)
+        for canon, variants in canonical_groups.items():
+            if len(variants) > 1:
+                merged_syns = set()
+                for v in variants:
+                    merged_syns |= _LATIN_LOOKUP[v]
+                for v in variants:
+                    _LATIN_LOOKUP[v] = merged_syns
+        print(f"Loaded {len(_LATIN_LOOKUP)} Latin synonym entries (V3 + curated, u/v merged)")
     return _LATIN_LOOKUP
 
 def get_greek_lookup():
