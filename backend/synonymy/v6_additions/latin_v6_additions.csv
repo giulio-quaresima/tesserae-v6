@@ -1,0 +1,439 @@
+# Tesserae V6 Latin Synonym Additions
+# Generated 2026-03-06 by Claude (Anthropic) in collaboration with Neil Coffee
+# Purpose: Expand poetic synonym coverage for fusion search allusion detection
+# Format: comma-separated synonym groups (same as V3 fixed_latin_syn.csv)
+# Methodology: Entries represent vocabulary substitutions attested in Latin poetic
+# practice (variatio), focusing on semantic fields underrepresented in the V3
+# dictionary derived from Lewis & Short. Groups are kept small and precise to
+# avoid false positive matches.
+#
+# ============================================================================
+# 1. DESTRUCTION AND RUIN
+# Verbs describing devastation, corruption, annihilation — the Thomas gap
+# Note: conrumpo is a UD treebank variant lemma for corrumpo (perfect forms)
+# ============================================================================
+corrumpo,conrumpo,vasto,devasto
+corrumpo,conrumpo,vitio,contamino
+vasto,depopulor,populor
+deleo,aboleo,oblittero
+perdo,pessundo,disperdo
+everto,subverto,diruo
+destruo,demolior,diruo
+exstinguo,opprimo,elido
+inficio,contamino,polluo
+exhaurio,depleo,evacuo
+consumo,absumo,haurio
+
+# ============================================================================
+# 2. KILLING AND SLAUGHTER
+# Verbs of violent death — central to epic poetry
+# ============================================================================
+neco,interficio,perimo
+occido,caedo,macto
+iugulo,obtrunco,trucido
+sterno,prosterno,affigo
+conficio,confodio
+pereundo,intereo,pereo,occido
+
+# ============================================================================
+# 3. MOTION AND TRAVEL
+# ============================================================================
+eo,gradior,incedo
+procedo,pergo,contendo
+fugio,aufugio,profugio
+venio,advenio,accedo
+propero,festino,maturo
+volvo,voluto,roto
+labor,delabor,prolabor
+ruo,proruo,irruo
+cado,decido,concido
+repo,serpo,proserpo
+
+# ============================================================================
+# 4. THROWING AND SENDING
+# ============================================================================
+iacio,conicio,intorqueo
+mitto,emitto,dimitto
+vibro,contorqueo,torqueo
+fundo,effundo,profundo
+
+# ============================================================================
+# 5. SEIZING AND CARRYING
+# ============================================================================
+rapio,corripio,arripio,abripio,diripio
+fero,perfero,affero,aufero
+porto,exporto,transporto
+veho,adveho,deveho
+tollo,attollo,extollo,sublevo
+
+# ============================================================================
+# 6. BREAKING AND SPLITTING
+# ============================================================================
+frango,confringo,perfringo
+rumpo,disrumpo,abrumpo
+scindo,discindo,rescindo
+findo,diffindo
+dissilio,dissiluo
+
+# ============================================================================
+# 7. SPEAKING AND CALLING
+# ============================================================================
+dico,aio,loquor
+fari,effari,profari
+clamo,exclamo,vociferor
+voco,invoco,appello
+cano,canto,concino
+sono,resono,persono
+fremo,infremo,murmuro
+gemo,ingemisco,suspiro
+
+# ============================================================================
+# 8. SEEING AND PERCEIVING
+# ============================================================================
+video,cerno,conspicio,tueor
+aspicio,respicio,prospicio
+specto,intueor,contemplor
+lustro,perlustro
+nosco,cognosco,agnosco
+
+# ============================================================================
+# 9. FEAR AND DREAD
+# ============================================================================
+timeo,metuo,vereor
+paveo,trepido,tremo
+horreo,horresco,perhorresco
+formido,reformido
+
+# ============================================================================
+# 10. GRIEF AND LAMENTATION
+# ============================================================================
+doleo,maereo,lugeo
+plango,lamentor,queror
+fleo,lacrimo,illacrimor
+defluo,deflecto
+
+# ============================================================================
+# 11. JOY AND CELEBRATION
+# ============================================================================
+gaudeo,laetor,exsulto
+ovio,triumpho
+celebro,festivo
+
+# ============================================================================
+# 12. ANGER AND RAGE
+# ============================================================================
+irascor,indignor,saevio
+furere,insanio,bacchor
+ardeo,flagro,aestuo,ferveo
+
+# ============================================================================
+# 13. DESIRE AND LOVE
+# ============================================================================
+amo,diligo,adamo
+cupio,opto,desidero,aveo
+ardeo,flagro,uror
+
+# ============================================================================
+# 14. HIDING AND FLEEING
+# ============================================================================
+lateo,delitesco,abdor
+celo,abscondo,occulo
+tego,contego,protego
+
+# ============================================================================
+# 15. LYING AND RESTING
+# ============================================================================
+iaceo,cubo,recumbo
+quiesco,requiesco,conquiesco
+sedo,resido,consido
+
+# ============================================================================
+# 16. RISING AND STANDING
+# ============================================================================
+surgo,assurgo,exsurgo,consurgo
+sto,sisto,consisto
+erigo,attollo
+
+# ============================================================================
+# 17. BURNING AND FIRE
+# ============================================================================
+uro,aduro,comburo,cremo
+incendo,inflammo,succendo
+flagro,ardeo,candeo
+fulgor,splendor,nitor,iubar
+
+# ============================================================================
+# 18. FLOWING AND POURING
+# ============================================================================
+fluo,defluo,profluo
+mano,emano,promano
+stillo,destillo,instillo
+rigo,irroro,aspergo
+
+# ============================================================================
+# 19. WIND AND STORM
+# ============================================================================
+procella,tempestas,turbo,hiems
+nimbus,nubes,nubilum
+ventus,aura,flatus,flamen
+fulmen,fulgur,tonitrus
+
+# ============================================================================
+# 20. LANDSCAPE (CAVES, ROCKS, VALLEYS)
+# ============================================================================
+spelunca,antrum,caverna,specus
+scopulus,cautes,rupes
+vallis,convallis,saltus
+collis,tumulus,clivus
+iugum,dorsum
+pratum,pascuum,pascua
+lacus,stagnum,palus
+litus,ora,ripa
+
+# ============================================================================
+# 21. WATER FEATURES
+# ============================================================================
+fons,scatebra
+gurges,vortex,vorago
+aestus,fluctus
+rivus,rivos
+latex,liquor
+
+# ============================================================================
+# 22. BODY PARTS
+# ============================================================================
+caput,vertex
+os,vultus,facies
+viscera,ilia,exta,praecordia
+artus,membra
+tergum,dorsum,tergus
+iuba,coma,crinis,caesaries
+cervix,collum
+
+# ============================================================================
+# 23. BLOOD AND WOUND
+# ============================================================================
+sanguis,cruor,tabum,sanies
+vulnus,plaga,ictus,cicatrix
+morbus,pestis,pestilentia,lues,contagio
+aegrotus,aeger,languidus
+
+# ============================================================================
+# 24. DARKNESS AND SHADOW
+# ============================================================================
+tenebrae,caligo,obscuritas
+umbra,opacitas
+ater,niger,obscurus,opacus
+caliginosus,tenebricus,tenebrosus
+
+# ============================================================================
+# 25. BRIGHTNESS AND LIGHT
+# ============================================================================
+luceo,fulgeo,niteo,splendeo
+corusco,mico,scintillo
+clarus,illustris,lucidus,splendidus
+
+# ============================================================================
+# 26. SIZE AND POWER
+# ============================================================================
+ingens,vastus,immanis,immensus
+magnus,grandis,amplus
+parvus,exiguus,minutus,pusillus
+acer,atrox,dirus,saevus,trux,ferus
+ferox,violentus,truculentus
+fortis,validus,robustus,strenuus
+
+# ============================================================================
+# 27. SPEED AND SLOWNESS
+# ============================================================================
+celer,velox,rapidus,pernix,praeceps
+lentus,tardus,segnis,piger
+
+# ============================================================================
+# 28. ANIMALS (EPIC VOCABULARY)
+# ============================================================================
+serpens,anguis,coluber,draco
+fera,bestia,belua
+avis,volucris,ales
+taurus,bos,iuvencus
+leo,lea,leaena
+lupus,lupa
+cervus,cerva
+aper,sus,porcus
+equus,sonipes,caballus
+
+# ============================================================================
+# 29. ARCHITECTURE AND DWELLING
+# ============================================================================
+turris,arx,castellum
+atrium,vestibulum
+tectum,culmen,fastigium
+limen,postis,fores
+murus,moenia,vallum,agger
+
+# ============================================================================
+# 30. COMMAND AND RULE
+# ============================================================================
+impero,iubeo,mando
+regno,dominor,rego
+praeficio,praesum,praesideo
+
+# ============================================================================
+# 31. GIVING AND RECEIVING
+# ============================================================================
+do,dono,tribuo,praebeo,largior
+accipio,recipio,capio,sumo
+
+# ============================================================================
+# 32. EATING AND DRINKING
+# ============================================================================
+edo,comedo,voro,devoro
+bibo,poto,haurio
+pasco,pascor,depasco
+
+# ============================================================================
+# 33. SLEEP AND DEATH
+# ============================================================================
+somnus,sopor,quies,requies
+sopio,consopio,consopor
+obeo,pereo,intereo,occumbo
+
+# ============================================================================
+# 34. BEGINNING AND ENDING
+# ============================================================================
+incipio,ordior,exordior
+finio,perficio,conficio
+desino,cesso,desisto
+orior,nascor,exorior
+
+# ============================================================================
+# 35. PURSUIT AND HUNTING
+# ============================================================================
+sequor,persequor,insequor,sector
+fugo,pello,propello
+venor,captor
+agito,exagito
+
+# ============================================================================
+# 36. BINDING AND LOOSING
+# ============================================================================
+vincio,ligo,necto,alligo
+vinculum,catena,nodus
+solvo,resolvo,dissolvo,relaxo
+
+# ============================================================================
+# 37. COVERING AND CLOTHING
+# ============================================================================
+vestis,amictus,indumentum,stola
+velo,operio,involvo
+nudo,denudo,detego
+
+# ============================================================================
+# 38. PRAYER AND WORSHIP
+# ============================================================================
+oro,precor,supplico
+voveo,devoveo,nuncupo
+immolo,sacro,sacrifico
+sacer,sanctus,divinus,augustus
+
+# ============================================================================
+# 39. FATE AND DESTINY
+# ============================================================================
+fatum,sors,fortuna,casus
+letum,mors,nex,exitium,interitus
+pernicies,pestis,exitium
+
+# ============================================================================
+# 40. KNOWLEDGE AND WISDOM
+# ============================================================================
+scio,nosco,disco
+sapiens,prudens,doctus,peritus
+stultus,insipiens,demens,amens,vecors
+
+# ============================================================================
+# 41. TEACHING AND LEARNING
+# ============================================================================
+doceo,edoceo,erudio
+disco,condisco,addisco,perdisco
+magister,praeceptor,doctor
+
+# ============================================================================
+# 42. FOOD AND AGRICULTURE
+# ============================================================================
+seges,messis,fruges
+semen,granum
+aro,colo,sero
+herba,gramen
+pabulum,pastus,cibus,esca
+
+# ============================================================================
+# 43. PLAGUE AND DISEASE (THOMAS-RELEVANT)
+# Vocabulary specifically attested in plague narratives
+# ============================================================================
+tabum,sanies,virus,venenum
+pestis,lues,contagium,contagio
+morbus,aegritudo,valetudo
+langueo,languesco,tabesco
+foetor,putor
+marceo,marcesco
+putris,putridus,tabidus
+
+# ============================================================================
+# 44. WASTING AND DEPLETING
+# ============================================================================
+minuo,deminuo,imminuo
+tabesco,marcesco,languesco
+deficio,succumbo
+tero,attero,contero
+
+# ============================================================================
+# 45. FILLING AND ABUNDANCE
+# ============================================================================
+impleo,compleo,repleo
+cumulo,accumulo,coacervo
+satio,saturo
+abundans,copiosus,opulentus
+
+# ============================================================================
+# 46. WEAVING AND SPINNING (DIDACTIC POETRY)
+# ============================================================================
+texo,necto,plecto
+filum,stamen,linum
+tela,textum
+
+# ============================================================================
+# 47. SOUND AND NOISE
+# ============================================================================
+strepitus,fragor,crepitus
+murmur,susurrus,fremitus
+clamor,ululatus,gemitus
+mugitus,balatus
+
+# ============================================================================
+# 48. SMELL AND TASTE
+# ============================================================================
+odor,nidor,halitus
+sapor,gustus
+fragro,oleo,redoleo
+
+# ============================================================================
+# 49. HARDNESS AND SOFTNESS
+# ============================================================================
+durus,rigidus,solidus
+mollis,tener,lenis,mitis
+asper,horridus,scaber
+
+# ============================================================================
+# 50. TRUTH AND DECEPTION
+# ============================================================================
+verus,certus,sincerus
+falsus,mendax,fictus
+fallo,decipio,fraudo
+dolus,fraus,insidiae,astus
+
+# ============================================================================
+# 51. CONTAMINATION AND DEPLETION (CROSS-SEMANTIC POETIC PAIRS)
+# Words linked by poetic parallelism rather than strict synonymy
+# ============================================================================
+corrumpo,conrumpo,inficio,contamino,polluo
+vasto,exhaurio,depopulor,evacuo

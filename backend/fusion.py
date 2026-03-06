@@ -63,7 +63,7 @@ import math
 import os
 import re
 import sqlite3
-from collections import defaultdict
+from collections import Counter, defaultdict
 
 import numpy as np
 
@@ -784,12 +784,30 @@ def find_syntax_matches(source_units, target_units, source_id, target_id,
         return filtered if len(filtered) >= 3 else None  # skip trivially short
 
     target_fingerprint_index = defaultdict(list)
+    target_fp_counts = Counter()
     for ref, parse in target_parses.items():
         if ref not in target_by_ref:
             continue
         fp = _head_fingerprint(parse)
         if fp is not None:
             target_fingerprint_index[fp].append(ref)
+            target_fp_counts[fp] += 1
+
+    # Count source fingerprint frequencies for rarity filtering
+    source_fp_counts = Counter()
+    for source_ref, source_parse in source_parses.items():
+        if source_ref not in source_by_ref:
+            continue
+        fp = _head_fingerprint(source_parse)
+        if fp is not None:
+            source_fp_counts[fp] += 1
+
+    # Fingerprint rarity filter: skip patterns that are too common in
+    # the text pair.  Common patterns (e.g., Verb+Object 2-token lines)
+    # match hundreds of unrelated line pairs.  Rare patterns are the
+    # ones that indicate genuine structural imitation.
+    MAX_FINGERPRINT_FREQ = 4  # combined source + target occurrences
+    skipped_common = 0
 
     fingerprint_pairs = []
     for source_ref, source_parse in source_parses.items():
@@ -797,6 +815,10 @@ def find_syntax_matches(source_units, target_units, source_id, target_id,
             continue
         fp = _head_fingerprint(source_parse)
         if fp is None:
+            continue
+        combined_freq = source_fp_counts[fp] + target_fp_counts.get(fp, 0)
+        if combined_freq > MAX_FINGERPRINT_FREQ:
+            skipped_common += target_fp_counts.get(fp, 0)
             continue
         matching_targets = target_fingerprint_index.get(fp, [])
         for target_ref in matching_targets:
@@ -810,7 +832,8 @@ def find_syntax_matches(source_units, target_units, source_id, target_id,
 
     num_fp_candidates = len(fingerprint_pairs)
     print(f"[SYNTAX] Fingerprint: {len(target_fingerprint_index):,} unique patterns, "
-          f"{num_fp_candidates:,} novel candidate pairs")
+          f"{num_fp_candidates:,} novel candidate pairs "
+          f"(skipped {skipped_common:,} from common patterns)")
 
     # Score fingerprint candidates
     if num_fp_candidates > 50000:
@@ -936,7 +959,6 @@ def run_channel(channel_name, config, source_units, target_units,
     # of thousands of low-value matches (the main bottleneck for lemma_min1).
     max_results = config.get("max_results", 0)
     if max_results > 0 and len(matches) > max_results * 2:
-        from collections import Counter
         lemma_freq = Counter()
         for u in source_units:
             for lem in set(u.get('lemmas', [])):
@@ -1170,7 +1192,8 @@ def _recover_semantic_for_structural(line_channel_results, source_units,
         return
 
     # Compute cosine similarity for each structural pair
-    min_score = 0.5  # same threshold as semantic channel
+    min_score = 0.55  # stricter than semantic channel (0.5) to reduce
+                      # false positives from common syntactic patterns
     recovered = []
     for src_ref, tgt_ref, src_idx, tgt_idx in pairs_to_check:
         if src_idx >= len(source_emb) or tgt_idx >= len(target_emb):

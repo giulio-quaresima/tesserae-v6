@@ -1,0 +1,441 @@
+# Tesserae V6 Greek-Latin Cross-Lingual Dictionary Additions
+# Generated 2026-03-06 by Claude (Anthropic) in collaboration with Neil Coffee
+# Purpose: Expand cross-lingual dictionary for Greek-Latin allusion detection
+# Format: Greek lemma(s),Latin lemma(s) — comma-separated on each line
+# Methodology: Entries represent translational equivalents and poetic substitutions
+# attested in Greek-to-Latin literary reception (Homer→Vergil, etc.).
+# Organized by semantic field. Diacritics retained for readability.
+#
+# ============================================================================
+# 1. KILLING AND DESTRUCTION
+# ============================================================================
+κτείνω,occido,neco,interficio,caedo
+ὄλλυμι,perdo,deleo,perimo
+πέρθω,everto,diruo,subverto,destruo
+δαΐζω,caedo,trucido
+σφάζω,macto,iugulo,immolo
+ἀναιρέω,tollo,interficio
+φθείρω,corrumpo,perdo,vasto
+πορθέω,vasto,depopulor,diripio
+
+# ============================================================================
+# 2. STRIKING AND WOUNDING
+# ============================================================================
+τύπτω,ferio,pulso,percutio
+πλήσσω,percutio,ferio
+βάλλω,iacio,mitto,peto
+τιτρώσκω,vulnero,saucio
+νύσσω,pungo,fodio
+
+# ============================================================================
+# 3. MOTION AND TRAVEL
+# ============================================================================
+βαίνω,eo,gradior,incedo
+ἔρχομαι,venio,eo,pergo
+στείχω,incedo,gradior
+ὁρμάω,ruo,irruo,impetum facio
+σεύομαι,ruo,feror
+ἱκνέομαι,advenio,pervenio,accedo
+φεύγω,fugio,effugio
+τρέχω,curro,decurro
+πέτομαι,volo,volito
+νέομαι,redeo,revertor
+
+# ============================================================================
+# 4. SPEAKING AND CALLING
+# ============================================================================
+λέγω,dico,loquor,aio
+φημί,dico,aio,inquam
+ἀγορεύω,dico,loquor,contionor
+αὐδάω,loquor,fari
+φωνέω,voco,clamo
+βοάω,clamo,vociferor,exclamo
+κελεύω,iubeo,impero
+ᾄδω,cano,canto
+ἀείδω,cano,canto
+ἐνέπω,narro,dico,cano,refero
+μέλπω,cano,canto,celebro
+ὑμνέω,cano,celebro
+
+# ============================================================================
+# 5. SEEING AND PERCEIVING
+# ============================================================================
+ὁράω,video,cerno,conspicio
+λεύσσω,video,conspicio,aspicio
+δέρκομαι,video,tueor,aspicio
+εἰσοράω,conspicio,aspicio,intueor
+θεάομαι,specto,contemplor
+σκοπέω,specto,contemplor
+γιγνώσκω,nosco,cognosco
+νοέω,sentio,intellego,animadverto
+οἶδα,scio,novi
+
+# ============================================================================
+# 6. GRIEF AND LAMENTATION
+# ============================================================================
+κλαίω,fleo,lacrimo,ploro
+γοάω,gemo,plango
+κωκύω,ululo,plango
+στενάχω,gemo,ingemisco,suspiro
+ὀδύρομαι,queror,lamentor,defleo
+θρηνέω,lamentor,plango
+πενθέω,lugeo,maereo
+ἄχνυμαι,doleo,maereo,angor
+
+# ============================================================================
+# 7. FEAR AND DREAD
+# ============================================================================
+φοβέομαι,timeo,metuo
+δείδω,timeo,metuo,vereor,paveo
+τρέω,tremo,trepido,paveo
+ταρβέω,paveo,trepido
+πτήσσω,paveo,tremo
+φρίσσω,horreo,horresco
+
+# ============================================================================
+# 8. ANGER AND RAGE
+# ============================================================================
+χολόομαι,irascor,indignor
+μηνίω,irascor,saevio
+κοτέω,irascor,succenseo
+ὀργίζομαι,irascor,indignor
+μαίνομαι,furo,insanio
+λύσσαω,furo,saevio
+
+# ============================================================================
+# 9. JOY AND DELIGHT
+# ============================================================================
+χαίρω,gaudeo,laetor
+τέρπομαι,gaudeo,delector,fruor
+γηθέω,gaudeo,laetor,exsulto
+γελάω,rideo
+μειδιάω,subrideo,rideo
+
+# ============================================================================
+# 10. DESIRE AND LOVE
+# ============================================================================
+ἐράω,amo,ardeo
+φιλέω,amo,diligo
+ποθέω,desidero,cupio
+ἱμείρω,cupio,desidero,aveo
+λιλαίομαι,cupio,aveo,gestio
+
+# ============================================================================
+# 11. HIDING AND APPEARING
+# ============================================================================
+κρύπτω,celo,abscondo,occulo
+κεύθω,celo,tego,abdo
+καλύπτω,tego,velo,operio
+λανθάνω,lateo,fallo
+φαίνω,ostendo,monstro,exhibeo
+
+# ============================================================================
+# 12. WEEPING AND TEARS
+# ============================================================================
+δάκρυ,lacrima,fletus
+δάκρυον,lacrima,fletus
+γόος,gemitus,planctus,luctus,fletus
+
+# ============================================================================
+# 13. DEATH AND FATE
+# ============================================================================
+θάνατος,mors,letum,nex
+μόρος,fatum,mors
+κήρ,fatum,mors,letum
+μοῖρα,fatum,sors,parca
+αἶσα,fatum,sors
+πότμος,fatum,sors,mors
+ὄλεθρος,exitium,pernicies,clades
+
+# ============================================================================
+# 14. BURNING AND FIRE
+# ============================================================================
+καίω,uro,incendo,cremo
+φλέγω,flagro,ardeo,incendo
+αἴθω,uro,ardeo
+πῦρ,ignis,flamma
+φλόξ,flamma,ignis
+πυρά,rogus,pyra
+
+# ============================================================================
+# 15. WATER AND SEA
+# ============================================================================
+θάλασσα,mare,pontus,pelagus,aequor
+πόντος,mare,pontus,pelagus
+πέλαγος,mare,pelagus,aequor
+ἅλς,mare,sal,pontus
+κῦμα,unda,fluctus
+ῥόθιον,fluctus,unda
+κλύδων,fluctus,aestus
+ποταμός,flumen,fluvius,amnis
+πηγή,fons,scatebra
+ῥέεθρον,flumen,amnis
+ναῦς,navis,puppis,carina,ratis
+νηῦς,navis,puppis
+
+# ============================================================================
+# 16. WIND AND STORM
+# ============================================================================
+ἄνεμος,ventus,aura,flatus
+πνοή,flatus,spiritus,aura
+αὔρα,aura,ventus
+λαῖλαψ,procella,tempestas,turbo
+χειμών,tempestas,hiems,procella
+βροντή,tonitrus
+κεραυνός,fulmen,fulgur
+ἀστραπή,fulgur,fulmen
+
+# ============================================================================
+# 17. LANDSCAPE
+# ============================================================================
+πέτρα,saxum,rupes,lapis
+λᾶας,saxum,lapis
+σκόπελος,scopulus,cautes
+σπήλαιον,spelunca,antrum,specus
+σπέος,spelunca,antrum
+ἄντρον,antrum,spelunca,caverna
+ὄρος,mons,iugum
+κορυφή,vertex,cacumen,culmen
+σκοπιά,specula,vertex
+λειμών,pratum,campus
+αὐλών,vallis,convallis
+φάραγξ,vallis,fauces
+πεδίον,campus,planities
+ἀρουρα,arvum,ager,campus
+ὕλη,silva,nemus,lucus
+δρῦς,quercus,robur
+ἐλάτη,abies,pinus
+
+# ============================================================================
+# 18. WEAPONS AND ARMOR
+# ============================================================================
+ξίφος,gladius,ensis,ferrum
+φάσγανον,gladius,ensis
+ἄορ,ensis,gladius,mucro
+δόρυ,hasta,telum,lancea
+ἔγχος,hasta,telum,pilum
+αἰχμή,cuspis,mucro,hasta
+βέλος,telum,iaculum,sagitta
+τόξον,arcus
+ἰός,sagitta,telum
+ὀϊστός,sagitta
+ἀσπίς,clipeus,scutum
+σάκος,scutum,clipeus
+θώραξ,lorica,thorax
+κόρυς,galea,cassis
+πήληξ,galea
+κνημίς,ocrea
+
+# ============================================================================
+# 19. BODY PARTS
+# ============================================================================
+κεφαλή,caput
+κάρη,caput,vertex
+κάρηνον,caput,vertex
+πρόσωπον,vultus,facies,os
+ὤψ,vultus,facies,os
+ὀφθαλμός,oculus
+ὄσσε,oculus,lumen,lumina
+στῆθος,pectus
+στέρνον,pectus
+χείρ,manus
+παλάμη,manus,palma
+γόνυ,genu
+αἷμα,sanguis,cruor
+ἰχώρ,tabum,sanies
+δέρμα,cutis,pellis
+ῥινός,corium,pellis
+κόμη,coma,crinis,capillus,caesaries
+ῥάχις,dorsum,spina,tergum
+
+# ============================================================================
+# 20. ANIMALS
+# ============================================================================
+ἵππος,equus,sonipes
+πῶλος,pullus,equulus
+κύων,canis
+λέων,leo
+ταῦρος,taurus,bos
+βοῦς,bos,iuvencus
+ὄϊς,ovis,pecus
+αἴξ,capra,caper,hircus
+σῦς,sus,aper
+ὄφις,serpens,anguis,coluber
+δράκων,draco,serpens,anguis
+ὄρνις,avis,volucris,ales
+αἰετός,aquila
+ἐλάφος,cervus,cerva
+
+# ============================================================================
+# 21. DWELLING AND CITY
+# ============================================================================
+πόλις,urbs,civitas,oppidum,moenia
+ἄστυ,urbs,oppidum
+πτολίεθρον,urbs,arx
+τεῖχος,murus,moenia
+πύργος,turris,arx
+οἶκος,domus,aedes,tecta
+δόμος,domus,tecta
+δῶμα,domus,tecta,regia
+μέγαρον,domus,regia,aula,atrium
+πύλη,porta,ianua
+θύρα,porta,ianua,fores
+
+# ============================================================================
+# 22. FAMILY AND RELATIONSHIPS
+# ============================================================================
+πατήρ,pater,genitor,parens
+μήτηρ,mater,genetrix,parens
+υἱός,filius,natus,gnatus
+θυγάτηρ,filia,nata,virgo
+ἀδελφός,frater,germanus
+κασίγνητος,frater,germanus
+ἀδελφή,soror,germana
+ἄλοχος,uxor,coniunx,marita
+δάμαρ,uxor,coniunx
+παράκοιτις,coniunx,uxor
+γέρων,senex,grandaevus
+νέος,iuvenis,adulescens
+
+# ============================================================================
+# 23. RULE AND COMMAND
+# ============================================================================
+βασιλεύς,rex,tyrannus,dominus
+ἄναξ,rex,dominus
+κοίρανος,rex,dux
+ἡγεμών,dux,imperator,rector
+ἄρχω,impero,rego,dominor
+ἀνάσσω,regno,dominor
+κρατέω,teneo,obtineo,potior
+
+# ============================================================================
+# 24. MIND AND SPIRIT
+# ============================================================================
+θυμός,animus,spiritus,furor,ira
+φρήν,mens,animus,pectus,cor
+νόος,mens,ingenium,consilium
+ψυχή,anima,spiritus
+μέλος,membrum
+γνώμη,sententia,iudicium,consilium
+
+# ============================================================================
+# 25. GLORY AND HONOR
+# ============================================================================
+κλέος,gloria,fama,laus
+κῦδος,gloria,decus,honor
+τιμή,honor,dignitas
+ἀρετή,virtus,fortitudo
+
+# ============================================================================
+# 26. SHIPS AND SAILING
+# ============================================================================
+ναῦς,navis,puppis,carina,ratis
+νηῦς,navis,puppis,carina
+πρύμνα,puppis
+πρῷρα,prora
+ἱστίον,velum,carbasus
+ἐρέσσω,remigo
+πλέω,navigo,vehor
+κυβερνήτης,gubernator
+ναύτης,nauta
+ἐρέτης,remex
+
+# ============================================================================
+# 27. HORSES AND CHARIOTS
+# ============================================================================
+ἅρμα,currus
+δίφρος,currus,sella
+ἵππος,equus,sonipes
+ἡνίοχος,auriga
+ζυγόν,iugum
+
+# ============================================================================
+# 28. SACRIFICE AND WORSHIP
+# ============================================================================
+θύω,immolo,macto,sacrifico
+ἱερεύω,immolo,macto
+εὔχομαι,precor,oro,voveo
+λίσσομαι,precor,supplico,oro
+ἑκατόμβη,sacrificium
+ἱερόν,templum,fanum,delubrum
+τέμενος,templum,lucus
+βωμός,ara,altare
+
+# ============================================================================
+# 29. FOOD AND FEAST
+# ============================================================================
+δαίς,daps,epulae,convivium
+εἰλαπίνη,convivium,epulae
+οἶνος,vinum,bacchus
+μέθυ,vinum,merum
+σῖτος,cibus,frumentum
+κρέας,caro,viscera
+
+# ============================================================================
+# 30. DARKNESS AND LIGHT
+# ============================================================================
+σκότος,tenebrae,caligo,obscuritas
+ζόφος,tenebrae,caligo
+ἔρεβος,erebus,tenebrae,inferi
+φάος,lux,lumen
+φέγγος,lumen,splendor
+αὐγή,iubar,lux,splendor
+σέλας,fulgor,splendor,iubar
+
+# ============================================================================
+# 31. SLEEP AND DREAMS
+# ============================================================================
+ὕπνος,somnus,sopor
+ὄνειρος,somnium,insomnium
+ὄναρ,somnium
+
+# ============================================================================
+# 32. CLOTHING AND ADORNMENT
+# ============================================================================
+πέπλος,vestis,palla,stola
+χιτών,tunica
+χλαῖνα,lacerna,pallium
+ζώνη,cingulum,balteus
+
+# ============================================================================
+# 33. EARTH AND AGRICULTURE
+# ============================================================================
+γῆ,terra,tellus,humus
+γαῖα,terra,tellus
+χθών,terra,tellus,humus
+ἀρουρα,arvum,ager
+ἄροτρον,aratrum
+ἀρόω,aro
+σπείρω,sero,semino
+θερίζω,meto
+ἄμπελος,vitis
+σταφυλή,uva
+σῖτος,frumentum,seges
+
+# ============================================================================
+# 34. SPEED AND SWIFTNESS
+# ============================================================================
+ταχύς,celer,velox,rapidus
+ὠκύς,celer,velox,pernix
+θοός,celer,velox
+κραιπνός,rapidus,praeceps
+
+# ============================================================================
+# 35. BEAUTY AND EXCELLENCE
+# ============================================================================
+καλός,pulcher,formosus
+ἀγλαός,splendidus,illustris,praeclarus
+ἀγαθός,bonus,probus
+ἐσθλός,bonus,fortis
+ἄριστος,optimus,praestans
+
+# ============================================================================
+# 36. PLAGUE AND DISEASE
+# Vocabulary relevant to Thucydides/Lucretius/Vergil plague narratives
+# ============================================================================
+νόσος,morbus,pestis,lues
+λοιμός,pestis,pestilentia,lues
+πυρετός,febris
+ἕλκος,ulcus,vulnus
+φλεγμονή,inflammatio
+δίψα,sitis
