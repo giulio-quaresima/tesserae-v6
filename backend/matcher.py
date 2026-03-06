@@ -36,6 +36,7 @@ from collections import defaultdict, Counter
 import os
 from concurrent.futures import ProcessPoolExecutor
 from backend.zipf import find_zipf_elbow
+from backend.worker_util import safe_worker_count
 
 
 def _get_trigrams(token):
@@ -501,7 +502,7 @@ class Matcher:
             tgt_trigram_cache.append((tgt_tokens, tgt_trigrams))
 
         num_source = len(source_units)
-        num_workers = min(8, os.cpu_count() or 1)
+        num_workers = safe_worker_count()
         use_parallel = num_source >= 200 and num_workers > 1
 
         if use_parallel:
@@ -602,7 +603,7 @@ class Matcher:
         start_time = time.time()
 
         # Decide whether to parallelize based on problem size
-        num_workers = min(8, os.cpu_count() or 1)
+        num_workers = safe_worker_count()
         use_parallel = num_source >= 200 and num_workers > 1
 
         if use_parallel:

@@ -742,7 +742,8 @@ def find_syntax_matches(source_units, target_units, source_id, target_id,
     # Score lemma-gated candidates — use multiprocessing for large sets
     if num_candidates > 50000:
         import multiprocessing
-        num_workers = min(multiprocessing.cpu_count(), 8)
+        from backend.worker_util import safe_worker_count
+        num_workers = safe_worker_count()
         chunk_size = (num_candidates + num_workers - 1) // num_workers
         chunks = [
             candidate_pairs[i:i + chunk_size]
@@ -813,7 +814,8 @@ def find_syntax_matches(source_units, target_units, source_id, target_id,
     # Score fingerprint candidates
     if num_fp_candidates > 50000:
         import multiprocessing
-        num_workers = min(multiprocessing.cpu_count(), 8)
+        from backend.worker_util import safe_worker_count
+        num_workers = safe_worker_count()
         chunk_size = (num_fp_candidates + num_workers - 1) // num_workers
         chunks = [
             fingerprint_pairs[i:i + chunk_size]
