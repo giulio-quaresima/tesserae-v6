@@ -65,6 +65,8 @@ import re
 import sqlite3
 from collections import defaultdict
 
+import numpy as np
+
 from backend.matcher import DEFAULT_LATIN_STOP_WORDS, DEFAULT_GREEK_STOP_WORDS, DEFAULT_ENGLISH_STOP_WORDS
 
 # Stoplist lookup by language code
@@ -134,6 +136,8 @@ CHANNEL_WEIGHTS = {
                             #   is strong allusion evidence; min_matches=1 is sufficient)
     "syntax": 0.3,          # structural: dependency pattern match (low — supplements other
                             #   channels but unreliable as primary signal)
+    "syntax_structural": 1.5,  # structural: identical dependency head pattern with no shared
+                            #   lemmas (catches pure syntactic imitation like Thomas's tricolon)
     "lemma_min1": 0.3,      # lexical: single shared lemma (low — very high recall, very
                             #   noisy; serves as a catch-all for otherwise missed pairs)
 }
@@ -589,6 +593,74 @@ def _compute_syntax_score(source_parse, target_parse):
     return score / max_score if max_score > 0 else 0.0
 
 
+def _compute_structural_score(source_parse, target_parse):
+    """Score structural similarity based on dependency head patterns.
+
+    For pairs with no shared lemmas — compares head arrays and deprel
+    sequences directly to detect syntactic imitation without lexical overlap.
+
+    Returns a score in [0, 1] or 0.0 if structures don't match well enough.
+    """
+    s_heads = source_parse.get("heads", [])
+    t_heads = target_parse.get("heads", [])
+    s_deprels = source_parse.get("deprels", [])
+    t_deprels = target_parse.get("deprels", [])
+    s_upos = source_parse.get("upos", [])
+    t_upos = target_parse.get("upos", [])
+
+    if not s_heads or not t_heads:
+        return 0.0
+
+    # Filter out punctuation tokens for comparison
+    def _filter_non_punct(heads, deprels, upos):
+        filtered_h, filtered_d, filtered_u = [], [], []
+        for i in range(min(len(heads), len(upos))):
+            if upos[i] not in ("PUNCT", "X"):
+                filtered_h.append(heads[i])
+                filtered_d.append(deprels[i] if i < len(deprels) else "")
+                filtered_u.append(upos[i])
+        return filtered_h, filtered_d, filtered_u
+
+    s_h, s_d, s_u = _filter_non_punct(s_heads, s_deprels, s_upos)
+    t_h, t_d, t_u = _filter_non_punct(t_heads, t_deprels, t_upos)
+
+    if not s_h or not t_h:
+        return 0.0
+
+    # Must be same length to have identical structure
+    if len(s_h) != len(t_h):
+        return 0.0
+
+    # 1. Head pattern match — compare relative head indices
+    # Normalize: convert absolute head indices to relative patterns
+    head_match = (tuple(s_h) == tuple(t_h))
+    if not head_match:
+        return 0.0
+
+    # 2. Deprel sequence similarity
+    deprel_matches = sum(1 for a, b in zip(s_d, t_d) if a == b)
+    deprel_score = deprel_matches / len(s_d) if s_d else 0.0
+
+    # 3. UPOS sequence similarity
+    upos_matches = sum(1 for a, b in zip(s_u, t_u) if a == b)
+    upos_score = upos_matches / len(s_u) if s_u else 0.0
+
+    # Combined score: head match (0.5) + deprel agreement (0.3) + upos (0.2)
+    score = 0.5 + 0.3 * deprel_score + 0.2 * upos_score
+    return score
+
+
+def _score_structural_chunk(args):
+    """Worker function for parallel structural fingerprint scoring."""
+    pairs, min_score = args
+    hits = []
+    for source_ref, source_parse, target_ref, target_parse in pairs:
+        score = _compute_structural_score(source_parse, target_parse)
+        if score >= min_score:
+            hits.append((source_ref, target_ref, score))
+    return hits
+
+
 # Pair-size gates removed: dictionary (inverted index), lemma_min1 (IDF
 # pre-filter), and syntax (caching + multiprocessing) are now fast enough
 # to run on any pair size.  All 9 channels always run.
@@ -609,11 +681,13 @@ def find_syntax_matches(source_units, target_units, source_id, target_id,
                         min_score=0.1, max_results=50000):
     """Find syntax matches between source and target using syntax_latin.db.
 
-    Uses a lemma-inverted-index pruning strategy: only computes syntax
-    similarity for pairs sharing at least one lemma, since pairs with
-    no shared lemmas always score 0.0.
-
-    Parallelized for large candidate sets using multiprocessing.
+    Two paths:
+      A) Lemma-gated: pairs sharing >=1 lemma, scored by deprel/upos agreement
+         at shared lemma positions (_compute_syntax_score).
+      B) Structural fingerprint: pairs with identical head patterns (no shared
+         lemmas required), scored by deprel/upos sequence similarity
+         (_compute_structural_score). Catches syntactic imitation without
+         lexical overlap (e.g., Thomas's Georg. 3.481 / DRN 6.1140).
 
     Returns results in the same format as other channels.
     """
@@ -639,7 +713,7 @@ def find_syntax_matches(source_units, target_units, source_id, target_id,
             ):
                 target_lemma_index[lemma.lower()].add(ref)
 
-    # Collect all candidate pairs via shared lemmas
+    # --- Path A: Lemma-gated candidates (existing) ---
     candidate_pairs = []
     for source_ref, source_parse in source_parses.items():
         if source_ref not in source_by_ref:
@@ -665,7 +739,7 @@ def find_syntax_matches(source_units, target_units, source_id, target_id,
 
     num_candidates = len(candidate_pairs)
 
-    # Score candidates — use multiprocessing for large sets
+    # Score lemma-gated candidates — use multiprocessing for large sets
     if num_candidates > 50000:
         import multiprocessing
         num_workers = min(multiprocessing.cpu_count(), 8)
@@ -691,40 +765,113 @@ def find_syntax_matches(source_units, target_units, source_id, target_id,
             if score >= min_score:
                 scored_pairs.append((source_ref, target_ref, score))
 
-    # Build result dicts
-    results = []
-    for source_ref, target_ref, score in scored_pairs:
-        source_unit = source_by_ref[source_ref]
-        target_unit = target_by_ref[target_ref]
-        results.append({
-            "source": {
-                "ref": source_ref,
-                "text": source_unit.get("text", ""),
-                "tokens": source_unit.get("tokens", []),
-                "lemmas": source_unit.get("lemmas", []),
-                "highlight_indices": [],
-            },
-            "target": {
-                "ref": target_ref,
-                "text": target_unit.get("text", ""),
-                "tokens": target_unit.get("tokens", []),
-                "lemmas": target_unit.get("lemmas", []),
-                "highlight_indices": [],
-            },
-            "score": score,
-            "overall_score": score,
-            "matched_words": [],
-        })
+    lemma_pair_set = {(s, t) for s, t, _ in scored_pairs}
+    # Track fingerprint pairs separately for distinct channel output
+    fingerprint_scored = []
+
+    # --- Path B: Structural fingerprint candidates (no shared lemmas needed) ---
+    # Build head-pattern → [target_ref] index from target parses
+    def _head_fingerprint(parse):
+        """Create a hashable fingerprint from non-punct head indices."""
+        heads = parse.get("heads", [])
+        upos = parse.get("upos", [])
+        filtered = tuple(
+            heads[i] for i in range(min(len(heads), len(upos)))
+            if upos[i] not in ("PUNCT", "X")
+        )
+        return filtered if len(filtered) >= 3 else None  # skip trivially short
+
+    target_fingerprint_index = defaultdict(list)
+    for ref, parse in target_parses.items():
+        if ref not in target_by_ref:
+            continue
+        fp = _head_fingerprint(parse)
+        if fp is not None:
+            target_fingerprint_index[fp].append(ref)
+
+    fingerprint_pairs = []
+    for source_ref, source_parse in source_parses.items():
+        if source_ref not in source_by_ref:
+            continue
+        fp = _head_fingerprint(source_parse)
+        if fp is None:
+            continue
+        matching_targets = target_fingerprint_index.get(fp, [])
+        for target_ref in matching_targets:
+            # Skip pairs already found by lemma gate
+            if (source_ref, target_ref) in lemma_pair_set:
+                continue
+            target_parse = target_parses[target_ref]
+            fingerprint_pairs.append(
+                (source_ref, source_parse, target_ref, target_parse)
+            )
+
+    num_fp_candidates = len(fingerprint_pairs)
+    print(f"[SYNTAX] Fingerprint: {len(target_fingerprint_index):,} unique patterns, "
+          f"{num_fp_candidates:,} novel candidate pairs")
+
+    # Score fingerprint candidates
+    if num_fp_candidates > 50000:
+        import multiprocessing
+        num_workers = min(multiprocessing.cpu_count(), 8)
+        chunk_size = (num_fp_candidates + num_workers - 1) // num_workers
+        chunks = [
+            fingerprint_pairs[i:i + chunk_size]
+            for i in range(0, num_fp_candidates, chunk_size)
+        ]
+        with multiprocessing.Pool(num_workers) as pool:
+            chunk_results = pool.map(
+                _score_structural_chunk,
+                [(chunk, min_score) for chunk in chunks],
+            )
+        for chunk_hits in chunk_results:
+            fingerprint_scored.extend(chunk_hits)
+    else:
+        for source_ref, source_parse, target_ref, target_parse in fingerprint_pairs:
+            score = _compute_structural_score(source_parse, target_parse)
+            if score >= min_score:
+                fingerprint_scored.append((source_ref, target_ref, score))
+
+    # Build result dicts — separate lists for lemma-gated and fingerprint
+    def _build_results(pair_list):
+        out = []
+        for source_ref, target_ref, score in pair_list:
+            source_unit = source_by_ref[source_ref]
+            target_unit = target_by_ref[target_ref]
+            out.append({
+                "source": {
+                    "ref": source_ref,
+                    "text": source_unit.get("text", ""),
+                    "tokens": source_unit.get("tokens", []),
+                    "lemmas": source_unit.get("lemmas", []),
+                    "highlight_indices": [],
+                },
+                "target": {
+                    "ref": target_ref,
+                    "text": target_unit.get("text", ""),
+                    "tokens": target_unit.get("tokens", []),
+                    "lemmas": target_unit.get("lemmas", []),
+                    "highlight_indices": [],
+                },
+                "score": score,
+                "overall_score": score,
+                "matched_words": [],
+            })
+        return out
+
+    lemma_results = _build_results(scored_pairs)
+    fp_results = _build_results(fingerprint_scored)
 
     print(f"[SYNTAX] {len(source_parses)} source, {len(target_parses)} target parses; "
-          f"{num_candidates:,} comparisons; {len(results)} matches (score >= {min_score})")
+          f"{num_candidates:,} lemma-gated + {num_fp_candidates:,} fingerprint comparisons; "
+          f"{len(lemma_results)} lemma + {len(fp_results)} fingerprint matches (score >= {min_score})")
 
     # Keep top results by score
-    if max_results > 0 and len(results) > max_results:
-        results.sort(key=lambda r: r["overall_score"], reverse=True)
-        results = results[:max_results]
+    if max_results > 0 and len(lemma_results) > max_results:
+        lemma_results.sort(key=lambda r: r["overall_score"], reverse=True)
+        lemma_results = lemma_results[:max_results]
 
-    return results
+    return {"syntax": lemma_results, "syntax_structural": fp_results}
 
 
 def run_channel(channel_name, config, source_units, target_units,
@@ -736,15 +883,15 @@ def run_channel(channel_name, config, source_units, target_units,
 
     if match_type == "syntax":
         # Syntax channel uses its own scoring from syntax_latin.db
+        # Returns dict: {"syntax": [...], "syntax_structural": [...]}
         max_results = config.get("max_results", 50000)
         min_score = settings.get("min_score", 0.1)
-        results = find_syntax_matches(
+        return find_syntax_matches(
             source_units, target_units,
             source_id, target_id,
             min_score=min_score,
             max_results=max_results,
         )
-        return results
 
     if match_type == "semantic":
         from backend.semantic_similarity import find_semantic_matches
@@ -956,6 +1103,115 @@ def _get_total_texts(language='la'):
             _total_texts_cache[language] = {'la': 1429, 'grc': 691}.get(
                 language, 1000)
     return _total_texts_cache[language]
+
+
+def _recover_semantic_for_structural(line_channel_results, source_units,
+                                     target_units, source_path, target_path,
+                                     language='la'):
+    """Recover semantic similarity for structural fingerprint pairs.
+
+    The semantic channel's top_n cap (default 100 per source line) filters out
+    many valid targets in dense similarity regions (e.g., plague narratives
+    where hundreds of lines exceed the 0.5 threshold). Structural fingerprint
+    pairs that have no shared lemmas may still have meaningful semantic
+    similarity that was filtered by this cap.
+
+    This function looks up the actual cosine similarity for each structural
+    pair using precomputed embeddings and injects qualifying results into the
+    semantic channel results, allowing fusion to naturally combine syntax +
+    semantic evidence.
+    """
+    structural_results = line_channel_results.get("syntax_structural", [])
+    if not structural_results:
+        return
+
+    # Build ref → unit-index mappings
+    src_ref_to_idx = {}
+    for i, u in enumerate(source_units):
+        src_ref_to_idx[u.get("ref", "")] = i
+    tgt_ref_to_idx = {}
+    for i, u in enumerate(target_units):
+        tgt_ref_to_idx[u.get("ref", "")] = i
+
+    # Collect (source_idx, target_idx) pairs that need semantic lookup.
+    # Skip pairs that already have semantic results (they passed the cap).
+    existing_semantic = set()
+    for r in line_channel_results.get("semantic", []):
+        rs = r.get("source", {}).get("ref", "")
+        rt = r.get("target", {}).get("ref", "")
+        existing_semantic.add((rs, rt))
+
+    pairs_to_check = []
+    for r in structural_results:
+        src_ref = r.get("source", {}).get("ref", "")
+        tgt_ref = r.get("target", {}).get("ref", "")
+        if (src_ref, tgt_ref) in existing_semantic:
+            continue
+        src_idx = src_ref_to_idx.get(src_ref)
+        tgt_idx = tgt_ref_to_idx.get(tgt_ref)
+        if src_idx is not None and tgt_idx is not None:
+            pairs_to_check.append((src_ref, tgt_ref, src_idx, tgt_idx))
+
+    if not pairs_to_check:
+        return
+
+    # Load precomputed embeddings
+    try:
+        from backend.embedding_storage import load_embeddings
+        source_emb = load_embeddings(source_path, language)
+        target_emb = load_embeddings(target_path, language)
+        if source_emb is None or target_emb is None:
+            return
+    except Exception as e:
+        print(f"[SEMANTIC RECOVERY] Failed to load embeddings: {e}")
+        return
+
+    # Compute cosine similarity for each structural pair
+    min_score = 0.5  # same threshold as semantic channel
+    recovered = []
+    for src_ref, tgt_ref, src_idx, tgt_idx in pairs_to_check:
+        if src_idx >= len(source_emb) or tgt_idx >= len(target_emb):
+            continue
+        s_vec = source_emb[src_idx]
+        t_vec = target_emb[tgt_idx]
+        # Cosine similarity (embeddings are typically already normalized,
+        # but normalize to be safe)
+        s_norm = np.linalg.norm(s_vec)
+        t_norm = np.linalg.norm(t_vec)
+        if s_norm == 0 or t_norm == 0:
+            continue
+        sim = float(np.dot(s_vec, t_vec) / (s_norm * t_norm))
+        if sim >= min_score:
+            src_unit = source_units[src_idx]
+            tgt_unit = target_units[tgt_idx]
+            recovered.append({
+                "source": {
+                    "ref": src_ref,
+                    "text": src_unit.get("text", ""),
+                    "tokens": src_unit.get("tokens", []),
+                    "lemmas": src_unit.get("lemmas", []),
+                    "highlight_indices": [],
+                },
+                "target": {
+                    "ref": tgt_ref,
+                    "text": tgt_unit.get("text", ""),
+                    "tokens": tgt_unit.get("tokens", []),
+                    "lemmas": tgt_unit.get("lemmas", []),
+                    "highlight_indices": [],
+                },
+                "score": sim,
+                "overall_score": sim,
+                "matched_words": [],
+                "match_basis": "semantic",
+            })
+
+    if recovered:
+        if "semantic" not in line_channel_results:
+            line_channel_results["semantic"] = []
+        line_channel_results["semantic"].extend(recovered)
+        print(f"[SEMANTIC RECOVERY] Recovered {len(recovered)} semantic scores "
+              f"for {len(pairs_to_check)} structural pairs "
+              f"(skipped {len(pairs_to_check) - len(recovered)} below threshold)")
 
 
 def fuse_results(channel_results, weights=None, convergence_bonus=None,
@@ -1208,11 +1464,18 @@ def fuse_results(channel_results, weights=None, convergence_bonus=None,
                 min_idf_gate_fired = True
         else:
             # No corpus IDF data: either all matched words are sub-lexical
-            # fragments (sound/edit_distance) or had df=0. Treat as
-            # common-word match — absence of lexical evidence should not
-            # be rewarded with a free pass on rarity scoring.
-            multiplier = _idf_floor
-            geom_mean_idf = _idf_floor
+            # fragments (sound/edit_distance) or had df=0.
+            if "syntax_structural" in info["channels"]:
+                # Structural fingerprint match: identical dependency head
+                # pattern with no shared lemmas. This is genuine structural
+                # evidence, not absence of evidence. Use neutral multiplier.
+                multiplier = 1.0
+                geom_mean_idf = _idf_threshold
+            else:
+                # Other channels: treat as common-word match — absence of
+                # lexical evidence should not be rewarded.
+                multiplier = _idf_floor
+                geom_mean_idf = _idf_floor
             min_idf_gate_fired = False
 
         # ---------------------------------------------------------------
@@ -1468,9 +1731,13 @@ def merge_line_and_window(line_results, window_results):
 
         if novel:
             # Window covers at least one new line pair — keep it,
-            # and supersede any overlapping line results
+            # and supersede overlapping line results that score lower
+            window_score = r.get("fused_score", 0)
             kept_windows.append(r)
-            superseded.update(overlapping)
+            for line_idx in overlapping:
+                line_score = line_results[line_idx].get("fused_score", 0)
+                if window_score >= line_score:
+                    superseded.add(line_idx)
         # If fully subsumed (no novel pairs), drop the window
 
     merged = [r for i, r in enumerate(line_results) if i not in superseded]
@@ -1503,7 +1770,13 @@ def _run_channels_sequential(channels, configs, source_units, target_units,
             source_path=source_path, target_path=target_path,
         )
         if results:
-            channel_results[ch_name] = results
+            # Syntax returns dict with "syntax" and "syntax_structural" keys
+            if isinstance(results, dict):
+                for sub_ch, sub_results in results.items():
+                    if sub_results:
+                        channel_results[sub_ch] = sub_results
+            else:
+                channel_results[ch_name] = results
 
     return channel_results
 
@@ -1556,9 +1829,16 @@ def iter_fusion_search(source_units, target_units, matcher, scorer,
             matcher, scorer, source_id, target_id,
             source_path=source_path, target_path=target_path,
         )
-        count = len(results) if results else 0
-        if results:
-            line_channel_results[ch_name] = results
+        # Syntax returns dict with "syntax" and "syntax_structural" keys
+        if isinstance(results, dict):
+            count = sum(len(v) for v in results.values() if v)
+            for sub_ch, sub_results in results.items():
+                if sub_results:
+                    line_channel_results[sub_ch] = sub_results
+        else:
+            count = len(results) if results else 0
+            if results:
+                line_channel_results[ch_name] = results
 
         yield ("channel_done", {
             "channel": ch_name,
@@ -1583,6 +1863,13 @@ def iter_fusion_search(source_units, target_units, matcher, scorer,
                 "channels_done": list(line_channel_results.keys()),
                 "phase": "line",
             })
+
+    # Recover semantic scores for structural fingerprint pairs filtered
+    # by the semantic_top_n cap.
+    if "syntax_structural" in line_channel_results and source_path and target_path:
+        _recover_semantic_for_structural(
+            line_channel_results, source_units, target_units,
+            source_path, target_path, language)
 
     line_fused = fuse_results(line_channel_results, language=language)
 
@@ -1684,6 +1971,15 @@ def run_fusion_search(source_units, target_units, matcher, scorer,
         source_path, target_path, "line",
         progress_callback,
     )
+
+    # Recover semantic scores for structural fingerprint pairs that were
+    # filtered by the semantic_top_n cap. This lets fusion combine syntax +
+    # semantic evidence for pairs with no shared lemmas.
+    if "syntax_structural" in line_channel_results and source_path and target_path:
+        _recover_semantic_for_structural(
+            line_channel_results, source_units, target_units,
+            source_path, target_path, language)
+
     line_fused = fuse_results(line_channel_results, language=language)
 
     if mode == 'line':
