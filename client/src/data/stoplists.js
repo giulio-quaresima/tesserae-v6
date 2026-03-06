@@ -1,10 +1,11 @@
 export const STOPLIST_INFO = {
-  description: "The Default stoplist combines curated function words with automatic high-frequency detection using Zipf's law.",
-  
+  description: "The Default stoplist combines curated function words with automatic high-frequency detection using Zipf's law. In Fusion mode, the curated stoplist also plays a key role in scoring: it identifies function-word matches so they can be ranked below content-word matches.",
+
   howItWorks: [
     "Curated words: Pronouns, articles, conjunctions, prepositions, common verbs",
     "Zipf detection: Automatically identifies 10-50 additional high-frequency words from your selected texts",
-    "The two lists are combined to filter out noise while preserving meaningful vocabulary"
+    "The two lists are combined to filter out noise while preserving meaningful vocabulary",
+    "In Fusion mode: the curated list is used in the scoring layer to penalize function-word-only matches (e.g., sharing only tum + nec) while preserving content-word matches (e.g., pectore + curas)"
   ],
   
   latin: {

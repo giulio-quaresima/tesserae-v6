@@ -362,7 +362,7 @@ DISPLAY_NAMES = {
     'fasti': 'Fasti',
     'tristia': 'Tristia',
     'heroides': 'Heroides',
-    'odes': 'Odes',
+    'odes': 'Carmina',
     'carmina': 'Carmina',
     'satires': 'Satires',
     'epistles': 'Epistles',
@@ -390,16 +390,27 @@ def format_display_name(raw_name):
         return DISPLAY_NAMES[key]
     return raw_name.replace('_', ' ').title()
 
-def parse_part_number(part_str):
+# Works where parts are individual poems, not books
+PART_LABEL_OVERRIDES = {
+    'alcuin.carmina': 'Poem',
+    'theodulf_of_orleans.carmina': 'Poem',
+    'paulinus_of_aquileia.carmina': 'Poem',
+}
+
+def parse_part_number(part_str, label='Book'):
     """Parse part number and return display label"""
     part_str = part_str.lower()
     if part_str == 'fragments':
         return 'Fragments'
     try:
         num = int(part_str)
-        return f'Book {num}'
+        return f'{label} {num}'
     except ValueError:
-        return part_str.title()
+        # Handle alphanumeric identifiers like "2a", "2b" with the label
+        import re as _re
+        if _re.match(r'^\d+[a-z]$', part_str):
+            return f'{label} {part_str}'
+        return part_str.replace('_', ' ').title()
 
 def fix_surrogate_escapes(s):
     """Fix Python surrogate escapes from non-UTF-8 locale filesystems.
@@ -441,7 +452,9 @@ def get_text_metadata(filepath):
             work_raw = '.'.join(parts[1:part_idx])
             if part_idx + 1 < len(parts):
                 part_num = parts[part_idx + 1]
-                part_display = parse_part_number(part_num)
+                work_part_key = f"{author_raw}.{'.'.join(parts[1:part_idx])}"
+                part_label = PART_LABEL_OVERRIDES.get(work_part_key, 'Book')
+                part_display = parse_part_number(part_num, label=part_label)
                 is_part = True
         else:
             work_raw = '.'.join(parts[1:])

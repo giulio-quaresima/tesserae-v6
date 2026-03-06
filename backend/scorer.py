@@ -141,7 +141,16 @@ class Scorer:
                 src_match_list = src_tokens_list if match_type == 'exact' else src_lemmas
                 tgt_match_list = tgt_tokens_list if match_type == 'exact' else tgt_lemmas
 
+                src_match_set = set(src_match_list)
+                tgt_match_set = set(tgt_match_list)
                 for lemma in matched_lemmas:
+                    # Skip lemmas not present on both sides — these come from
+                    # synonym pairs in the dictionary channel where e.g.
+                    # "agger" is in source but only "tumulus" in target.
+                    # The synonym partner covers the actual match.
+                    if match_basis == 'dictionary':
+                        if lemma not in src_match_set or lemma not in tgt_match_set:
+                            continue
                     lemma_freq = freq.get(lemma, 1)
                     idf = math.log((total_words + 1) / (lemma_freq + 1)) + 1
                     # Find corresponding surface tokens for this lemma
@@ -202,13 +211,19 @@ class Scorer:
                         'ref': src_unit['ref'],
                         'text': src_unit['text'],
                         'tokens': src_unit['tokens'],
-                        'highlight_indices': src_highlight_indices
+                        'highlight_indices': src_highlight_indices,
+                        **({'line_refs': src_unit['line_refs'],
+                            'line_token_counts': src_unit['line_token_counts']}
+                           if 'line_refs' in src_unit else {}),
                     },
                     'target': {
                         'ref': tgt_unit['ref'],
                         'text': tgt_unit['text'],
                         'tokens': tgt_unit['tokens'],
-                        'highlight_indices': tgt_highlight_indices
+                        'highlight_indices': tgt_highlight_indices,
+                        **({'line_refs': tgt_unit['line_refs'],
+                            'line_token_counts': tgt_unit['line_token_counts']}
+                           if 'line_refs' in tgt_unit else {}),
                     },
                     'matched_words': word_scores,
                     'source_distance': src_distance,
@@ -268,13 +283,19 @@ class Scorer:
                 'ref': src_unit['ref'],
                 'text': src_unit['text'],
                 'tokens': src_unit['tokens'],
-                'highlight_indices': src_highlight_indices
+                'highlight_indices': src_highlight_indices,
+                **({'line_refs': src_unit['line_refs'],
+                    'line_token_counts': src_unit['line_token_counts']}
+                   if 'line_refs' in src_unit else {}),
             },
             'target': {
                 'ref': tgt_unit['ref'],
                 'text': tgt_unit['text'],
                 'tokens': tgt_unit['tokens'],
-                'highlight_indices': tgt_highlight_indices
+                'highlight_indices': tgt_highlight_indices,
+                **({'line_refs': tgt_unit['line_refs'],
+                    'line_token_counts': tgt_unit['line_token_counts']}
+                   if 'line_refs' in tgt_unit else {}),
             },
             'matched_words': word_scores,
             'shared_trigrams': shared_trigrams,
@@ -330,13 +351,19 @@ class Scorer:
                 'ref': src_unit['ref'],
                 'text': src_unit['text'],
                 'tokens': src_unit['tokens'],
-                'highlight_indices': src_highlight_indices
+                'highlight_indices': src_highlight_indices,
+                **({'line_refs': src_unit['line_refs'],
+                    'line_token_counts': src_unit['line_token_counts']}
+                   if 'line_refs' in src_unit else {}),
             },
             'target': {
                 'ref': tgt_unit['ref'],
                 'text': tgt_unit['text'],
                 'tokens': tgt_unit['tokens'],
-                'highlight_indices': tgt_highlight_indices
+                'highlight_indices': tgt_highlight_indices,
+                **({'line_refs': tgt_unit['line_refs'],
+                    'line_token_counts': tgt_unit['line_token_counts']}
+                   if 'line_refs' in tgt_unit else {}),
             },
             'matched_words': word_scores,
             'source_distance': 1,
@@ -464,13 +491,19 @@ class Scorer:
                 'ref': src_unit['ref'],
                 'text': src_unit['text'],
                 'tokens': source_tokens,
-                'highlight_indices': source_highlights
+                'highlight_indices': source_highlights,
+                **({'line_refs': src_unit['line_refs'],
+                    'line_token_counts': src_unit['line_token_counts']}
+                   if 'line_refs' in src_unit else {}),
             },
             'target': {
                 'ref': tgt_unit['ref'],
                 'text': tgt_unit['text'],
                 'tokens': target_tokens,
-                'highlight_indices': target_highlights
+                'highlight_indices': target_highlights,
+                **({'line_refs': tgt_unit['line_refs'],
+                    'line_token_counts': tgt_unit['line_token_counts']}
+                   if 'line_refs' in tgt_unit else {}),
             },
             'matched_words': matched_words,
             'source_distance': 0,
@@ -546,13 +579,19 @@ class Scorer:
                 'ref': src_unit['ref'],
                 'text': src_unit['text'],
                 'tokens': source_tokens,
-                'highlight_indices': source_highlights
+                'highlight_indices': source_highlights,
+                **({'line_refs': src_unit['line_refs'],
+                    'line_token_counts': src_unit['line_token_counts']}
+                   if 'line_refs' in src_unit else {}),
             },
             'target': {
                 'ref': tgt_unit['ref'],
                 'text': tgt_unit['text'],
                 'tokens': target_tokens,
-                'highlight_indices': target_highlights
+                'highlight_indices': target_highlights,
+                **({'line_refs': tgt_unit['line_refs'],
+                    'line_token_counts': tgt_unit['line_token_counts']}
+                   if 'line_refs' in tgt_unit else {}),
             },
             'matched_words': matched_words,
             'source_distance': 0,
@@ -614,13 +653,19 @@ class Scorer:
                 'ref': src_unit['ref'],
                 'text': src_unit['text'],
                 'tokens': source_tokens,
-                'highlight_indices': source_highlights
+                'highlight_indices': source_highlights,
+                **({'line_refs': src_unit['line_refs'],
+                    'line_token_counts': src_unit['line_token_counts']}
+                   if 'line_refs' in src_unit else {}),
             },
             'target': {
                 'ref': tgt_unit['ref'],
                 'text': tgt_unit['text'],
                 'tokens': target_tokens,
-                'highlight_indices': target_highlights
+                'highlight_indices': target_highlights,
+                **({'line_refs': tgt_unit['line_refs'],
+                    'line_token_counts': tgt_unit['line_token_counts']}
+                   if 'line_refs' in tgt_unit else {}),
             },
             'matched_words': matched_words,
             'source_distance': 0,

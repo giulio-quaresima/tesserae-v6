@@ -112,6 +112,22 @@
     "added_by": "Anna Glenn"
   },
   {
+    "author": "Alcuin",
+    "work": "Carmina",
+    "e_source": "",
+    "e_source_url": "",
+    "print_source": "",
+    "added_by": "M. Paccara & F. Stella (University of Siena)"
+  },
+  {
+    "author": "Alcuin",
+    "work": "Carmina Rhytmica",
+    "e_source": "",
+    "e_source_url": "",
+    "print_source": "",
+    "added_by": "M. Paccara & F. Stella (University of Siena)"
+  },
+  {
     "author": "Ambrose",
     "work": "Apologia David Altera",
     "e_source": "Open Greek and Latin",
@@ -249,18 +265,18 @@
   },
   {
     "author": "Ambrose",
-    "work": "Expositio Psalmi CXVIII",
-    "e_source": "Open Greek and Latin",
-    "e_source_url": "http://opengreekandlatin.github.io/csel-dev/",
-    "print_source": "Michael Petschenig. Sanctii Ambrosii Opera, Pars Quinta. Vindobonae: Gerold. 1913.",
-    "added_by": "Caitlin Diddams"
-  },
-  {
-    "author": "Ambrose",
     "work": "Expositio Evangelii Secundum Lucan",
     "e_source": "Open Greek and Latin",
     "e_source_url": "http://opengreekandlatin.github.io/csel-dev/",
     "print_source": "Henricus Schenkl. Sanctii Ambrosii Opera, Pars Quarta. Vindobonae: Gerold. 1902.",
+    "added_by": "Caitlin Diddams"
+  },
+  {
+    "author": "Ambrose",
+    "work": "Expositio Psalmi CXVIII",
+    "e_source": "Open Greek and Latin",
+    "e_source_url": "http://opengreekandlatin.github.io/csel-dev/",
+    "print_source": "Michael Petschenig. Sanctii Ambrosii Opera, Pars Quinta. Vindobonae: Gerold. 1913.",
     "added_by": "Caitlin Diddams"
   },
   {
@@ -368,14 +384,6 @@
     "added_by": "Chris Forstall"
   },
   {
-    "author": "Apulieus",
-    "work": "De Deo Socratis",
-    "e_source": "Forum Romanum",
-    "e_source_url": "http://www.forumromanum.org/literature/deo_socratis.html",
-    "print_source": "Jean Beaujeu. Paris 1973.",
-    "added_by": "Caitlin Diddams"
-  },
-  {
     "author": "Apuleius",
     "work": "Florida",
     "e_source": "Perseus",
@@ -398,6 +406,14 @@
     "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0501",
     "print_source": "Apuleius.Apulei Platonici Madaurensis, Pro se de magia liber (Apologia).Rudolf Helm. Lipsiae: B.G. Teubneri. 1912.",
     "added_by": "Katherine Roache"
+  },
+  {
+    "author": "Apulieus",
+    "work": "De Deo Socratis",
+    "e_source": "Forum Romanum",
+    "e_source_url": "http://www.forumromanum.org/literature/deo_socratis.html",
+    "print_source": "Jean Beaujeu. Paris 1973.",
+    "added_by": "Caitlin Diddams"
   },
   {
     "author": "Aristophanes",
@@ -801,19 +817,19 @@
   },
   {
     "author": "Augustine",
-    "work": "De Divinatione Daemonum",
-    "e_source": "Open Greek and Latin",
-    "e_source_url": "http://opengreekandlatin.github.io/csel-dev/",
-    "print_source": "Joseph Zycha. Sancti Aurelii Augustini Opera, Sect V, Pars III. Vindobonae: Gerold. 1900.",
-    "added_by": "Caitlin Diddams"
-  },
-  {
-    "author": "Augustine",
     "work": "De Dialectica",
     "e_source": "The Latin Library",
     "e_source_url": "http://www.thelatinlibrary.com/augustine/dia.shtml",
     "print_source": "W. Crecelius S. Aurelii Augustini de dialecta liber. Jahresbericht ueber das Gymnasium zu Elberfeld, Schuljahr 1856-57 (Elberfeld: Lucas, 1857).",
     "added_by": "Tessa Little"
+  },
+  {
+    "author": "Augustine",
+    "work": "De Divinatione Daemonum",
+    "e_source": "Open Greek and Latin",
+    "e_source_url": "http://opengreekandlatin.github.io/csel-dev/",
+    "print_source": "Joseph Zycha. Sancti Aurelii Augustini Opera, Sect V, Pars III. Vindobonae: Gerold. 1900.",
+    "added_by": "Caitlin Diddams"
   },
   {
     "author": "Augustine",
@@ -833,7 +849,7 @@
   },
   {
     "author": "Augustine",
-    "work": "De Fidea et Operibus",
+    "work": "De Fide et Symbolo",
     "e_source": "Open Greek and Latin",
     "e_source_url": "http://opengreekandlatin.github.io/csel-dev/",
     "print_source": "Joseph Zycha. Sancti Aurelii Augustini Opera, Sect V, Pars III. Vindobonae: Gerold. 1900.",
@@ -841,7 +857,7 @@
   },
   {
     "author": "Augustine",
-    "work": "De Fide et Symbolo",
+    "work": "De Fidea et Operibus",
     "e_source": "Open Greek and Latin",
     "e_source_url": "http://opengreekandlatin.github.io/csel-dev/",
     "print_source": "Joseph Zycha. Sancti Aurelii Augustini Opera, Sect V, Pars III. Vindobonae: Gerold. 1900.",
@@ -1152,19 +1168,43 @@
     "added_by": "Katherine Roache"
   },
   {
-    "author": "Ausonius, Decimus Magnus",
-    "work": "Ephemeris",
-    "e_source": "Perseus",
-    "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0610",
-    "print_source": "Ausonius. Works. Ausonius, Vol 1. Ausonius, Decimus Magnus. Hugh G. Evelyn-White. William Heinemann Ltd.; Harvard University Press. London; Cambridge, Massachusetts. 1919.",
-    "added_by": "Katherine Roache"
-  },
-  {
     "author": "Ausonius",
     "work": "Epicedion in Patrem",
     "e_source": "Perseus",
     "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0607",
     "print_source": "Hugh G. Evelyn-White, Ausonius. Works.. London; Cambridge, Massachusetts: William Heinemann Ltd.; Harvard University Press, 1919.",
+    "added_by": "Katherine Roache"
+  },
+  {
+    "author": "Ausonius",
+    "work": "Griphus Ternarii numeri",
+    "e_source": "Perseus",
+    "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0607",
+    "print_source": "Hugh G. Evelyn-White, Ausonius. Works.. London; Cambridge, Massachusetts: William Heinemann Ltd.; Harvard University Press, 1919.",
+    "added_by": "Katherine Roache"
+  },
+  {
+    "author": "Ausonius",
+    "work": "Mosella",
+    "e_source": "Perseus",
+    "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0619",
+    "print_source": "Hugh G. Evelyn-White, Ausonius. Works.. London; Cambridge, Massachusetts: William Heinemann Ltd.; Harvard University Press, 1919.",
+    "added_by": "Katherine Roache"
+  },
+  {
+    "author": "Ausonius",
+    "work": "Oratio Consulis Ausonii Versibus Ropalicis",
+    "e_source": "Perseus",
+    "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0619",
+    "print_source": "Hugh G. Evelyn-White, Ausonius. Works.. London; Cambridge, Massachusetts: William Heinemann Ltd.; Harvard University Press, 1919.",
+    "added_by": "Katherine Roache"
+  },
+  {
+    "author": "Ausonius, Decimus Magnus",
+    "work": "Ephemeris",
+    "e_source": "Perseus",
+    "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0610",
+    "print_source": "Ausonius. Works. Ausonius, Vol 1. Ausonius, Decimus Magnus. Hugh G. Evelyn-White. William Heinemann Ltd.; Harvard University Press. London; Cambridge, Massachusetts. 1919.",
     "added_by": "Katherine Roache"
   },
   {
@@ -1200,35 +1240,11 @@
     "added_by": "Katherine Roache"
   },
   {
-    "author": "Ausonius",
-    "work": "Griphus Ternarii numeri",
-    "e_source": "Perseus",
-    "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0607",
-    "print_source": "Hugh G. Evelyn-White, Ausonius. Works.. London; Cambridge, Massachusetts: William Heinemann Ltd.; Harvard University Press, 1919.",
-    "added_by": "Katherine Roache"
-  },
-  {
     "author": "Ausonius, Decimus Magnus",
     "work": "Ludus Septem Sapientum",
     "e_source": "Perseus",
     "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0618",
     "print_source": "Ausonius. Works. Ausonius, Vol 1. Ausonius, Decimus Magnus. Hugh G. Evelyn-White. William Heinemann Ltd.; Harvard University Press. London; Cambridge, Massachusetts. 1919.",
-    "added_by": "Katherine Roache"
-  },
-  {
-    "author": "Ausonius",
-    "work": "Mosella",
-    "e_source": "Perseus",
-    "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0619",
-    "print_source": "Hugh G. Evelyn-White, Ausonius. Works.. London; Cambridge, Massachusetts: William Heinemann Ltd.; Harvard University Press, 1919.",
-    "added_by": "Katherine Roache"
-  },
-  {
-    "author": "Ausonius",
-    "work": "Oratio Consulis Ausonii Versibus Ropalicis",
-    "e_source": "Perseus",
-    "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0619",
-    "print_source": "Hugh G. Evelyn-White, Ausonius. Works.. London; Cambridge, Massachusetts: William Heinemann Ltd.; Harvard University Press, 1919.",
     "added_by": "Katherine Roache"
   },
   {
@@ -1433,6 +1449,14 @@
   },
   {
     "author": "Cicero",
+    "work": "De domo sua",
+    "e_source": "Perseus",
+    "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a1999.02.0014",
+    "print_source": "Albert Clark, M. Tulli Ciceronis Orationes: Recognovit brevique adnotatione critica instruxit Albertus Curtis Clark. Oxonii: e Typographeo Clarendoniano, 1909.",
+    "added_by": "Anna Glenn"
+  },
+  {
+    "author": "Cicero",
     "work": "De Fato",
     "e_source": "Perseus",
     "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2007.01.0035",
@@ -1449,10 +1473,34 @@
   },
   {
     "author": "Cicero",
+    "work": "De haruspicum responso",
+    "e_source": "Perseus",
+    "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a1999.02.0014",
+    "print_source": "Albert Clark, M. Tulli Ciceronis Orationes: Recognovit brevique adnotatione critica instruxit Albertus Curtis Clark. Oxonii: e Typographeo Clarendoniano, 1909.",
+    "added_by": "Anna Glenn"
+  },
+  {
+    "author": "Cicero",
+    "work": "De imperio Cn. Pompei",
+    "e_source": "Perseus",
+    "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a1999.02.0010",
+    "print_source": "Albert Clark, M. Tulli Ciceronis Orationes: Recognovit brevique adnotatione critica instruxit Albertus Curtis Clark Collegii Reginae Socius. Oxonii: e Typographeo Clarendoniano, 1908.",
+    "added_by": "Anna Glenn"
+  },
+  {
+    "author": "Cicero",
     "work": "De Inventione",
     "e_source": "Perseus",
     "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0683",
     "print_source": "Eduard Stroebel, Rhetorici libri duo qui vocantur de inventione. Lipsiae: In Aedibus B.G. Teubneri, 1915.",
+    "added_by": "Anna Glenn"
+  },
+  {
+    "author": "Cicero",
+    "work": "De lege agraria contra Rullum",
+    "e_source": "Perseus",
+    "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a1999.02.0013",
+    "print_source": "Albert Clark, M. Tulli Ciceronis Orationes:Recognovit brevique adnotatione critica instruxitAlbertus Curtis Clark. Oxonii: e Typographeo Clarendoniano, 1909.",
     "added_by": "Anna Glenn"
   },
   {
@@ -1489,6 +1537,14 @@
   },
   {
     "author": "Cicero",
+    "work": "De provinciis consularibus",
+    "e_source": "Perseus",
+    "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a1999.02.0014",
+    "print_source": "Albert Clark, M. Tulli Ciceronis Orationes: Recognovit brevique adnotatione critica instruxit Albertus Curtis Clark. Oxonii: e Typographeo Clarendoniano, 1909.",
+    "added_by": "Anna Glenn"
+  },
+  {
+    "author": "Cicero",
     "work": "De Republica",
     "e_source": "Perseus",
     "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2007.01.0031",
@@ -1501,46 +1557,6 @@
     "e_source": "Perseus",
     "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2007.01.0038",
     "print_source": "William Armistead Falconer, With An English Translation. Ca mbridge: Harvard University Press; Cambridge, Mass., London, England, 1923.",
-    "added_by": "Anna Glenn"
-  },
-  {
-    "author": "Cicero",
-    "work": "De domo sua",
-    "e_source": "Perseus",
-    "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a1999.02.0014",
-    "print_source": "Albert Clark, M. Tulli Ciceronis Orationes: Recognovit brevique adnotatione critica instruxit Albertus Curtis Clark. Oxonii: e Typographeo Clarendoniano, 1909.",
-    "added_by": "Anna Glenn"
-  },
-  {
-    "author": "Cicero",
-    "work": "De haruspicum responso",
-    "e_source": "Perseus",
-    "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a1999.02.0014",
-    "print_source": "Albert Clark, M. Tulli Ciceronis Orationes: Recognovit brevique adnotatione critica instruxit Albertus Curtis Clark. Oxonii: e Typographeo Clarendoniano, 1909.",
-    "added_by": "Anna Glenn"
-  },
-  {
-    "author": "Cicero",
-    "work": "De imperio Cn. Pompei",
-    "e_source": "Perseus",
-    "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a1999.02.0010",
-    "print_source": "Albert Clark, M. Tulli Ciceronis Orationes: Recognovit brevique adnotatione critica instruxit Albertus Curtis Clark Collegii Reginae Socius. Oxonii: e Typographeo Clarendoniano, 1908.",
-    "added_by": "Anna Glenn"
-  },
-  {
-    "author": "Cicero",
-    "work": "De lege agraria contra Rullum",
-    "e_source": "Perseus",
-    "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a1999.02.0013",
-    "print_source": "Albert Clark, M. Tulli Ciceronis Orationes:Recognovit brevique adnotatione critica instruxitAlbertus Curtis Clark. Oxonii: e Typographeo Clarendoniano, 1909.",
-    "added_by": "Anna Glenn"
-  },
-  {
-    "author": "Cicero",
-    "work": "De provinciis consularibus",
-    "e_source": "Perseus",
-    "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a1999.02.0014",
-    "print_source": "Albert Clark, M. Tulli Ciceronis Orationes: Recognovit brevique adnotatione critica instruxit Albertus Curtis Clark. Oxonii: e Typographeo Clarendoniano, 1909.",
     "added_by": "Anna Glenn"
   },
   {
@@ -1593,14 +1609,6 @@
   },
   {
     "author": "Cicero",
-    "work": "Letters to Atticus",
-    "e_source": "Perseus",
-    "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a1999.02.0008",
-    "print_source": "L. C. Purser, Ciceronis Epistulae Oxonii, e typographeo Clarendoniano 1906.",
-    "added_by": "Anna Glenn"
-  },
-  {
-    "author": "Cicero",
     "work": "Letters to and from Brutus",
     "e_source": "Perseus",
     "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a1999.02.0007",
@@ -1612,6 +1620,14 @@
     "work": "Letters to and from Quintus",
     "e_source": "Perseus",
     "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a1999.02.0017",
+    "print_source": "L. C. Purser, Ciceronis Epistulae Oxonii, e typographeo Clarendoniano 1906.",
+    "added_by": "Anna Glenn"
+  },
+  {
+    "author": "Cicero",
+    "work": "Letters to Atticus",
+    "e_source": "Perseus",
+    "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a1999.02.0008",
     "print_source": "L. C. Purser, Ciceronis Epistulae Oxonii, e typographeo Clarendoniano 1906.",
     "added_by": "Anna Glenn"
   },
@@ -1857,22 +1873,6 @@
   },
   {
     "author": "Claudianus",
-    "work": "De consulatu Stilichonis",
-    "e_source": "Perseus",
-    "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0684",
-    "print_source": "Maurice Platnaeur, Claudian, Vol 1-2. London; New York: William Heinemann; G.P. Putnam's Sons, 1922.",
-    "added_by": ""
-  },
-  {
-    "author": "Claudianus",
-    "work": "Epithalamium de nuptiis Honorii Augusti",
-    "e_source": "Perseus",
-    "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0691",
-    "print_source": "Maurice Platnaeur, Claudian, Vol 1. London; New York: William Heinemann; G.P. Putnam's Sons, 1922.",
-    "added_by": ""
-  },
-  {
-    "author": "Claudianus",
     "work": "de Bello Gothico",
     "e_source": "Perseus",
     "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0690",
@@ -1881,10 +1881,26 @@
   },
   {
     "author": "Claudianus",
+    "work": "De consulatu Stilichonis",
+    "e_source": "Perseus",
+    "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0684",
+    "print_source": "Maurice Platnaeur, Claudian, Vol 1-2. London; New York: William Heinemann; G.P. Putnam's Sons, 1922.",
+    "added_by": ""
+  },
+  {
+    "author": "Claudianus",
     "work": "de Raptu Proserpinae",
     "e_source": "Perseus",
     "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0685",
     "print_source": "Maurice Platnaeur, Claudian, Vol 2. London; New York: William Heinemann; G.P. Putnam's Sons, 1922.",
+    "added_by": ""
+  },
+  {
+    "author": "Claudianus",
+    "work": "Epithalamium de nuptiis Honorii Augusti",
+    "e_source": "Perseus",
+    "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0691",
+    "print_source": "Maurice Platnaeur, Claudian, Vol 1. London; New York: William Heinemann; G.P. Putnam's Sons, 1922.",
     "added_by": ""
   },
   {
@@ -2904,6 +2920,14 @@
     "added_by": "Caitlin Diddams"
   },
   {
+    "author": "Einhardus",
+    "work": "Rythmus de Passione Marcellini et Petri",
+    "e_source": "",
+    "e_source_url": "",
+    "print_source": "",
+    "added_by": "M. Paccara & F. Stella (University of Siena)"
+  },
+  {
     "author": "Ennodius",
     "work": "Carmina",
     "e_source": "Open Greek and Latin",
@@ -2957,14 +2981,6 @@
     "e_source": "Open Greek and Latin",
     "e_source_url": "http://opengreekandlatin.github.io/csel-dev/",
     "print_source": "Pius Knoll. Eugippi Opera, Pars II. Vindobonae: Gerold. 1886.",
-    "added_by": "Caitlin Diddams"
-  },
-  {
-    "author": "Evodius",
-    "work": "De Fide Contra Manicheos",
-    "e_source": "Open Greek and Latin",
-    "e_source_url": "http://opengreekandlatin.github.io/csel-dev/",
-    "print_source": "Joseph Zycha. Sancti Aurelii Augustini Opera, Sect VI Pars II. Vindobonae: Gerold. 1892.",
     "added_by": "Caitlin Diddams"
   },
   {
@@ -3136,6 +3152,14 @@
     "added_by": "Caitlin Diddams"
   },
   {
+    "author": "Evodius",
+    "work": "De Fide Contra Manicheos",
+    "e_source": "Open Greek and Latin",
+    "e_source_url": "http://opengreekandlatin.github.io/csel-dev/",
+    "print_source": "Joseph Zycha. Sancti Aurelii Augustini Opera, Sect VI Pars II. Vindobonae: Gerold. 1892.",
+    "added_by": "Caitlin Diddams"
+  },
+  {
     "author": "Favonius",
     "work": "Disputatio de somnio Scipionis",
     "e_source": "DigilibLT",
@@ -3249,14 +3273,6 @@
   },
   {
     "author": "Hilarius (Pseudo)",
-    "work": "In Genesin Ad Leonem Papam",
-    "e_source": "Open Greek and Latin",
-    "e_source_url": "http://opengreekandlatin.github.io/csel-dev/",
-    "print_source": "Rudolf Peiper. Cypriani Galli Poetae Heptateuchos. Vindobonae: Gerold. 1891.",
-    "added_by": "Caitlin Diddams"
-  },
-  {
-    "author": "Hilarius (Pseudo)",
     "work": "De Evangelio",
     "e_source": "Open Greek and Latin",
     "e_source_url": "http://opengreekandlatin.github.io/csel-dev/",
@@ -3293,6 +3309,14 @@
     "e_source": "Open Greek and Latin",
     "e_source_url": "http://opengreekandlatin.github.io/csel-dev/",
     "print_source": "Alfred Leonhard Feder. S. Hilarii Episcopi Pictaviensis Opera, Pars IV. Vindobonae: Gerold. 1916.",
+    "added_by": "Caitlin Diddams"
+  },
+  {
+    "author": "Hilarius (Pseudo)",
+    "work": "In Genesin Ad Leonem Papam",
+    "e_source": "Open Greek and Latin",
+    "e_source_url": "http://opengreekandlatin.github.io/csel-dev/",
+    "print_source": "Rudolf Peiper. Cypriani Galli Poetae Heptateuchos. Vindobonae: Gerold. 1891.",
     "added_by": "Caitlin Diddams"
   },
   {
@@ -3537,6 +3561,14 @@
   },
   {
     "author": "Lactantius",
+    "work": "De Opificio Dei",
+    "e_source": "Open Greek and Latin",
+    "e_source_url": "http://opengreekandlatin.github.io/csel-dev/",
+    "print_source": "Samuel BrandtL. Caeli Firmiani Lactanti Opera omnia, Pars II, Fasc I. Vindobonae: Gerold, 1897.",
+    "added_by": "Caitlin Diddams"
+  },
+  {
+    "author": "Lactantius",
     "work": "Divinarum Institutionum",
     "e_source": "Open Greek and Latin",
     "e_source_url": "http://opengreekandlatin.github.io/csel-dev/",
@@ -3549,14 +3581,6 @@
     "e_source": "DigilibLT",
     "e_source_url": "http://digiliblt.lett.unipmn.it/xtf/view?query=;brand=default;docId=dlt000323/dlt000323.xml;",
     "print_source": "Robertus Dale Sweeney Stutgardiae et Lipsiae, Teubner 1997. Linguistic correction: Manuela Naso. XML encoding: Nadia Rosso.",
-    "added_by": "Caitlin Diddams"
-  },
-  {
-    "author": "Lactantius",
-    "work": "De Opificio Dei",
-    "e_source": "Open Greek and Latin",
-    "e_source_url": "http://opengreekandlatin.github.io/csel-dev/",
-    "print_source": "Samuel BrandtL. Caeli Firmiani Lactanti Opera omnia, Pars II, Fasc I. Vindobonae: Gerold, 1897.",
     "added_by": "Caitlin Diddams"
   },
   {
@@ -3673,25 +3697,17 @@
   },
   {
     "author": "Lucian",
-    "work": "De Domo",
-    "e_source": "Perseus",
-    "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0428",
-    "print_source": "Karl Jacobitz, Luciani Samosatensis Opera, Vol I. Leipzig: in aedibus B. G. Teubneri, 1896.",
-    "added_by": "Caitlin Diddams"
-  },
-  {
-    "author": "Lucian",
-    "work": "De Syria dea",
-    "e_source": "Perseus",
-    "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0460",
-    "print_source": "Karl Jacobitz, Luciani Samosatensis Opera, Vol I. Leipzig: in aedibus B. G. Teubneri, 1896.",
-    "added_by": "Caitlin Diddams"
-  },
-  {
-    "author": "Lucian",
     "work": "De astrologia",
     "e_source": "Perseus",
     "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0467",
+    "print_source": "Karl Jacobitz, Luciani Samosatensis Opera, Vol I. Leipzig: in aedibus B. G. Teubneri, 1896.",
+    "added_by": "Caitlin Diddams"
+  },
+  {
+    "author": "Lucian",
+    "work": "De Domo",
+    "e_source": "Perseus",
+    "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0428",
     "print_source": "Karl Jacobitz, Luciani Samosatensis Opera, Vol I. Leipzig: in aedibus B. G. Teubneri, 1896.",
     "added_by": "Caitlin Diddams"
   },
@@ -3745,6 +3761,14 @@
   },
   {
     "author": "Lucian",
+    "work": "De Syria dea",
+    "e_source": "Perseus",
+    "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0460",
+    "print_source": "Karl Jacobitz, Luciani Samosatensis Opera, Vol I. Leipzig: in aedibus B. G. Teubneri, 1896.",
+    "added_by": "Caitlin Diddams"
+  },
+  {
+    "author": "Lucian",
     "work": "Dearum judicium",
     "e_source": "Perseus",
     "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0451",
@@ -3769,17 +3793,17 @@
   },
   {
     "author": "Lucian",
-    "work": "Dialogi Marini",
+    "work": "Dialogi deorum",
     "e_source": "Perseus",
-    "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0525",
+    "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0526",
     "print_source": "Karl Jacobitz, Luciani Samosatensis Opera, Vol I. Leipzig: in aedibus B. G. Teubneri, 1896.",
     "added_by": "Caitlin Diddams"
   },
   {
     "author": "Lucian",
-    "work": "Dialogi deorum",
+    "work": "Dialogi Marini",
     "e_source": "Perseus",
-    "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0526",
+    "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0525",
     "print_source": "Karl Jacobitz, Luciani Samosatensis Opera, Vol I. Leipzig: in aedibus B. G. Teubneri, 1896.",
     "added_by": "Caitlin Diddams"
   },
@@ -4240,18 +4264,18 @@
     "added_by": "Jessica Micceri"
   },
   {
-    "author": "Oppian of Apamea",
-    "work": "Cynegetica",
-    "e_source": "Perseus",
-    "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0489",
-    "print_source": "A. W. Mair, Oppian, Colluthus, Tryphiodorus with an English Translation by A.W. Mair.London, William Heinemann, Ltd.; New York: G.P. Putnam's Sons, 1928.",
-    "added_by": "Jessica Micceri"
-  },
-  {
     "author": "Oppian",
     "work": "Halieutica",
     "e_source": "Perseus",
     "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0488",
+    "print_source": "A. W. Mair, Oppian, Colluthus, Tryphiodorus with an English Translation by A.W. Mair.London, William Heinemann, Ltd.; New York: G.P. Putnam's Sons, 1928.",
+    "added_by": "Jessica Micceri"
+  },
+  {
+    "author": "Oppian of Apamea",
+    "work": "Cynegetica",
+    "e_source": "Perseus",
+    "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0489",
     "print_source": "A. W. Mair, Oppian, Colluthus, Tryphiodorus with an English Translation by A.W. Mair.London, William Heinemann, Ltd.; New York: G.P. Putnam's Sons, 1928.",
     "added_by": "Jessica Micceri"
   },
@@ -4336,6 +4360,22 @@
     "added_by": "Chris Forstall"
   },
   {
+    "author": "Paulinus of Aquileia",
+    "work": "Carmina",
+    "e_source": "",
+    "e_source_url": "",
+    "print_source": "",
+    "added_by": "M. Paccara & F. Stella (University of Siena)"
+  },
+  {
+    "author": "Paulinus of Aquileia",
+    "work": "Versus de Destructione Aquilegiae",
+    "e_source": "",
+    "e_source_url": "",
+    "print_source": "",
+    "added_by": "M. Paccara & F. Stella (University of Siena)"
+  },
+  {
     "author": "Paulinus of Nola",
     "work": "Carmina",
     "e_source": "Open Greek and Latin",
@@ -4353,14 +4393,6 @@
   },
   {
     "author": "Paulus Orosius",
-    "work": "Liber Apologeticus",
-    "e_source": "Open Greek and Latin",
-    "e_source_url": "http://opengreekandlatin.github.io/csel-dev/",
-    "print_source": "Karl Friedrich Wilhelm. Historiarum Adversum Paganos Libri VII. Vindobonae: Gerold. 1882.",
-    "added_by": "Caitlin Diddams"
-  },
-  {
-    "author": "Paulus Orosius",
     "work": "Commenitorium Orosii ad Augustinum de Errore Priscillianistarum et Origenistarum",
     "e_source": "Open Greek and Latin",
     "e_source_url": "http://opengreekandlatin.github.io/csel-dev/",
@@ -4370,6 +4402,14 @@
   {
     "author": "Paulus Orosius",
     "work": "Historiae Adversum Paganos",
+    "e_source": "Open Greek and Latin",
+    "e_source_url": "http://opengreekandlatin.github.io/csel-dev/",
+    "print_source": "Karl Friedrich Wilhelm. Historiarum Adversum Paganos Libri VII. Vindobonae: Gerold. 1882.",
+    "added_by": "Caitlin Diddams"
+  },
+  {
+    "author": "Paulus Orosius",
+    "work": "Liber Apologeticus",
     "e_source": "Open Greek and Latin",
     "e_source_url": "http://opengreekandlatin.github.io/csel-dev/",
     "print_source": "Karl Friedrich Wilhelm. Historiarum Adversum Paganos Libri VII. Vindobonae: Gerold. 1882.",
@@ -4416,14 +4456,6 @@
     "added_by": "Jessica Micceri"
   },
   {
-    "author": "Philostratus the Lemnian",
-    "work": "Imagines",
-    "e_source": "Perseus",
-    "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0601",
-    "print_source": "Carl Ludwig Kayser, Flavii Philostrati Opera, Vol 2. Lipsiae: in aedibus B. G. Teubneri, 1871.",
-    "added_by": "Jessica Micceri"
-  },
-  {
     "author": "Philostratus the Athenian",
     "work": "Vita Apollonii",
     "e_source": "Perseus",
@@ -4436,6 +4468,14 @@
     "work": "Vitae Sophistarum",
     "e_source": "Perseus",
     "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0596",
+    "print_source": "Carl Ludwig Kayser, Flavii Philostrati Opera, Vol 2. Lipsiae: in aedibus B. G. Teubneri, 1871.",
+    "added_by": "Jessica Micceri"
+  },
+  {
+    "author": "Philostratus the Lemnian",
+    "work": "Imagines",
+    "e_source": "Perseus",
+    "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0601",
     "print_source": "Carl Ludwig Kayser, Flavii Philostrati Opera, Vol 2. Lipsiae: in aedibus B. G. Teubneri, 1871.",
     "added_by": "Jessica Micceri"
   },
@@ -4920,20 +4960,20 @@
     "added_by": "Chris Forstall"
   },
   {
-    "author": "Pliny the Younger",
-    "work": "Letters",
-    "e_source": "Perseus",
-    "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a1999.02.0139",
-    "print_source": "Letters.",
-    "added_by": "Tony R Waleszczak &amp; Jessica Micceri"
-  },
-  {
     "author": "Pliny the Elder",
     "work": "Naturalis Historia",
     "e_source": "Perseus",
     "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a1999.02.0138",
     "print_source": "Karl Friedrich Theodor Mayhoff, Naturalis Historia. Lipsiae : Teubner, 1906.",
     "added_by": "Anna Glenn"
+  },
+  {
+    "author": "Pliny the Younger",
+    "work": "Letters",
+    "e_source": "Perseus",
+    "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a1999.02.0139",
+    "print_source": "Letters.",
+    "added_by": "Tony R Waleszczak &amp; Jessica Micceri"
   },
   {
     "author": "Plutarch",
@@ -5369,62 +5409,6 @@
   },
   {
     "author": "Plutarch",
-    "work": "De E apud Delphos",
-    "e_source": "Perseus",
-    "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0242",
-    "print_source": "Gregorius N. Bernardakis, Moralia. Leipzig: Teubner, 1891.",
-    "added_by": "Elizabeth Hunter"
-  },
-  {
-    "author": "Plutarch",
-    "work": "De Herodoti malignitate",
-    "e_source": "Perseus",
-    "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0351",
-    "print_source": "Gregorius N. Bernardakis, Moralia. Leipzig: Teubner, 1893.",
-    "added_by": "Elizabeth Hunter"
-  },
-  {
-    "author": "Plutarch",
-    "work": "De Iside et Osiride",
-    "e_source": "Perseus",
-    "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0238",
-    "print_source": "Gregorius N. Bernardakis, Moralia. Leipzig: Teubner, 1889.",
-    "added_by": "Elizabeth Hunter"
-  },
-  {
-    "author": "Plutarch",
-    "work": "De Pythiae oraculis",
-    "e_source": "Perseus",
-    "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0246",
-    "print_source": "Gregorius N. Bernardakis, Moralia. Leipzig: Teubner, 1891.",
-    "added_by": "Elizabeth Hunter"
-  },
-  {
-    "author": "Plutarch",
-    "work": "De Recta Ratione Audiendi",
-    "e_source": "Perseus",
-    "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0144",
-    "print_source": "Gregorius N. Bernardakis, Moralia. Leipzig: Teubner, 1888.",
-    "added_by": "Elizabeth Hunter"
-  },
-  {
-    "author": "Plutarch",
-    "work": "De Se Ipsum Citra Invidiam Laudando",
-    "e_source": "Perseus",
-    "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0299",
-    "print_source": "Gregorius N. Bernardakis, Moralia. Leipzig: Teubner, 1891.",
-    "added_by": "Elizabeth Hunter"
-  },
-  {
-    "author": "Plutarch",
-    "work": "De Stoicorum repugnantiis",
-    "e_source": "Perseus",
-    "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0388",
-    "print_source": "Gregorius N. Bernardakis, Moralia. Leipzig: Teubner, 1895.",
-    "added_by": "Elizbeth Hunter"
-  },
-  {
-    "author": "Plutarch",
     "work": "De amicorum multitudine",
     "e_source": "Perseus",
     "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0160",
@@ -5492,6 +5476,14 @@
     "work": "De defectu oraculorum",
     "e_source": "Perseus",
     "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0250",
+    "print_source": "Gregorius N. Bernardakis, Moralia. Leipzig: Teubner, 1891.",
+    "added_by": "Elizabeth Hunter"
+  },
+  {
+    "author": "Plutarch",
+    "work": "De E apud Delphos",
+    "e_source": "Perseus",
+    "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0242",
     "print_source": "Gregorius N. Bernardakis, Moralia. Leipzig: Teubner, 1891.",
     "added_by": "Elizabeth Hunter"
   },
@@ -5577,10 +5569,26 @@
   },
   {
     "author": "Plutarch",
+    "work": "De Herodoti malignitate",
+    "e_source": "Perseus",
+    "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0351",
+    "print_source": "Gregorius N. Bernardakis, Moralia. Leipzig: Teubner, 1893.",
+    "added_by": "Elizabeth Hunter"
+  },
+  {
+    "author": "Plutarch",
     "work": "De invidia et odio",
     "e_source": "Perseus",
     "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0297",
     "print_source": "Gregorius N. Bernardakis, Moralia. Leipzig: Teubner, 1891.",
+    "added_by": "Elizabeth Hunter"
+  },
+  {
+    "author": "Plutarch",
+    "work": "De Iside et Osiride",
+    "e_source": "Perseus",
+    "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0238",
+    "print_source": "Gregorius N. Bernardakis, Moralia. Leipzig: Teubner, 1889.",
     "added_by": "Elizabeth Hunter"
   },
   {
@@ -5601,6 +5609,30 @@
   },
   {
     "author": "Plutarch",
+    "work": "De Pythiae oraculis",
+    "e_source": "Perseus",
+    "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0246",
+    "print_source": "Gregorius N. Bernardakis, Moralia. Leipzig: Teubner, 1891.",
+    "added_by": "Elizabeth Hunter"
+  },
+  {
+    "author": "Plutarch",
+    "work": "De Recta Ratione Audiendi",
+    "e_source": "Perseus",
+    "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0144",
+    "print_source": "Gregorius N. Bernardakis, Moralia. Leipzig: Teubner, 1888.",
+    "added_by": "Elizabeth Hunter"
+  },
+  {
+    "author": "Plutarch",
+    "work": "De Se Ipsum Citra Invidiam Laudando",
+    "e_source": "Perseus",
+    "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0299",
+    "print_source": "Gregorius N. Bernardakis, Moralia. Leipzig: Teubner, 1891.",
+    "added_by": "Elizabeth Hunter"
+  },
+  {
+    "author": "Plutarch",
     "work": "De sera numinis vindicta",
     "e_source": "Perseus",
     "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0301",
@@ -5614,6 +5646,14 @@
     "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0368",
     "print_source": "Gregorius N. Bernardakis, Moralia. Leipzig: Teubner, 1895.",
     "added_by": "Elizabeth Hunter"
+  },
+  {
+    "author": "Plutarch",
+    "work": "De Stoicorum repugnantiis",
+    "e_source": "Perseus",
+    "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0388",
+    "print_source": "Gregorius N. Bernardakis, Moralia. Leipzig: Teubner, 1895.",
+    "added_by": "Elizbeth Hunter"
   },
   {
     "author": "Plutarch",
@@ -5896,14 +5936,6 @@
     "added_by": "Katherine Roache"
   },
   {
-    "author": "Seneca the Elder",
-    "work": "Controversiae",
-    "e_source": "Perseus",
-    "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0563",
-    "print_source": "Annaei Senecae Oratorum et rhetorum sententiae divisiones colores. Seneca the Elder. Adolf Gottlieb Kiessling. in aedibus B. G. Teubneri. Leipzig. 1872.",
-    "added_by": "Katherine Roache"
-  },
-  {
     "author": "Seneca",
     "work": "De Beneficiis",
     "e_source": "Perseus",
@@ -6000,22 +6032,6 @@
     "added_by": "Katherine Roache"
   },
   {
-    "author": "Seneca the Elder",
-    "work": "Excerpta Controversiae",
-    "e_source": "Perseus",
-    "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0564",
-    "print_source": "Annaei Senecae Oratorum et rhetorum sententiae divisiones colores. Seneca the Elder. Adolf Gottlieb Kiessling. in aedibus B. G. Teubneri. Leipzig. 1872.",
-    "added_by": "Katherine Roache"
-  },
-  {
-    "author": "Seneca the Elder",
-    "work": "Fragmenta",
-    "e_source": "Perseus",
-    "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0565",
-    "print_source": "Annaei Senecae Oratorum et rhetorum sententiae divisiones colores.Seneca the Elder. Adolf Gottlieb Kiessling. in aedibus B. G. Teubneri. Leipzig. 1872.",
-    "added_by": "Katherine Roache"
-  },
-  {
     "author": "Seneca",
     "work": "Hercules Furens",
     "e_source": "Perseus",
@@ -6080,14 +6096,6 @@
     "added_by": "Caitlin Diddams"
   },
   {
-    "author": "Seneca the Elder",
-    "work": "Suasoriae",
-    "e_source": "Perseus",
-    "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0562",
-    "print_source": "Annaei Senecae Oratorum et rhetorum sententiae divisiones colores. Seneca the Elder. Adolf Gottlieb Kiessling. in aedibus B. G. Teubneri. Leipzig. 1872.",
-    "added_by": "Katherine Roache"
-  },
-  {
     "author": "Seneca",
     "work": "Thyestes",
     "e_source": "Perseus",
@@ -6101,6 +6109,38 @@
     "e_source": "Perseus",
     "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2007.01.0011",
     "print_source": "L. Annaeus Seneca. Tragoediae. Rudolf Peiper. Gustav Richter. Leipzig. Teubner. 1921.",
+    "added_by": "Katherine Roache"
+  },
+  {
+    "author": "Seneca the Elder",
+    "work": "Controversiae",
+    "e_source": "Perseus",
+    "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0563",
+    "print_source": "Annaei Senecae Oratorum et rhetorum sententiae divisiones colores. Seneca the Elder. Adolf Gottlieb Kiessling. in aedibus B. G. Teubneri. Leipzig. 1872.",
+    "added_by": "Katherine Roache"
+  },
+  {
+    "author": "Seneca the Elder",
+    "work": "Excerpta Controversiae",
+    "e_source": "Perseus",
+    "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0564",
+    "print_source": "Annaei Senecae Oratorum et rhetorum sententiae divisiones colores. Seneca the Elder. Adolf Gottlieb Kiessling. in aedibus B. G. Teubneri. Leipzig. 1872.",
+    "added_by": "Katherine Roache"
+  },
+  {
+    "author": "Seneca the Elder",
+    "work": "Fragmenta",
+    "e_source": "Perseus",
+    "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0565",
+    "print_source": "Annaei Senecae Oratorum et rhetorum sententiae divisiones colores.Seneca the Elder. Adolf Gottlieb Kiessling. in aedibus B. G. Teubneri. Leipzig. 1872.",
+    "added_by": "Katherine Roache"
+  },
+  {
+    "author": "Seneca the Elder",
+    "work": "Suasoriae",
+    "e_source": "Perseus",
+    "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2008.01.0562",
+    "print_source": "Annaei Senecae Oratorum et rhetorum sententiae divisiones colores. Seneca the Elder. Adolf Gottlieb Kiessling. in aedibus B. G. Teubneri. Leipzig. 1872.",
     "added_by": "Katherine Roache"
   },
   {
@@ -6185,6 +6225,14 @@
   },
   {
     "author": "Sophocles",
+    "work": "Oedipus at Colonus",
+    "e_source": "Perseus",
+    "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a1999.01.0189",
+    "print_source": "Sophocles. The Oedipus at Colonus of Sophocles. Edited with introduction and notes by Sir Richard Jebb. Sir Richard Jebb. Cambridge. Cambridge University Press. 1889.",
+    "added_by": "Katherine Roache"
+  },
+  {
+    "author": "Sophocles",
     "work": "Oedipus Epi Kolono (Oedipus at Colonus)",
     "e_source": "Perseus",
     "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a1999.01.0189",
@@ -6197,14 +6245,6 @@
     "e_source": "Perseus",
     "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a1999.01.0191",
     "print_source": "Sophocles. The Oedipus Tyrannus of Sophocles. Edited with introduction and notes by Sir Richard Jebb. Cambridge. Cambridge University Press. 1887.",
-    "added_by": "Katherine Roache"
-  },
-  {
-    "author": "Sophocles",
-    "work": "Oedipus at Colonus",
-    "e_source": "Perseus",
-    "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a1999.01.0189",
-    "print_source": "Sophocles. The Oedipus at Colonus of Sophocles. Edited with introduction and notes by Sir Richard Jebb. Sir Richard Jebb. Cambridge. Cambridge University Press. 1889.",
     "added_by": "Katherine Roache"
   },
   {
@@ -6313,6 +6353,14 @@
   },
   {
     "author": "Tacitus",
+    "work": "de Origine et Situ Germanorum Liber",
+    "e_source": "Perseus",
+    "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2007.01.0090",
+    "print_source": "Henry Furneaux, Opera Minora. 1900.",
+    "added_by": "Elizabeth Hunter"
+  },
+  {
+    "author": "Tacitus",
     "work": "Dialogus de Oratoribus",
     "e_source": "Perseus",
     "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2007.01.0089",
@@ -6325,14 +6373,6 @@
     "e_source": "Perseus",
     "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a1999.02.0079",
     "print_source": "Charles Dennis Fisher, Historiae. 1911.",
-    "added_by": "Elizabeth Hunter"
-  },
-  {
-    "author": "Tacitus",
-    "work": "de Origine et Situ Germanorum Liber",
-    "e_source": "Perseus",
-    "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3atext%3a2007.01.0090",
-    "print_source": "Henry Furneaux, Opera Minora. 1900.",
     "added_by": "Elizabeth Hunter"
   },
   {
@@ -6566,6 +6606,30 @@
     "e_source_url": "http://www.perseus.tufts.edu/hopper/text?doc=Perseus%3Atext%3A1999.01.0228%3Atext%3DId.",
     "print_source": "Theocritus. Idylls. R. J. Cholmeley. London. George Bell &amp; Sons. 1901.",
     "added_by": "Caitlin Diddams"
+  },
+  {
+    "author": "Theodulf of Orleans",
+    "work": "Carmina",
+    "e_source": "",
+    "e_source_url": "",
+    "print_source": "",
+    "added_by": "M. Paccara & F. Stella (University of Siena)"
+  },
+  {
+    "author": "Theodulf of Orleans",
+    "work": "Carmina Appendix",
+    "e_source": "",
+    "e_source_url": "",
+    "print_source": "",
+    "added_by": "M. Paccara & F. Stella (University of Siena)"
+  },
+  {
+    "author": "Theodulf of Orleans",
+    "work": "Epitaphia",
+    "e_source": "",
+    "e_source_url": "",
+    "print_source": "",
+    "added_by": "M. Paccara & F. Stella (University of Siena)"
   },
   {
     "author": "Theophrastus",

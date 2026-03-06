@@ -14,11 +14,17 @@ A web-based intertextual analysis tool for classical Latin, Greek, and English t
 ### Match Types
 - **Lemma**: Match by dictionary form (default)
 - **Exact**: Match identical word forms only
-- **Sound**: Phonetic similarity matching
+- **Sound**: Phonetic similarity (character trigram overlap)
+- **Edit Distance**: Fuzzy matching (Levenshtein similarity)
+- **Semantic**: AI embedding similarity (SPhilBERTa)
+- **Dictionary**: Curated V3 synonym pairs
+- **Syntax**: Dependency tree pattern matching
+- **Rare Word**: Shared low-frequency vocabulary
+- **Fusion**: All 9 channels combined with weighted scoring
 
 ### Cross-Lingual Search (Experimental)
 - Greek↔Latin parallel detection
-- Dictionary-based matching available
+- Dictionary-based and AI semantic matching available
 
 ### Additional Features
 - Intertext Repository for saving and sharing discoveries
@@ -85,24 +91,30 @@ tesserae-v6/
 │   ├── blueprints/         # Modular API routes
 │   │   ├── admin.py        # Admin endpoints
 │   │   ├── corpus.py       # Corpus management
-│   │   ├── hapax.py        # Rare words search
+│   │   ├── fusion.py       # Fusion search endpoint (SSE streaming)
+│   │   ├── hapax.py        # Rare words/bigrams search
 │   │   ├── intertext.py    # Repository management
 │   │   └── search.py       # Search endpoints
+│   ├── fusion.py           # 9-channel fusion engine
 │   ├── matcher.py          # Text matching algorithms
 │   ├── scorer.py           # V3-style scoring
+│   ├── semantic_similarity.py  # AI semantic + dictionary matching
 │   ├── text_processor.py   # Parsing and lemmatization
 │   └── utils.py            # Utilities and helpers
 ├── client/                  # React frontend
 │   └── src/
 │       ├── components/     # UI components
-│       │   ├── search/     # Search interfaces
+│       │   ├── search/     # Search interfaces (fusion + classic)
 │       │   ├── corpus/     # Corpus browser
 │       │   ├── repository/ # Intertext repository
 │       │   └── pages/      # Static pages
 │       └── utils/          # Frontend utilities
 ├── data/                    # Corpus and data files
-│   ├── texts/              # .tess text files
-│   └── inverted_index/     # Pre-built search indexes
+│   ├── inverted_index/     # Pre-built search indexes
+│   └── lemma_tables/       # Latin/Greek lemma lookup tables
+├── texts/                   # .tess text files (2,100+ works)
+├── evaluation/              # Evaluation scripts and benchmarks
+├── research/                # Scholarly work, studies, session notes
 ├── docs/                    # Documentation
 └── embedding_toolkit/       # Semantic embedding tools
 ```

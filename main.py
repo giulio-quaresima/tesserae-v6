@@ -46,19 +46,26 @@ if __name__ == '__main__':
     except Exception as e:
         print(f"Warning: Frontend build failed (continuing): {e}")
 
-    port = int(os.environ.get('PORT', 5001))
+    port = int(os.environ.get('PORT', 8080))
     print(f"Backend API and Frontend on port {port}")
     print("=" * 50)
-    
+
     debug_mode = os.environ.get('FLASK_DEBUG', 'false').lower() == 'true'
-    
+
     try:
         start_cache_init()
         print("Cache initialization started in background")
     except Exception as e:
         print(f"Warning: Cache init failed (non-fatal): {e}")
+<<<<<<< HEAD
     
     print(f"Starting Flask server on 0.0.0.0:{port}...")
     sys.stdout.flush()
     
+=======
+
+    print(f"Starting Flask server on 0.0.0.0:{port}...")
+    sys.stdout.flush()
+
+>>>>>>> 0b333b3450f8f0c4fd50a5074dd6124f44b3414f
     app.run(host='0.0.0.0', port=port, debug=debug_mode, threaded=True)

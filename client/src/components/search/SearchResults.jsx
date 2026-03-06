@@ -292,19 +292,25 @@ const SearchResults = ({
       return false;
     };
 
-    if (wordsToHighlight.size === 0 && soundNgrams.size === 0) return text;
+    if (wordsToHighlight.size === 0 && soundNgrams.size === 0) {
+      // Still need to handle line breaks in window results
+      return text.includes('\n') ? text.replace(/\n/g, '<br class="verse-break" />') : text;
+    }
 
-    // Split text preserving whitespace and punctuation
-    const parts = text.split(/(\s+)/);
-    const result = parts.map(part => {
-      if (/^\s+$/.test(part)) return part; // whitespace
-      if (shouldHighlight(part)) {
-        return `<mark class="bg-yellow-200 px-0.5 rounded">${part}</mark>`;
-      }
-      return part;
-    }).join('');
+    // Split text into verses (window results have \n between lines)
+    const verses = text.split('\n');
+    const highlightedVerses = verses.map(verse => {
+      const parts = verse.split(/(\s+)/);
+      return parts.map(part => {
+        if (/^\s+$/.test(part)) return part; // whitespace
+        if (shouldHighlight(part)) {
+          return `<mark class="bg-yellow-200 px-0.5 rounded">${part}</mark>`;
+        }
+        return part;
+      }).join('');
+    });
 
-    return result;
+    return highlightedVerses.join('<br class="verse-break" />');
   };
 
   const renderScansion = (scansion) => {
