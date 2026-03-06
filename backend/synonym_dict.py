@@ -8,6 +8,7 @@ Combines two sources:
    - Based on poetic substitutions in Vergil, Ovid, Homer, etc.
 """
 
+import json
 import os
 import unicodedata
 
@@ -15,7 +16,9 @@ _LATIN_LOOKUP = None
 _GREEK_LOOKUP = None
 _GREEK_LATIN_DICT = None
 _GREEK_LATIN_DICT_NORMALIZED = None
+_GAZETTEER_DICT = None
 _DATA_DIR = os.path.join(os.path.dirname(__file__), 'synonymy')
+_PROPER_NAMES_DIR = os.path.join(os.path.dirname(__file__), 'proper_names')
 
 # Cross-lingual stoplist: common function words that create noise in dictionary matching
 # These are high-frequency words that match across languages but carry little semantic weight
@@ -477,6 +480,26 @@ def get_greek_latin_dict():
     return _GREEK_LATIN_DICT, _GREEK_LATIN_DICT_NORMALIZED
 
 
+def _get_gazetteer_dict():
+    """Load the proper name gazetteer (Wikidata + Pleiades + manual).
+    Maps diacritics-stripped Greek names to sets of Latin forms.
+    Loaded lazily on first use.
+    """
+    global _GAZETTEER_DICT
+    if _GAZETTEER_DICT is None:
+        _GAZETTEER_DICT = {}
+        filepath = os.path.join(_PROPER_NAMES_DIR, 'cross_lingual_pairs.json')
+        if os.path.exists(filepath):
+            with open(filepath, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            for greek_key, entry in data.items():
+                _GAZETTEER_DICT[greek_key] = set(entry['latin'])
+            print(f"Loaded {len(_GAZETTEER_DICT)} proper name gazetteer entries (Wikidata + Pleiades + manual)")
+        else:
+            print(f"Proper name gazetteer not found at {filepath}")
+    return _GAZETTEER_DICT
+
+
 # Greek-to-Latin transliteration for cognate matching
 # Maps normalized (accent-stripped) Greek characters to their most common Latin equivalents
 # Multiple variants handled: κ→c/k, υ→u/y, αι→ae, οι→oe, ου→u, ει→i
@@ -572,13 +595,14 @@ def _is_cognate_match(greek_norm, latin_lower):
 
 
 def find_greek_latin_matches(greek_lemmas: list, latin_lemmas: list, use_stoplist: bool = True) -> list:
-    """Find Greek-Latin word matches using curated vocabulary + V3 dictionary + cognate matching.
+    """Find Greek-Latin word matches using curated vocabulary + V3 dictionary + gazetteer + cognate matching.
     Uses accent-normalized Greek for matching.
 
-    Three matching layers:
+    Four matching layers:
     1. Curated Greek-Latin pairs (highest confidence, ~76 key entries)
     2. V3 dictionary (34,535 entries from Lewis & Short / LSJ)
-    3. Cognate matching via transliteration (proper nouns, borrowed vocabulary)
+    3. Proper name gazetteer (~1,500 entries from Wikidata + Pleiades + manual)
+    4. Cognate matching via transliteration (borrowed vocabulary, remaining proper nouns)
 
     Args:
         greek_lemmas: List of Greek lemmas from source text
@@ -589,6 +613,7 @@ def find_greek_latin_matches(greek_lemmas: list, latin_lemmas: list, use_stoplis
         List of match dicts with source/target indices and matched words
     """
     _, gl_dict_norm = get_greek_latin_dict()
+    gazetteer = _get_gazetteer_dict()
 
     matches = []
     seen = set()
@@ -605,7 +630,8 @@ def find_greek_latin_matches(greek_lemmas: list, latin_lemmas: list, use_stoplis
 
         curated_translations = set(CURATED_GREEK_LATIN.get(grc_norm, []))
         v3_translations = gl_dict_norm.get(grc_norm, set()) if gl_dict_norm else set()
-        latin_translations = curated_translations.union(v3_translations)
+        gazetteer_translations = gazetteer.get(grc_norm, set())
+        latin_translations = curated_translations.union(v3_translations).union(gazetteer_translations)
 
         if latin_translations:
             matching_latins = latin_translations.intersection(latin_lower_set)
