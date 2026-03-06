@@ -202,6 +202,7 @@ const workTitles = {
   'aeneid': 'Aeneid',
   'ecl': 'Eclogues',
   'eclogues': 'Eclogues',
+  'g': 'Georgics',
   'georg': 'Georgics',
   'georgics': 'Georgics',
   'met': 'Metamorphoses',
