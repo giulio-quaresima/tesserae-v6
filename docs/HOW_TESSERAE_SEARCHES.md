@@ -144,6 +144,8 @@ For example, Lucan 1.588 (listing methods of divination) and Vergil, *Aeneid* 3.
 
 Some allusions are signaled by the shared use of an uncommon word — a term that appears in fewer than 50 texts across the entire corpus. When two lines share such a rare lemma, the connection is unlikely to be coincidental. The word *quercus* ("oak"), for instance, is distinctive enough that finding it in both Lucan 1.136 and Vergil, *Aeneid* 9.681 is meaningful evidence of a deliberate echo.
 
+Because proper nouns (personal names, place names) are often rare in the corpus but may not signal genuine allusion, the rare word search offers an option to exclude them. The system identifies proper nouns using both a capitalization-based heuristic and a curated gazetteer of over 1,500 Greek and Latin names compiled from Wikidata mythological entities, the Pleiades gazetteer of ancient places, and manual curation of major epic figures and Olympian deities.
+
 ---
 
 ## 6. Combining the Channels (Fusion)
