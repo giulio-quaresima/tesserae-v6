@@ -5,6 +5,7 @@ const mainTabs = [
   // DISABLED FOR PRODUCTION - Uncomment to restore Visualizations
   // { code: 'visualizations', label: 'Visualize' },
   { code: 'downloads', label: 'Downloads' },
+  { code: 'research', label: 'Research' },
   { code: 'about', label: 'About' },
   { code: 'help', label: 'Help & Support' },
   { code: 'admin', label: 'Admin' }

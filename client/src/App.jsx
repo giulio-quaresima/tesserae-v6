@@ -6,7 +6,7 @@ import { Modal, LoadingSpinner } from './components/common';
 import { CorpusBrowser, RareWordsExplorer } from './components/corpus';
 import { Repository } from './components/repository';
 import { AdminPanel } from './components/admin';
-import { AboutPage, HelpPage, DownloadsPage, PrivacyPage } from './components/pages';
+import { AboutPage, HelpPage, DownloadsPage, PrivacyPage, ResearchPage } from './components/pages';
 import TextCredits from './components/about/TextCredits';
 import VisualizationsPage from './components/pages/VisualizationsPage';
 import { useCorpus, useSearch } from './hooks';
@@ -23,6 +23,7 @@ const pathToPageType = {
   '/about': 'about',
   '/help': 'help',
   '/privacy': 'privacy',
+  '/research': 'research',
   '/text-credits': 'text-credits',
   '/admin': 'admin'
 };
@@ -38,6 +39,7 @@ const pageTypeToPath = {
   'about': '/about',
   'help': '/help',
   'privacy': '/privacy',
+  'research': '/research',
   'text-credits': '/text-credits',
   'admin': '/admin'
 };
@@ -725,6 +727,10 @@ function App() {
 
         {pageType === 'privacy' && (
           <PrivacyPage />
+        )}
+
+        {pageType === 'research' && (
+          <ResearchPage />
         )}
 
         {pageType === 'admin' && (

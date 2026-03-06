@@ -151,6 +151,27 @@ CURATED_GREEK_LATIN = {
     "αιδησ": ["pluto", "plutonis", "dis", "orcus"],
     "μοιρα": ["fatum", "fati", "sors", "parca"],
     "κηρ": ["mors", "fatum", "letum"],
+    # Divine epithets and cult names
+    "φοιβοσ": ["phoebus", "apollo", "apollinis"],
+    # Muses and poetic invocation
+    "μουσα": ["musa", "musae", "camena", "camenae"],
+    "καλλιοπη": ["calliope", "calliopes"],
+    "κλειω": ["clio"],
+    # Patronymics and mythological periphrases
+    "πηληιαδησ": ["pelides", "pelidae"],
+    "αιακιδησ": ["aeacides", "aeaciden"],
+    "ατρειδησ": ["atrides", "atridae"],
+    "τυδειδησ": ["tydides", "tydidae"],
+    "λαερτιαδησ": ["laertiades"],
+    "κρονιδησ": ["saturnius"],
+    "κρονιων": ["saturnius"],
+    # Epic vocabulary
+    "ηρωσ": ["heros", "herois", "heroum"],
+    "αοιδη": ["carmen", "carminis", "cantus"],
+    "αοιδοσ": ["vates", "vatis", "poeta"],
+    # Verbs of singing/telling (proem invocations)
+    "ενεπω": ["cano", "dico", "narro", "refero"],
+    "μελπω": ["cano", "canto"],
 }
 
 CURATED_LATIN = {
