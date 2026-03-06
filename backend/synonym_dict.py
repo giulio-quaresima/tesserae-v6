@@ -175,6 +175,106 @@ CURATED_GREEK_LATIN = {
     # Verbs of singing/telling (proem invocations)
     "ενεπω": ["cano", "dico", "narro", "refero"],
     "μελπω": ["cano", "canto"],
+    # Body and person
+    "δακρυ": ["lacrima", "lacrimae", "fletus"],
+    "δακρυον": ["lacrima", "lacrimae", "fletus"],
+    "οσσε": ["oculus", "oculi", "lumen", "lumina"],
+    "οφθαλμοσ": ["oculus", "oculi", "lumen"],
+    "κομη": ["coma", "comae", "capillus", "crinis"],
+    "γενοσ": ["genus", "generis", "gens", "gentis", "stirps"],
+    "γενεη": ["genus", "generis", "gens", "stirps"],
+    "παρθενοσ": ["virgo", "virginis", "puella"],
+    "κορη": ["virgo", "puella", "nata"],
+    "νεκυσ": ["corpus", "corporis", "cadaver"],
+    "νεκροσ": ["corpus", "corporis", "cadaver", "mortuus"],
+    # Warfare and equipment
+    "τειχοσ": ["murus", "moenia", "moene"],
+    "πυργοσ": ["turris", "turrium"],
+    "πυλη": ["porta", "portae", "ianua"],
+    "θυρα": ["porta", "ianua", "foris", "ostium", "limen"],
+    "δεσμοσ": ["vinculum", "nodus", "catena"],
+    "χαλκεοσ": ["aeneus", "aereus", "aeratus"],
+    "χαλκοσ": ["aes", "aeris", "ferrum"],
+    "σακοσ": ["clipeus", "scutum"],
+    # Ships and sea
+    "ιστιον": ["velum", "veli", "carbasus"],
+    "πρυμνα": ["puppis", "puppis"],
+    "πρωρα": ["prora", "prorae"],
+    # Nature and weather
+    "ανεμοσ": ["ventus", "venti", "aura", "flatus"],
+    "λαιλαψ": ["procella", "tempestas", "turbo"],
+    "κορυφη": ["vertex", "verticis", "cacumen", "culmen", "arx"],
+    "αμβροσιοσ": ["ambrosius", "ambrosia", "divinus"],
+    # Food and sacrifice
+    "σπλαγχνον": ["viscus", "viscera", "exta"],
+    "οβελοσ": ["veru", "verubus"],
+    # Toil and suffering
+    "πονοσ": ["labor", "laboris", "opera"],
+    "αχοσ": ["dolor", "doloris", "luctus", "maeror"],
+    "πενθοσ": ["luctus", "dolor", "maeror"],
+    # Dwelling
+    "δωμα": ["domus", "tecta", "aedes", "regia"],
+    "μεγαρον": ["domus", "regia", "aula", "atrium"],
+    # Vehicles
+    "οχοσ": ["currus", "currus"],
+    "διφροσ": ["currus", "currus", "sella"],
+    # Mind and spirit
+    "φρην": ["mens", "mentis", "pectus", "animus", "cor"],
+    "νοοσ": ["mens", "mentis", "animus", "consilium"],
+    # Appearance and recognition
+    "ειδωλον": ["imago", "imaginis", "simulacrum", "umbra"],
+    # Time
+    "ενιαυτοσ": ["annus", "anni"],
+    "ημαρ": ["dies", "diei", "lux"],
+    # Speech
+    "αυδη": ["vox", "vocis", "sonus"],
+    "κλαγγη": ["clamor", "clamoris", "strepitus", "sonitus"],
+    # Seeing and looking
+    "εισοραω": ["conspicio", "video", "aspicio", "cerno"],
+    "καθοραω": ["despicio", "prospicio", "video"],
+    # Weeping
+    "γοοσ": ["fletus", "planctus", "luctus", "gemitus"],
+    "κλαιω": ["fleo", "flevi", "ploro", "lacrimo"],
+    "στεναχω": ["gemo", "gemui", "suspiro", "ingemisco"],
+    # Movement
+    "βαινω": ["eo", "gradior", "incedo"],
+    "ικνεομαι": ["advenio", "pervenio", "accedo"],
+    # Family
+    "κασιγνητοσ": ["frater", "fratris", "germanus"],
+    "κασιγνητη": ["soror", "sororis", "germana"],
+    "αλοχοσ": ["uxor", "uxoris", "coniunx", "coniugis"],
+    "παρακοιτισ": ["coniunx", "uxor", "consors"],
+    "δαμαρ": ["uxor", "coniunx", "marita"],
+    # Emotion verbs
+    "μειδιαω": ["subrideo", "rideo", "arrideo"],
+    "μειδαω": ["subrideo", "rideo"],
+    "ορμαινω": ["volvo", "voluto", "agito", "meditor"],
+    "χολοομαι": ["irascor", "indignor", "doleo"],
+    # Physical actions
+    "ορεγω": ["tendo", "porrigo", "extendo"],
+    "κτεινω": ["occido", "interficio", "neco", "caedo"],
+    "ολλυμι": ["perdo", "perimo", "deleo"],
+    "αλισκομαι": ["capio", "corripio"],
+    # Body parts
+    "καρδια": ["cor", "cordis", "pectus"],
+    "κραδιη": ["cor", "cordis", "pectus"],
+    "στηθοσ": ["pectus", "pectoris"],
+    "γονυ": ["genu", "genus"],
+    "παλαμη": ["palma", "palmae", "manus"],
+    # Water
+    "ρεεθρον": ["unda", "undae", "fluctus", "flumen"],
+    "ροοσ": ["flumen", "fluvius", "cursus"],
+    # Starry sky
+    "αστερεοσ": ["sidereus", "stellatus"],
+    "αστερεισ": ["sidereus", "stellatus"],
+    # Smiling/joy
+    "γελαω": ["rideo", "ridere"],
+    # Ruling
+    "ανασσω": ["regno", "regnare", "dominor", "impero"],
+    "κρειων": ["rex", "regis", "dominus"],
+    # Sacrifice and feasting
+    "δαισ": ["daps", "dapis", "epulae", "convivium"],
+    "οινοσ": ["vinum", "vini", "bacchus"],
 }
 
 CURATED_LATIN = {
