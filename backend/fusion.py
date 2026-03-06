@@ -136,8 +136,9 @@ CHANNEL_WEIGHTS = {
                             #   is strong allusion evidence; min_matches=1 is sufficient)
     "syntax": 0.3,          # structural: dependency pattern match (low — supplements other
                             #   channels but unreliable as primary signal)
-    "syntax_structural": 1.5,  # structural: identical dependency head pattern with no shared
-                            #   lemmas (catches pure syntactic imitation like Thomas's tricolon)
+    "syntax_structural": 0.5,  # structural: identical dependency head pattern with no shared
+                            #   lemmas (low alone — too many false positives from common
+                            #   syntactic patterns; rises when semantic recovery adds 2nd channel)
     "lemma_min1": 0.3,      # lexical: single shared lemma (low — very high recall, very
                             #   noisy; serves as a catch-all for otherwise missed pairs)
 }

@@ -66,14 +66,15 @@ const SearchResults = ({
   const exportCSV = useCallback(() => {
     if (!results || results.length === 0) return;
 
-    const headers = ['Source Locus', 'Source Text', 'Target Locus', 'Target Text', 'Score', 'Matched Words'];
+    const headers = ['Source Locus', 'Source Text', 'Target Locus', 'Target Text', 'Score', 'Matched Words', 'Channels'];
     const rows = results.map(r => [
       r.source_locus || r.source?.ref || '',
       (r.source_text || r.source_snippet || r.source?.text || '').replace(/<[^>]*>/g, '').replace(/"/g, '""'),
       r.target_locus || r.target?.ref || '',
       (r.target_text || r.target_snippet || r.target?.text || '').replace(/<[^>]*>/g, '').replace(/"/g, '""'),
       (r.score ?? r.overall_score)?.toFixed(3) || '',
-      (r.matched_words || []).map(w => typeof w === 'object' ? (w.lemma || w.word || '') : w).join('; ')
+      (r.matched_words || []).map(w => typeof w === 'object' ? (w.lemma || w.word || '') : w).join('; '),
+      (r.channels || []).join('; ')
     ]);
 
     const csv = [headers.join(','), ...rows.map(r => r.map(c => `"${c}"`).join(','))].join('\n');
