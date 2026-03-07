@@ -55,7 +55,7 @@ export const useSearch = () => {
 
     try {
       const matchType = params.match_type || params.settings?.match_type;
-      const isCrossLingual = matchType === 'semantic_cross' || matchType === 'dictionary_cross';
+      const isCrossLingual = matchType === 'semantic_cross' || matchType === 'dictionary_cross' || matchType === 'crosslingual_fusion';
       const isFusion = matchType === 'fusion';
 
       let data;

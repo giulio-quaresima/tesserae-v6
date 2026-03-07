@@ -800,29 +800,43 @@ export default function HelpPage() {
               <h3 className="text-xl font-semibold text-gray-900 mb-4">Cross-Lingual Search (Greek↔Latin)</h3>
               <p className="text-gray-700 mb-4">
                 The Greek↔Latin tab enables searching for parallels <em>across languages</em> —
-                finding how Greek texts influenced Latin authors or vice versa. Two detection modes are available.
+                finding how Greek texts influenced Latin authors or vice versa. The search uses
+                two-channel fusion, combining AI semantic matching with dictionary-based vocabulary
+                lookup. Pairs detected by both channels receive a convergence bonus, pushing the
+                most confident matches to the top.
               </p>
               <div className="space-y-4">
                 <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                  <h4 className="font-medium text-blue-800 mb-2">AI Semantic Mode</h4>
+                  <h4 className="font-medium text-blue-800 mb-2">Channel 1: AI Semantic</h4>
                   <p className="text-blue-700 text-sm">
-                    Uses the SPhilBERTa neural model trained on parallel Greek-Latin texts to find conceptually
-                    similar passages. Best for discovering thematic connections and paraphrased ideas where
-                    no direct vocabulary correspondence exists.
+                    Uses the SPhilBERTa neural model, trained on parallel Greek-Latin texts, to find conceptually
+                    similar passages. Detects thematic connections and paraphrased ideas even where
+                    no direct vocabulary correspondence exists. Results show a cosine similarity percentage.
                   </p>
                 </div>
                 <div className="bg-amber-50 p-4 rounded-lg border border-amber-200">
-                  <h4 className="font-medium text-amber-900 mb-2">Dictionary Mode</h4>
+                  <h4 className="font-medium text-amber-900 mb-2">Channel 2: Greek↔Latin Dictionary</h4>
                   <p className="text-amber-700 text-sm mb-2">
                     Finds shared vocabulary across languages using three matching layers:
                   </p>
                   <ul className="text-amber-700 text-sm space-y-1 ml-4 list-disc list-inside">
-                    <li><strong>Curated pairs</strong> — hand-verified Greek-Latin equivalences</li>
+                    <li><strong>Curated pairs</strong> — hand-verified Greek-Latin equivalences (e.g., ἀνήρ→vir, ἐνέπω→cano)</li>
                     <li><strong>V3 dictionary</strong> — 34,500+ Greek-Latin word pairs from Tesserae V3 scholars</li>
-                    <li><strong>Cognate detection</strong> — automatic transliteration matching (e.g., Greek <em>philosophia</em> → Latin <em>philosophia</em>, <em>Olympos</em> → <em>Olympus</em>)</li>
+                    <li><strong>Cognate detection</strong> — automatic transliteration matching (e.g., Greek <em>philosophia</em> → Latin <em>philosophia</em>)</li>
                   </ul>
                   <p className="text-amber-700 text-sm mt-2">
-                    Scores matches by word rarity (IDF). Matched words are highlighted in the results.
+                    Matched dictionary words are highlighted in the results. Scores use word rarity (IDF)
+                    so rare vocabulary matches rank higher than common ones.
+                  </p>
+                </div>
+                <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+                  <h4 className="font-medium text-green-800 mb-2">Fusion &amp; Convergence</h4>
+                  <p className="text-green-700 text-sm">
+                    Pairs found by both channels receive a 1.5× convergence bonus. For example, <em>Odyssey</em> 1.1 /
+                    {' '}<em>Aeneid</em> 1.1 is detected semantically (48% cosine) and confirmed by dictionary matches
+                    (ἄνδρα→virum, ἔννεπε→cano). The "Min Dictionary Matches" filter lets you require a minimum number
+                    of dictionary word matches — set to 1 to include semantic-only pairs, or raise it to focus on
+                    vocabulary-confirmed parallels.
                   </p>
                 </div>
               </div>

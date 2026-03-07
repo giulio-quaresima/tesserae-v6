@@ -29,8 +29,7 @@ export default function CrossLingualSearch() {
   const [targetWork, setTargetWork] = useState('');
   const [targetSection, setTargetSection] = useState('');
 
-  const [matchMode, setMatchMode] = useState('ai');
-  const [minMatches, setMinMatches] = useState(2);
+  const [minMatches, setMinMatches] = useState(1);
   const [displayLimit, setDisplayLimit] = useState(50);
   const [sortBy, setSortBy] = useState('score');
   const [showDistributionChart, setShowDistributionChart] = useState(false);
@@ -40,9 +39,8 @@ export default function CrossLingualSearch() {
   const [chartFilter, setChartFilter] = useState(null);
   const chartRef = useRef(null);
   const hasSearchedRef = useRef(false);
-  const prevMatchModeRef = useRef(matchMode);
 
-  const doSearch = useCallback(async (mode) => {
+  const doSearch = useCallback(async () => {
     if (!sourceSection || !targetSection) {
       setError('Please select both source and target texts');
       return;
@@ -50,7 +48,6 @@ export default function CrossLingualSearch() {
     setSearchLoading(true);
     setError(null);
     try {
-      const matchType = mode === 'ai' ? 'semantic_cross' : 'dictionary_cross';
       const res = await fetch('/api/search', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -59,7 +56,7 @@ export default function CrossLingualSearch() {
           target: targetSection,
           source_language: 'grc',
           target_language: 'la',
-          match_type: matchType,
+          match_type: 'crosslingual_fusion',
           min_matches: minMatches
         })
       });
@@ -79,15 +76,6 @@ export default function CrossLingualSearch() {
   useEffect(() => {
     loadHierarchies();
   }, []);
-
-  useEffect(() => {
-    if (prevMatchModeRef.current !== matchMode) {
-      prevMatchModeRef.current = matchMode;
-      if (hasSearchedRef.current && sourceSection && targetSection && !searchLoading) {
-        doSearch(matchMode);
-      }
-    }
-  }, [matchMode, sourceSection, targetSection, searchLoading, doSearch]);
 
   useEffect(() => {
     if (searchLoading) {
@@ -162,18 +150,19 @@ export default function CrossLingualSearch() {
 
   const handleSearch = () => {
     hasSearchedRef.current = true;
-    doSearch(matchMode);
+    doSearch();
   };
 
   const exportCSV = useCallback(() => {
-    const headers = ['Score', 'Greek Locus', 'Greek Text', 'Latin Locus', 'Latin Text', 'Similarity', 'Matched Words'];
+    const headers = ['Score', 'Channels', 'Greek Locus', 'Greek Text', 'Latin Locus', 'Latin Text', 'Semantic', 'Matched Words'];
     const rows = results.map(r => [
       (r.overall_score || r.score)?.toFixed(3) || '',
+      (r.channels || ''),
       (r.source?.ref || r.source_locus || ''),
       (r.source?.text || r.source_text || '').replace(/"/g, '""'),
       (r.target?.ref || r.target_locus || ''),
       (r.target?.text || r.target_text || '').replace(/"/g, '""'),
-      (r.features?.semantic_score || r.similarity)?.toFixed(3) || '',
+      r.features?.semantic_score ? (r.features.semantic_score * 100).toFixed(0) + '%' : '',
       (r.matched_words || []).map(m => m.display || `${m.greek_word}→${m.latin_word}`).join('; ')
     ]);
     const csv = [headers, ...rows].map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
@@ -276,7 +265,7 @@ export default function CrossLingualSearch() {
           Cross-Lingual Search (Greek ↔ Latin)
         </h2>
         <p className="text-sm text-gray-500 mt-1">
-          Find semantic parallels between Greek and Latin texts using AI-powered matching
+          Find parallels between Greek and Latin texts using AI semantic + dictionary fusion
         </p>
       </div>
 
@@ -394,49 +383,21 @@ export default function CrossLingualSearch() {
 
       <div className="bg-white rounded-lg shadow p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          <label className="text-sm text-gray-600">Match Mode:</label>
-          <div className="flex gap-2">
-            <button
-              onClick={() => {
-                if (matchMode !== 'ai') {
-                  setMatchMode('ai');
-                  if (hasSearchedRef.current && sourceSection && targetSection) {
-                    doSearch('ai');
-                  }
-                }
-              }}
-              disabled={searchLoading}
-              title="Finds semantic parallels using SPhilBERTa cross-lingual embeddings"
-              className={`px-4 py-2 rounded text-sm ${matchMode === 'ai' ? 'bg-red-700 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'} disabled:opacity-50`}
-            >
-              AI Semantic
-            </button>
-            <button
-              onClick={() => {
-                if (matchMode !== 'dictionary') {
-                  setMatchMode('dictionary');
-                  if (hasSearchedRef.current && sourceSection && targetSection) {
-                    doSearch('dictionary');
-                  }
-                }
-              }}
-              disabled={searchLoading}
-              className={`px-4 py-2 rounded text-sm ${matchMode === 'dictionary' ? 'bg-red-700 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'} disabled:opacity-50`}
-            >
-              Dictionary
-            </button>
-          </div>
+          <span className="text-sm text-gray-500">
+            Combines AI semantic matching (SPhilBERTa) with Greek↔Latin dictionary lookup.
+            Pairs detected by both channels are boosted.
+          </span>
           <div className="flex items-center gap-2 ml-4">
-            <label className="text-sm text-gray-600">Min Word Matches:</label>
+            <label className="text-sm text-gray-600 whitespace-nowrap">Min Dictionary Matches:</label>
             <select
               value={minMatches}
               onChange={(e) => setMinMatches(parseInt(e.target.value))}
               className="px-2 py-1 border rounded text-sm"
             >
+              <option value={1}>1 (show semantic-only)</option>
               <option value={2}>2</option>
               <option value={3}>3</option>
               <option value={4}>4</option>
-              <option value={5}>5</option>
             </select>
           </div>
         </div>
@@ -531,9 +492,14 @@ export default function CrossLingualSearch() {
                   <span className="text-sm font-medium text-gray-500">
                     Score: {(result.overall_score || result.score)?.toFixed(3)}
                   </span>
-                  {(result.features?.semantic_score || result.similarity) && (
+                  {result.features?.semantic_score > 0 && (
                     <span className="text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded">
-                      Similarity: {((result.features?.semantic_score || result.similarity) * 100).toFixed(1)}%
+                      Semantic: {(result.features.semantic_score * 100).toFixed(0)}%
+                    </span>
+                  )}
+                  {result.features?.n_channels === 2 && (
+                    <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">
+                      2-channel
                     </span>
                   )}
                 </div>

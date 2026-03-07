@@ -100,7 +100,7 @@ def _parse_search_request(data):
         raise ValueError('Please select both source and target texts')
 
     match_type = settings.get('match_type', 'lemma')
-    is_crosslingual = match_type in ('semantic_cross', 'dictionary_cross')
+    is_crosslingual = match_type in ('semantic_cross', 'dictionary_cross', 'crosslingual_fusion')
 
     if is_crosslingual:
         source_path = os.path.join(_texts_dir, source_language, source_id)
@@ -170,7 +170,7 @@ def _run_matcher(match_type, source_units, target_units, settings, corpus_freque
     elif match_type == 'dictionary':
         from backend.semantic_similarity import find_dictionary_matches
         return find_dictionary_matches(source_units, target_units, settings)
-    elif match_type in ('semantic_cross', 'dictionary_cross'):
+    elif match_type in ('semantic_cross', 'dictionary_cross', 'crosslingual_fusion'):
         raise ValueError(f'Cross-lingual match type {match_type} requires special handling')
     else:
         return _matcher.find_matches(source_units, target_units, settings, corpus_frequencies)
@@ -283,6 +283,376 @@ def _handle_dictionary_cross(params, source_units, target_units, settings):
 
     return jsonify(_finalize_results(scored_results, source_units, target_units,
                                       stoplist_size, settings, source_id, target_id, language))
+
+
+def _find_dictionary_matches_fast(source_units, target_units, source_language, target_language):
+    """Fast inverted-index dictionary matching for cross-lingual fusion.
+
+    Instead of O(n*m) calls to find_greek_latin_matches, builds an inverted
+    index of target lemmas, then for each source lemma looks up translations
+    and finds which target lines contain them.  Returns dict keyed by
+    (src_idx, tgt_idx) with word_matches list.
+    """
+    import unicodedata
+    from backend.synonym_dict import get_greek_latin_dict, CURATED_GREEK_LATIN, \
+        CROSSLINGUAL_STOPLIST_GREEK, CROSSLINGUAL_STOPLIST_LATIN
+
+    _, gl_dict_norm = get_greek_latin_dict()
+
+    def strip_accents(s):
+        nfd = unicodedata.normalize('NFD', s.lower())
+        return ''.join(c for c in nfd if unicodedata.category(c) != 'Mn')
+
+    # Determine which side is Greek, which is Latin
+    if source_language == 'grc' and target_language == 'la':
+        grc_units, lat_units = source_units, target_units
+        grc_is_source = True
+    else:
+        grc_units, lat_units = target_units, source_units
+        grc_is_source = False
+
+    # Build inverted index: latin_lemma_norm -> set of (unit_idx, token_position)
+    lat_lemma_index = {}
+    for tgt_idx, unit in enumerate(lat_units):
+        for pos, lemma in enumerate(unit.get('lemmas', [])):
+            ln = lemma.lower()
+            if ln in CROSSLINGUAL_STOPLIST_LATIN:
+                continue
+            lat_lemma_index.setdefault(ln, []).append((tgt_idx, pos))
+
+    # For each Greek unit, look up translations and find target hits
+    pair_matches = {}  # (src_idx, tgt_idx) -> list of word match dicts
+
+    for grc_idx, grc_unit in enumerate(grc_units):
+        grc_lemmas = grc_unit.get('lemmas', [])
+        for grc_pos, grc_lemma in enumerate(grc_lemmas):
+            grc_norm = strip_accents(grc_lemma)
+            if grc_norm in CROSSLINGUAL_STOPLIST_GREEK:
+                continue
+
+            # Get all Latin translations for this Greek lemma
+            translations = set()
+            curated = CURATED_GREEK_LATIN.get(grc_norm, [])
+            if curated:
+                translations.update(w.lower() for w in curated)
+            dict_trans = gl_dict_norm.get(grc_norm, set()) if gl_dict_norm else set()
+            if dict_trans:
+                translations.update(w.lower() for w in dict_trans)
+
+            if not translations:
+                continue
+
+            # Look up which target lines contain these translations
+            for lat_lemma in translations:
+                if lat_lemma in CROSSLINGUAL_STOPLIST_LATIN:
+                    continue
+                hits = lat_lemma_index.get(lat_lemma)
+                if not hits:
+                    continue
+                for lat_idx, lat_pos in hits:
+                    if grc_is_source:
+                        key = (grc_idx, lat_idx)
+                    else:
+                        key = (lat_idx, grc_idx)
+
+                    wm = {
+                        'greek_lemma': grc_norm,
+                        'latin_lemma': lat_lemma,
+                        'greek_indices': [grc_pos],
+                        'latin_indices': [lat_pos],
+                    }
+                    pair_matches.setdefault(key, []).append(wm)
+
+    # Deduplicate: collapse multiple hits of same lemma pair per line pair
+    for key in pair_matches:
+        seen = {}
+        deduped = []
+        for wm in pair_matches[key]:
+            pair_key = (wm['greek_lemma'], wm['latin_lemma'])
+            if pair_key not in seen:
+                seen[pair_key] = wm
+                deduped.append(wm)
+            else:
+                # Merge indices
+                existing = seen[pair_key]
+                for gi in wm['greek_indices']:
+                    if gi not in existing['greek_indices']:
+                        existing['greek_indices'].append(gi)
+                for li in wm['latin_indices']:
+                    if li not in existing['latin_indices']:
+                        existing['latin_indices'].append(li)
+        pair_matches[key] = deduped
+
+    return pair_matches
+
+
+def _handle_crosslingual_fusion(params, source_units, target_units, settings):
+    """Two-channel cross-lingual fusion: semantic (SPhilBERTa) + dictionary.
+
+    Runs both channels, merges by (source_idx, target_idx), and applies a
+    convergence bonus when both channels fire on the same pair.
+    """
+    import math
+    from backend.semantic_similarity import find_crosslingual_matches
+    from backend.synonym_dict import find_greek_latin_matches
+
+    source_id = params['source_id']
+    target_id = params['target_id']
+    language = params['language']
+    min_matches = settings.get('min_matches', 1)
+
+    # --- Channel 1: Semantic (SPhilBERTa cosine) ---
+    sem_settings = {**settings, 'max_results': 2000, 'semantic_top_n': 20}
+    sem_matches, _ = find_crosslingual_matches(
+        source_units, target_units,
+        params['source_language'], params['target_language'], sem_settings)
+
+    # Index semantic results by pair key
+    sem_by_pair = {}
+    for m in sem_matches:
+        key = (m['source_idx'], m['target_idx'])
+        sem_by_pair[key] = m.get('semantic_score', 0.0)
+
+    # --- Channel 2: Dictionary (fast inverted-index lookup) ---
+    print("Running fast dictionary matching...")
+    dict_by_pair = _find_dictionary_matches_fast(
+        source_units, target_units,
+        params['source_language'], params['target_language'])
+    print(f"Dictionary found {len(dict_by_pair)} pairs with matches")
+
+    # --- Semantic recovery for dictionary-only pairs ---
+    # Dictionary pairs not found by the semantic channel (filtered by top-N cap)
+    # get their actual cosine looked up from pre-computed embeddings.
+    dict_only_keys = set(dict_by_pair.keys()) - set(sem_by_pair.keys())
+    if dict_only_keys:
+        try:
+            from backend.embedding_storage import load_embeddings
+            import numpy as np
+            src_path = settings.get('source_text_path')
+            tgt_path = settings.get('target_text_path')
+            src_emb = load_embeddings(src_path, params['source_language']) if src_path else None
+            tgt_emb = load_embeddings(tgt_path, params['target_language']) if tgt_path else None
+            if src_emb is not None and tgt_emb is not None:
+                src_emb = src_emb[:len(source_units)]
+                tgt_emb = tgt_emb[:len(target_units)]
+                # Normalise
+                src_norms = np.linalg.norm(src_emb, axis=1, keepdims=True)
+                tgt_norms = np.linalg.norm(tgt_emb, axis=1, keepdims=True)
+                src_emb = src_emb / (src_norms + 1e-8)
+                tgt_emb = tgt_emb / (tgt_norms + 1e-8)
+                recovered = 0
+                for key in dict_only_keys:
+                    si, ti = key
+                    if si < len(src_emb) and ti < len(tgt_emb):
+                        cosine = float(np.dot(src_emb[si], tgt_emb[ti]))
+                        if cosine > 0.4:
+                            sem_by_pair[key] = cosine
+                            recovered += 1
+                print(f"Semantic recovery: {recovered}/{len(dict_only_keys)} dictionary-only pairs got cosine scores")
+        except Exception as e:
+            print(f"Semantic recovery failed: {e}")
+
+    # --- Local IDF from source+target texts (avoids slow corpus freq lookup) ---
+    import unicodedata
+    def strip_accents(s):
+        nfd = unicodedata.normalize('NFD', s.lower())
+        return ''.join(c for c in nfd if unicodedata.category(c) != 'Mn')
+
+    # Count document frequency: how many lines contain each lemma
+    doc_freq = {}
+    for unit in source_units:
+        seen = set()
+        for lemma in unit.get('lemmas', []):
+            norm = strip_accents(lemma)
+            if norm not in seen:
+                doc_freq[norm] = doc_freq.get(norm, 0) + 1
+                seen.add(norm)
+    for unit in target_units:
+        seen = set()
+        for lemma in unit.get('lemmas', []):
+            norm = lemma.lower()
+            if norm not in seen:
+                doc_freq[norm] = doc_freq.get(norm, 0) + 1
+                seen.add(norm)
+    total_docs = len(source_units) + len(target_units)
+
+    def calc_idf(lemma, is_greek=False):
+        key = strip_accents(lemma) if is_greek else lemma.lower()
+        df = doc_freq.get(key, 1)
+        return math.log((total_docs + 1) / (df + 1)) + 1
+
+    # --- Merge ---
+    all_keys = set(sem_by_pair.keys()) | set(dict_by_pair.keys())
+
+    SEMANTIC_WEIGHT = 3.0
+    DICTIONARY_WEIGHT = 2.0
+    CONVERGENCE_BONUS = 1.5
+
+    fused = []
+    for key in all_keys:
+        src_idx, tgt_idx = key
+        cosine = sem_by_pair.get(key, 0.0)
+        dict_wms = dict_by_pair.get(key)  # list of word match dicts or None
+
+        has_semantic = cosine > 0
+        has_dict = dict_wms is not None
+
+        # Count unique words per side for dict matches
+        dict_word_count = 0
+        avg_idf = 0.0
+        if has_dict:
+            unique_grc = set(wm['greek_lemma'] for wm in dict_wms)
+            unique_lat = set(wm['latin_lemma'] for wm in dict_wms)
+            dict_word_count = min(len(unique_grc), len(unique_lat))
+
+            # Compute average IDF
+            total_idf = 0.0
+            for wm in dict_wms:
+                gi = calc_idf(wm['greek_lemma'], is_greek=True)
+                li = calc_idf(wm['latin_lemma'], is_greek=False)
+                wm['idf_score'] = (gi + li) / 2
+                total_idf += wm['idf_score']
+            avg_idf = total_idf / len(dict_wms) if dict_wms else 0
+
+        # Normalised dictionary score (typical avg_idf range 1-10, cap at 10)
+        dict_score = min(avg_idf / 10.0, 1.0) if has_dict else 0.0
+
+        # Apply min_matches filter to dictionary side
+        if has_dict and dict_word_count < min_matches:
+            has_dict = False
+            dict_score = 0.0
+            dict_word_count = 0
+            dict_wms = None
+
+        # Skip pairs with neither channel
+        if not has_semantic and not has_dict:
+            continue
+
+        # Fused score
+        score = (cosine * SEMANTIC_WEIGHT) + (dict_score * DICTIONARY_WEIGHT)
+        n_channels = (1 if has_semantic else 0) + (1 if has_dict else 0)
+        if n_channels == 2:
+            score *= CONVERGENCE_BONUS
+
+        # Build result
+        src_unit = source_units[src_idx]
+        tgt_unit = target_units[tgt_idx]
+        src_tokens = src_unit.get('tokens', [])
+        tgt_tokens = tgt_unit.get('tokens', [])
+        src_original = src_unit.get('original_tokens', src_tokens)
+        tgt_original = tgt_unit.get('original_tokens', tgt_tokens)
+
+        # Get word-level matches for highlighting
+        matched_words = []
+        source_highlights = []
+        target_highlights = []
+
+        if has_dict:
+            for wm in dict_wms:
+                grc_indices = wm.get('greek_indices', [])
+                lat_indices = wm.get('latin_indices', [])
+                # Determine which side is source vs target
+                if params['source_language'] == 'grc':
+                    s_indices, t_indices = grc_indices, lat_indices
+                else:
+                    s_indices, t_indices = lat_indices, grc_indices
+                grc_word = (src_original[s_indices[0]]
+                            if s_indices and s_indices[0] < len(src_original)
+                            else wm['greek_lemma'])
+                lat_word = (tgt_original[t_indices[0]]
+                            if t_indices and t_indices[0] < len(tgt_original)
+                            else wm['latin_lemma'])
+                matched_words.append({
+                    'greek_word': grc_word,
+                    'latin_word': lat_word,
+                    'greek_lemma': wm.get('greek_lemma', ''),
+                    'latin_lemma': wm.get('latin_lemma', ''),
+                    'display': f"{grc_word}\u2192{lat_word}",
+                    'type': 'cross_lingual',
+                    'idf': wm.get('idf_score', 0)
+                })
+                source_highlights.extend(s_indices)
+                target_highlights.extend(t_indices)
+        elif has_semantic:
+            # Semantic-only: try dictionary lookup for highlights
+            src_lemmas = src_unit.get('lemmas', [])
+            tgt_lemmas = tgt_unit.get('lemmas', [])
+            try:
+                if params['source_language'] == 'grc':
+                    gl = find_greek_latin_matches(src_lemmas, tgt_lemmas)
+                else:
+                    gl = find_greek_latin_matches(tgt_lemmas, src_lemmas)
+                    for g in gl:
+                        g['greek_indices'], g['latin_indices'] = g['latin_indices'], g['greek_indices']
+                for g in gl:
+                    if params['source_language'] == 'grc':
+                        s_idx_list, t_idx_list = g.get('greek_indices', []), g.get('latin_indices', [])
+                    else:
+                        s_idx_list, t_idx_list = g.get('latin_indices', []), g.get('greek_indices', [])
+                    source_highlights.extend(s_idx_list)
+                    target_highlights.extend(t_idx_list)
+                    grc_w = src_tokens[s_idx_list[0]] if s_idx_list and s_idx_list[0] < len(src_tokens) else g['greek_lemma']
+                    lat_w = tgt_tokens[t_idx_list[0]] if t_idx_list and t_idx_list[0] < len(tgt_tokens) else g['latin_lemma']
+                    matched_words.append({
+                        'greek_word': grc_w, 'latin_word': lat_w,
+                        'greek_lemma': g['greek_lemma'], 'latin_lemma': g['latin_lemma'],
+                        'display': f"{grc_w}\u2192{lat_w}",
+                        'type': 'cross_lingual'
+                    })
+            except Exception:
+                pass
+
+        if not matched_words:
+            matched_words = [{
+                'type': 'semantic_cross',
+                'similarity': cosine,
+                'display': f'Semantic similarity ({int(cosine*100)}%)',
+                'lemma': 'semantic_cross'
+            }]
+
+        channels = []
+        if has_semantic:
+            channels.append(f'semantic ({int(cosine*100)}%)')
+        if has_dict:
+            channels.append(f'dictionary ({dict_word_count} words)')
+
+        fused.append({
+            'source': {
+                'ref': src_unit.get('ref', ''),
+                'text': src_unit.get('text', ''),
+                'tokens': src_original,
+                'highlight_indices': sorted(set(source_highlights))
+            },
+            'target': {
+                'ref': tgt_unit.get('ref', ''),
+                'text': tgt_unit.get('text', ''),
+                'tokens': tgt_original,
+                'highlight_indices': sorted(set(target_highlights))
+            },
+            'matched_words': matched_words,
+            'match_count': dict_word_count,
+            'overall_score': score,
+            'features': {
+                'semantic_score': cosine,
+                'dict_score': dict_score,
+                'n_channels': n_channels,
+            },
+            'channels': ', '.join(channels),
+            'match_basis': 'crosslingual_fusion'
+        })
+
+    fused.sort(key=lambda x: x['overall_score'], reverse=True)
+
+    max_results = settings.get('max_results', 500)
+    if max_results > 0:
+        fused = fused[:max_results]
+
+    print(f"Cross-lingual fusion: {len(fused)} results "
+          f"({len(sem_by_pair)} semantic, {len(dict_by_pair)} dictionary, "
+          f"{len(set(sem_by_pair) & set(dict_by_pair))} overlap)")
+
+    return jsonify(_finalize_results(fused, source_units, target_units,
+                                      0, settings, source_id, target_id, language))
 
 
 # =============================================================================
@@ -451,11 +821,13 @@ def search():
         source_units, target_units = _load_units(params)
         corpus_frequencies = _load_corpus_frequencies(language, settings)
 
-        # Cross-lingual dictionary has custom IDF-based result building
+        # Cross-lingual fusion (default for cross-lingual searches)
+        if match_type == 'crosslingual_fusion':
+            return _handle_crosslingual_fusion(params, source_units, target_units, settings)
+
+        # Legacy single-channel cross-lingual paths
         if match_type == 'dictionary_cross':
             return _handle_dictionary_cross(params, source_units, target_units, settings)
-
-        # Cross-lingual semantic
         if match_type == 'semantic_cross':
             from backend.semantic_similarity import find_crosslingual_matches
             matches, stoplist_size = find_crosslingual_matches(
