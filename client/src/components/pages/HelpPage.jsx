@@ -853,6 +853,24 @@ export default function HelpPage() {
                   to discover how Vergil adapted Homeric themes and vocabulary.
                 </p>
               </div>
+              <div className="mt-4 bg-purple-50 p-4 rounded-lg border border-purple-200">
+                <h4 className="font-medium text-purple-800 mb-2">What to Expect: Benchmark Results</h4>
+                <p className="text-purple-700 text-sm mb-2">
+                  Cross-lingual detection is substantially harder than same-language matching. Tested against
+                  Knauer's catalog of 412 parallels between Vergil's <em>Aeneid</em> Book 1 and Homer's <em>Iliad</em>:
+                </p>
+                <ul className="text-purple-700 text-sm space-y-1 ml-4 list-disc list-inside">
+                  <li><strong>~40%</strong> of gold-standard parallels found in top 50 (per-target-line ranking)</li>
+                  <li><strong>~24%</strong> found in top 10</li>
+                  <li>Only 31% of scholarly parallels have any shared vocabulary across languages</li>
+                  <li>The remaining ~60% are thematic/narrative echoes beyond the reach of current lexical and AI methods</li>
+                </ul>
+                <p className="text-purple-700 text-sm mt-2">
+                  For comparison, the Latin fusion system achieves 92.8% recall across five benchmarks using
+                  nine channels. Cross-lingual search currently uses two channels (semantic + dictionary), with
+                  cross-lingual syntax matching under development as a third.
+                </p>
+              </div>
             </div>
           )}
 
