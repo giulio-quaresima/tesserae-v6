@@ -770,7 +770,8 @@ def find_greek_latin_matches(greek_lemmas: list, latin_lemmas: list, use_stoplis
             continue
 
         grc_lookup = grc_norm.replace('ς', 'σ')  # medial sigma to match dict keys
-        curated_translations = set(CURATED_GREEK_LATIN.get(grc_lookup, []))
+        # Normalize v→u in curated translations to match text processor's Latin lemmas
+        curated_translations = {w.replace('v', 'u') for w in CURATED_GREEK_LATIN.get(grc_lookup, [])}
         v3_translations = gl_dict_norm.get(grc_norm, set()) if gl_dict_norm else set()
         gazetteer_translations = gazetteer.get(grc_norm, set())
         latin_translations = curated_translations.union(v3_translations).union(gazetteer_translations)

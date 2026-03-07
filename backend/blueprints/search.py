@@ -336,10 +336,11 @@ def _find_dictionary_matches_fast(source_units, target_units, source_language, t
             translations = set()
             curated = CURATED_GREEK_LATIN.get(grc_lookup, [])
             if curated:
-                translations.update(w.lower() for w in curated)
+                # Normalize v→u to match text processor's Latin lemmas (which use u)
+                translations.update(w.lower().replace('v', 'u') for w in curated)
             dict_trans = gl_dict_norm.get(grc_norm, set()) or gl_dict_norm.get(grc_lookup, set()) if gl_dict_norm else set()
             if dict_trans:
-                translations.update(w.lower() for w in dict_trans)
+                translations.update(w.lower().replace('v', 'u') for w in dict_trans)
 
             if not translations:
                 continue

@@ -439,3 +439,606 @@
 ἕλκος,ulcus,vulnus
 φλεγμονή,inflammatio
 δίψα,sitis
+
+# ============================================================================
+# 37. PEOPLE AND CROWDS (Homer→Vergil epic vocabulary)
+# ============================================================================
+λαός,populus,plebs,vulgus,turba
+δῆμος,populus,plebs,vulgus
+ὅμιλος,turba,caterva,agmen
+πληθύς,multitudo,turba,copia
+στρατός,exercitus,agmen,acies,copia
+στρατιά,exercitus,acies,agmen
+ἔθνος,gens,natio,populus
+φῦλον,gens,genus,natio
+ξένος,hospes,peregrinus,advena
+ἱκέτης,supplex,precans
+ἑταῖρος,socius,comes,amicus
+σύμμαχος,socius,comes
+φίλος,amicus,carus,dilectus
+ἐχθρός,hostis,inimicus,infestus
+πολέμιος,hostis,inimicus
+πρέσβυς,legatus,orator
+ἄγγελος,nuntius,legatus
+
+# ============================================================================
+# 38. ABSTRACT CONCEPTS
+# ============================================================================
+ἀνάγκη,necessitas,fatum,vis
+ἐλπίς,spes
+εἰρήνη,pax,otium
+ἐλευθερία,libertas
+δουλεία,servitus,servitium
+δίκη,ius,iustitia,fas
+νόμος,lex,ius,mos
+αἰδώς,pudor,reverentia,verecundia
+αἰσχύνη,pudor,dedecus,ignominia
+ὕβρις,superbia,insolentia,contumelia
+ἄτη,furor,error,calamitas,dementia
+μῶμος,vituperium,opprobrium
+ξυμφορά,casus,calamitas,clades
+πένθος,luctus,maeror,dolor
+ἐπιθυμία,cupido,libido,desiderium
+βουλή,consilium,sententia
+γνώμη,sententia,iudicium,consilium
+μῆτις,consilium,dolus,ars
+ἀληθής,verus,certus
+ψεῦδος,mendacium,falsum
+ὅρκος,iusiurandum,sacramentum
+σπονδή,foedus,pax,libatio
+νίκη,victoria,palma
+ἧττα,clades,fuga
+κράτος,vis,potestas,imperium,robur
+βία,vis,violentia,robur
+σθένος,vis,robur,virtus
+ἀλκή,virtus,fortitudo,robur
+τόλμα,audacia,virtus
+ἔργον,opus,facinus,res
+πόνος,labor,aerumna
+κάματος,labor,lassitudo,fatigor
+ἀρχή,imperium,principium,initium
+τέλος,finis,exitus,eventus
+αἰτία,causa
+πρόφασις,causa,praetextus
+κέρδος,lucrum,commodum,praeda
+ζημία,damnum,poena
+τιμωρία,poena,supplicium,ultio
+ποινή,poena,supplicium
+μισθός,merces,praemium,stipendium
+δῶρον,donum,munus,praemium
+γέρας,praemium,honor,munus
+λύτρον,pretium,redemptio
+χρεία,usus,necessitas
+
+# ============================================================================
+# 39. PHYSICAL QUALITIES AND STATES
+# ============================================================================
+μέγας,magnus,ingens,immanis,vastus
+μικρός,parvus,exiguus
+ὀλίγος,paucus,exiguus
+ὑψηλός,altus,celsus,excelsus,sublimis
+βαθύς,altus,profundus
+μακρός,longus,procerus
+εὐρύς,latus,amplus,spatiosus
+στενός,angustus,artus
+ἰσχυρός,validus,fortis,robustus
+ἀσθενής,infirmus,debilis
+ὠκύς,velox,celer,rapidus
+βραδύς,tardus,lentus,piger
+βαρύς,gravis,ponderosus
+κοῦφος,levis
+θερμός,calidus,fervidus
+ψυχρός,frigidus,gelidus
+σκληρός,durus,rigidus
+μαλακός,mollis,tener
+ξηρός,siccus,aridus
+ὑγρός,humidus,udus,madidus
+λευκός,albus,candidus
+μέλας,niger,ater,obscurus
+ἐρυθρός,ruber,rufus,rubeus
+πορφύρεος,purpureus
+χρύσεος,aureus
+ἀργύρεος,argenteus
+χάλκεος,aeneus,aereus
+σιδήρεος,ferreus
+ἱερός,sacer,sanctus,divinus
+ἅγιος,sacer,sanctus
+δεινός,terribilis,dirus,atrox,formidabilis
+φοβερός,terribilis,formidabilis,horrendus
+ἀθάνατος,immortalis
+θνητός,mortalis
+
+# ============================================================================
+# 40. COMMON VERBS (not in existing entries)
+# ============================================================================
+ἄγω,duco,ago
+φέρω,fero,porto,gero
+δίδωμι,do,trado,dono
+λαμβάνω,capio,sumo,accipio
+τίθημι,pono,loco,statuo,colloco
+ἵστημι,sisto,sto,constituo
+ἔχω,habeo,teneo,possideo
+εὑρίσκω,invenio,reperio
+λείπω,linquo,relinquo,desero
+μένω,maneo,persisto,moror
+πίπτω,cado,concido,ruo
+κεῖμαι,iaceo,cubo
+ἄρχω,incipio,coepio,impero
+παύω,cesso,desino,desisto
+γίγνομαι,fio,nascor,orior
+ἀποθνῄσκω,morior,pereo,occido,cado
+ζάω,vivo
+αἱρέω,capio,sumo,rapio
+ἕλκω,traho,rapio
+ὠθέω,pello,trudo,depello
+πέμπω,mitto,emitto
+ἄρνυμαι,paro,acquiro
+δέχομαι,accipio,excipio,recipio
+ἀμύνω,defendo,arceo,propulso
+ἀμείβω,muto,vario,respondeo
+πείθω,suadeo,persuadeo
+κελεύω,iubeo,impero
+ἀκούω,audio,exaudio
+πάσχω,patior
+ἐργάζομαι,facio,operor
+κτίζω,condo,fundo
+τρέφω,alo,nutrio,pasco
+νέμω,pasco,distribuo
+τέμνω,seco,caedo,scindo
+κόπτω,caedo,ferio
+ῥήγνυμι,frango,rumpo
+ἀλλάσσω,muto,vario
+σῴζω,servo,conservo,tueor
+κωλύω,prohibeo,impedio
+ἐλαύνω,pello,ago,fugo
+διώκω,persequor,sequor,fugo
+πλέω,navigo,vehor
+ἐρέσσω,remigo
+ῥέω,fluo
+στρέφω,verto,torqueo,volvo
+σείω,quatio,concutio
+ἐγείρω,excito,suscito
+κοιμάω,sopio,quiesco
+λούω,lavo,abluo
+πίνω,bibo,poto
+ἐσθίω,edo,comedo,vescor
+δάκνω,mordeo
+πνέω,spiro,flo
+σπένδω,libo
+θάπτω,sepelio,condo
+κλίνω,inclino,reclino
+ἐλέγχω,arguo,coarguo
+κρίνω,iudico,decerno
+νικάω,vinco,supero
+ἡττάω,supero,vinco
+πολεμέω,bellor,pugno
+μάχομαι,pugno,dimico,certo
+ἐπιτίθημι,impono
+αἰσθάνομαι,sentio,percipio
+δοκέω,videor,puto,existimo
+βούλομαι,volo,cupio
+ἐθέλω,volo,cupio
+μέλλω,moror,cunctor
+τολμάω,audeo
+ἐπαινέω,laudo,probo,celebro
+μέμφομαι,queror,incuso,accuso,vitupero
+αἰτιάομαι,accuso,incuso
+χράω,utor
+σπεύδω,propero,festino
+ἐπείγω,urgueo,propero
+ἕπομαι,sequor,comitor
+ἡγέομαι,duco,praecedo
+δέω,ligo,vincio,necto
+λύω,solvo,libero
+ἅπτω,accendo,tango
+σβέννυμι,exstinguo,restinguo
+ἵημι,iacio,mitto,emitto
+ῥίπτω,iacio,proicio
+ἀνοίγω,aperio,pando
+κλείω,claudo
+φυλάσσω,servo,custodio
+φθάνω,praevenio,antecedo
+τρέπω,verto,flecto,averto
+στέλλω,mitto,instruo
+ἰάομαι,sano,medeor
+κομίζω,fero,curo,refero
+κτάομαι,paro,acquiro,possideo
+δοκεύω,specto,observo
+θαυμάζω,miror,admiror,stupeo
+αἰδέομαι,vereor,revereor
+σέβω,colo,veneror
+
+# ============================================================================
+# 41. SPACE AND DIRECTION
+# ============================================================================
+τόπος,locus
+χώρα,regio,terra,locus
+χῶρος,locus,spatium
+ὁδός,via,iter
+ἀτραπός,semita,callis
+πέρας,finis,terminus
+μέσος,medius
+ἔσχατος,extremus,ultimus
+πρῶτος,primus
+ὕστατος,ultimus,postremus
+δεξιός,dexter
+ἀριστερός,sinister,laevus
+ἄνω,sursum,superne
+κάτω,infra,deorsum
+
+# ============================================================================
+# 42. TIME
+# ============================================================================
+χρόνος,tempus
+καιρός,tempus,occasio
+ἡμέρα,dies
+νύξ,nox,noctis,noctem
+ἕως,aurora,mane
+ἔτος,annus
+μήν,mensis
+ὥρα,hora,tempus
+ἔαρ,ver
+θέρος,aestas
+χειμών,hiems,tempestas
+φθινόπωρον,autumnus
+αἰών,aevum,saeculum,aetas
+γῆρας,senectus,senium
+νεότης,iuventus,adulescentia
+
+# ============================================================================
+# 43. THOUGHT AND SPEECH (additional)
+# ============================================================================
+ἐρωτάω,rogo,interrogo,quaero
+ἀποκρίνομαι,respondeo
+ὑπισχνέομαι,promitto,polliceor
+ἀπειλέω,minor,minitor
+ὀνειδίζω,exprobo,obicio
+ψέγω,vitupero,reprehendo
+ἐπιπλήσσω,increpo,obiurgo,castigo
+ἐπαγγέλλω,nuntio,promitto
+μηνύω,indico,nuntio
+κηρύσσω,nuntio,pronuntio,declaro
+ὀνομάζω,nomino,appello,voco
+κλῄζω,voco,appello,nomino
+πυνθάνομαι,quaero,audio,percipio
+μανθάνω,disco,cognosco
+διδάσκω,doceo
+μιμνήσκω,moneo,memoro
+ὀμνύω,iuro
+ψεύδω,fallo,mentior
+ᾄδω,cano,canto
+μέλπω,cano,canto,celebro
+
+# ============================================================================
+# 44. WEATHER AND SKY
+# ============================================================================
+οὐρανός,caelum
+αἰθήρ,aether,caelum
+νέφος,nubes,nimbus
+νεφέλη,nubes,nimbus,nebula
+ὄμβρος,imber,pluvia
+χιών,nix
+χάλαζα,grando
+δρόσος,ros
+ἶρις,arcus,iris
+σελήνη,luna
+ἥλιος,sol,phoebus
+ἄστρον,astrum,sidus,stella
+ἀστήρ,astrum,sidus,stella
+αὐγή,lux,iubar,splendor
+
+# ============================================================================
+# 45. SOCIAL AND POLITICAL
+# ============================================================================
+δεσπότης,dominus,erus
+δοῦλος,servus,famulus,mancipium
+θεράπων,famulus,minister,armiger
+θεραπαίνα,famula,ancilla,ministra
+κλητός,arcessitus,vocatus
+πρεσβευτής,legatus,orator
+δικαστής,iudex
+μάντις,vates,haruspex,augur
+ἱερεύς,sacerdos,pontifex
+βουλευτής,senator,consiliarius
+κόλαξ,adulator,parasitus
+
+# ============================================================================
+# 46. STRUCTURES AND OBJECTS
+# ============================================================================
+θρόνος,solium,thronus,sella
+κλίνη,lectus,torus
+τράπεζα,mensa
+κρατήρ,crater,poculum
+δέπας,poculum,patera,calix
+φιάλη,patera,phiala
+κλῄς,clavis
+σκῆπτρον,sceptrum
+στέφανος,corona,sertum
+ζυγόν,iugum
+ἄροτρον,aratrum
+ἄγκυρα,ancora
+πηδάλιον,gubernaculum,clavus
+ἱστός,malus
+κώπη,remus,capulus
+δεσμός,vinculum,catena
+σχοινίον,funis,restis
+λύχνος,lucerna,lychnus
+λαμπάς,fax,taeda,lampas
+κιθάρα,cithara,lyra
+αὐλός,tibia,fistula
+σάλπιγξ,tuba,lituus
+τύμπανον,tympanum
+σημεῖον,signum
+
+# ============================================================================
+# 47. LANDSCAPE (additional)
+# ============================================================================
+νῆσος,insula
+λιμήν,portus
+ἠϊών,litus,ora
+ἀκτή,litus,ora,ripa
+ᾐών,litus,ora
+ὄχθη,ripa
+πόρος,vadum,transitus
+ἰσθμός,isthmus,fauces
+κόλπος,sinus,gremium
+ἕλος,palus
+λίμνη,lacus,palus,stagnum
+τέναγος,vadum
+κρήνη,fons
+ῥεῖθρον,flumen,amnis
+χαράδρα,torrens,vallis
+ἄγκος,vallis,convallis
+νάπη,vallis,saltus
+αἰγιαλός,litus,ora
+ἀκρωτήριον,promunturium
+τάφρος,fossa
+κλίμαξ,scala
+
+# ============================================================================
+# 48. EMOTIONS AND STATES (additional)
+# ============================================================================
+ἔλεος,misericordia,clementia
+οἶκτος,miseratio,misericordia,luctus
+πόθος,desiderium,amor
+ζῆλος,invidia,aemulatio,zelus
+φθόνος,invidia,livor
+αἰσχύνη,pudor,ignominia,dedecus
+ὄνειδος,opprobrium,probrum,dedecus
+κότος,ira,rancor
+χόλος,ira,bilis,indignatio
+νέμεσις,indignatio,ira
+θάρσος,audacia,fiducia,animus
+θάμβος,stupor,admiratio
+ἔκπληξις,stupor,pavor
+ἀγωνία,certamen,anxietas
+ἡδονή,voluptas,gaudium,libido
+λύπη,dolor,tristitia,maeror
+ἄλγος,dolor,aerumna
+ὀργή,ira,furor
+μέριμνα,cura,sollicitudo
+φροντίς,cura,cogitatio,sollicitudo
+
+# ============================================================================
+# 49. WAR AND CONFLICT (additional)
+# ============================================================================
+πόλεμος,bellum
+μάχη,pugna,proelium,certamen
+ἀγών,certamen,ludus
+εἰρήνη,pax
+νεῖκος,lis,rixa,certamen,iurgium
+ἔρις,discordia,rixa,certamen
+στάσις,seditio,discordia
+λεία,praeda,spolium
+σκῦλον,spolium,exuviae
+τρόπαιον,tropaeum
+φρουρά,praesidium,custodia
+φυλακή,custodia,vigilia,praesidium
+τάξις,ordo,acies
+φάλαγξ,acies,phalanx
+λόχος,insidiae,agmen
+ἐνέδρα,insidiae
+πολιορκία,obsidium,obsidio
+τεῖχος,murus,moenia
+πύργος,turris,arx
+πύλη,porta,ianua
+τάφρος,fossa
+χάραξ,vallum
+πρόμαχος,propugnator
+ἀριστεύς,fortissimus,heros
+ἡγεμών,dux,imperator,rector
+
+# ============================================================================
+# 50. NATURE AND PLANTS (additional)
+# ============================================================================
+φύλλον,folium,frons
+ἄνθος,flos
+καρπός,fructus,pomum
+ῥίζα,radix
+κλάδος,ramus
+δένδρον,arbor
+ἄμπελος,vitis
+ἄρουρα,arvum,ager,seges
+σπόρος,semen
+θάμνος,dumus,frutex,vepres
+κισσός,hedera
+λωτός,lotus
+μῆλον,malum,pomum
+σῦκον,ficus
+ἐλαία,olea,oliva
+δάφνη,laurus
+
+# ============================================================================
+# 51. PARTS OF DAY AND CELESTIAL
+# ============================================================================
+ὄρθρος,diluculum,mane
+μεσημβρία,meridies
+δείλη,vesper
+ἑσπέρα,vesper,crepusculum
+σκότος,tenebrae,caligo
+ζόφος,tenebrae,caligo
+ἠώς,aurora,eos
+δύσις,occasus
+ἀνατολή,ortus
+
+# ============================================================================
+# 52. BODY ACTIONS AND STATES
+# ============================================================================
+ὕπνος,somnus,sopor
+πεῖνα,fames
+δίψα,sitis
+πόνος,dolor,labor
+τραῦμα,vulnus,plaga
+οὐλή,cicatrix
+ῥῖγος,frigus,horror
+ἱδρώς,sudor
+δάκρυον,lacrima,fletus
+γέλως,risus
+βοή,clamor,fremitus
+κραυγή,clamor
+σιγή,silentium
+σιωπή,silentium,taciturnitas
+ψόφος,strepitus,fragor,sonitus
+κτύπος,strepitus,fragor,sonitus
+πάταγος,fragor,crepitus
+ἦχος,sonus,sonitus
+
+# ============================================================================
+# 53. GOVERNANCE AND LAW
+# ============================================================================
+τυραννίς,regnum,tyrannis,dominatio
+βασιλεία,regnum
+δημοκρατία,res publica
+ἐκκλησία,contio,concilium
+ἀγορά,forum,contio
+βουλή,consilium,senatus
+ψῆφος,suffragium,sententia
+φόρος,tributum,vectigal
+ἀρχή,imperium,magistratus
+
+# ============================================================================
+# 54. KINSHIP (additional)
+# ============================================================================
+γαμβρός,gener,socer
+πενθερός,socer
+νύμφη,nympha,sponsa,nova nupta
+τροφός,nutrix
+τέκνον,natus,proles,filius,liberi
+γόνος,proles,stirps,genus
+σπέρμα,semen,stirps,proles
+θυγάτηρ,filia,nata,virgo
+ἔκγονος,progenies,nepos
+πρόγονος,maiores,proavus
+ἀνεψιός,consobrinus,cognatus
+
+# ============================================================================
+# 55. PARTS OF A SHIP (additional)
+# ============================================================================
+τρόπις,carina
+ἱστίον,velum,carbasus
+κεραία,antenna
+πηδάλιον,gubernaculum,clavus
+ἐπωτίς,rostrum
+παρεξειρεσία,transtrum
+ἀγκύρα,ancora
+κάλως,funis,rudentes
+
+# ============================================================================
+# 56. ASTRONOMICAL
+# ============================================================================
+ἥλιος,sol,phoebus
+σελήνη,luna
+ἄστρον,astrum,sidus,stella
+ἀστήρ,astrum,sidus,stella
+πλειάς,plias,vergiliae
+ἄρκτος,arctus,ursa
+ὠρίων,orion
+βοώτης,bootes,arctophylax
+
+# ============================================================================
+# 57. HUNTING AND PASTORAL
+# ============================================================================
+θήρα,venatio
+κυνηγός,venator
+ἄγρα,venatio,praeda
+θηρίον,fera,bestia,belua
+ἄρκτος,ursus,ursa
+ποιμήν,pastor,opilio
+αἰπόλος,caprarius
+βουκόλος,bubulcus,armentarius
+ἀγέλη,grex,armentum
+νομή,pascuum,pastus
+σταθμός,stabulum,caula
+μάνδρα,stabulum,ovile
+
+# ============================================================================
+# 58. METALWORK AND CRAFT
+# ============================================================================
+χαλκεύς,faber
+τέκτων,faber,architectus
+σφῦρα,malleus
+ἄκμων,incus
+φῦσα,follis
+χρυσός,aurum
+ἄργυρος,argentum
+χαλκός,aes,aeris,ferrum
+σίδηρος,ferrum
+κασσίτερος,stannum,plumbum album
+μόλυβδος,plumbum
+ἐλέφας,ebur
+
+# ============================================================================
+# 59. HOMERIC FORMULA VOCABULARY
+# Words frequent in Homeric formulae with Vergilian equivalents
+# ============================================================================
+ἶφι,vi,robore
+ἀργαλέος,gravis,molestus,durus
+ἀμείλιχος,immitis,inexorabilis,durus
+ἀμύμων,egregius,praeclarus,eximius
+ἀτάλαντος,par,aequalis,similis
+δαΐφρων,bellicosus,audax
+δῖος,divinus,divus,inclitus
+ἐρίηρος,fidus,carus
+ἐσθλός,bonus,fortis,nobilis
+κυδάλιμος,gloriosus,inclitus
+μεγαλήτωρ,magnanimus
+πολύμητις,callidus,versutus,astutus
+πολύτλας,patiens,aerumnosus
+πτολίπορθος,eversor urbium
+ταλασίφρων,patiens,audax
+πολέμοιο,bellum
+ἐνυαλίοιο,bellum,mars
+ἀντίθεος,divinus,inclitus
+ἰσόθεος,divinus,par deis
+θεοειδής,divinus,pulcher
+δουρικλειτός,hasta clarus
+δουρικλυτός,hasta clarus
+μενεπτόλεμος,bellicosus,pugnax
+ἀρηΐφιλος,bellicosus,mavortius
+ἱπποδάμος,equum domitor
+ἱππότα,eques,equester
+ποδάρκης,pernix,velox
+ποδώκης,velox,pernix,celer
+ῥοδοδάκτυλος,roseus
+πολυφλοίσβοιος,resonans,sonorus
+οἰνοπός,vineus
+πολύτροπος,versutus,callidus,multivagus
+πουλυβότειρα,alma,fertilis
+ἑκατόμβοιος,centum boum
+ἀγχίμαχος,comminus pugnans
+βαθυδίνης,vorticosus,profundus
+εὐρυκρείων,late regnans
+εὐρύοπα,late sonans
+ἐριούνιος,beneficus
+νεφεληγερέτα,nubium coactor
+αἰγίοχος,aegidem tenens
+γλαυκῶπις,caesia,glauca
+τριτογένεια,tritonia
+ἑκηβόλος,longe iaculans
+ἀργυρότοξος,argenteo arcu
+χρυσόθρονος,aurea sede
+λευκώλενος,candida,nivea
+τανύπεπλος,longam vestem habens
+ἐϋπλόκαμος,pulchricoma,bene compta
+καλλιπάρῃος,pulchra genas
+βοῶπις,magna oculis
