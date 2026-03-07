@@ -1794,18 +1794,9 @@ def merge_line_and_window(line_results, window_results):
                     novel = True
 
         if novel:
+            # Window covers at least one line pair not in any line result —
+            # always keep it (dropping would lose those novel pairs).
             window_score = r.get("fused_score", 0)
-            # Check if any overlapping line result scores higher —
-            # if so, the line result already captures this parallel
-            # better, and the window is redundant context.
-            best_overlap_score = max(
-                (line_results[idx].get("fused_score", 0) for idx in overlapping),
-                default=0
-            )
-            if overlapping and best_overlap_score > window_score:
-                # Window is a lower-scoring duplicate of a line result — drop it
-                continue
-            # Window scores higher or covers entirely new pairs — keep it
             kept_windows.append(r)
             for line_idx in overlapping:
                 line_score = line_results[line_idx].get("fused_score", 0)
