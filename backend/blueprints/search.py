@@ -484,9 +484,9 @@ def _handle_crosslingual_fusion(params, source_units, target_units, settings):
     # --- Merge ---
     all_keys = set(sem_by_pair.keys()) | set(dict_by_pair.keys())
 
-    SEMANTIC_WEIGHT = 3.0
+    SEMANTIC_WEIGHT = 1.2
     DICTIONARY_WEIGHT = 2.0
-    CONVERGENCE_BONUS = 1.5
+    CONVERGENCE_BONUS = 0.5  # additive bonus when both channels fire
 
     fused = []
     for key in all_keys:
@@ -514,8 +514,8 @@ def _handle_crosslingual_fusion(params, source_units, target_units, settings):
                 total_idf += wm['idf_score']
             avg_idf = total_idf / len(dict_wms) if dict_wms else 0
 
-        # Normalised dictionary score (typical avg_idf range 1-10, cap at 10)
-        dict_score = min(avg_idf / 10.0, 1.0) if has_dict else 0.0
+        # Dictionary score: avg_idf scaled by match count (multiple rare matches >> 1 common)
+        dict_score = (min(avg_idf / 10.0, 1.0) * math.sqrt(dict_word_count)) if has_dict else 0.0
 
         # Apply min_matches filter to dictionary side
         if has_dict and dict_word_count < min_matches:
@@ -528,11 +528,11 @@ def _handle_crosslingual_fusion(params, source_units, target_units, settings):
         if not has_semantic and not has_dict:
             continue
 
-        # Fused score
+        # Fused score (additive, matching article formula)
         score = (cosine * SEMANTIC_WEIGHT) + (dict_score * DICTIONARY_WEIGHT)
         n_channels = (1 if has_semantic else 0) + (1 if has_dict else 0)
         if n_channels == 2:
-            score *= CONVERGENCE_BONUS
+            score += CONVERGENCE_BONUS
 
         # Build result
         src_unit = source_units[src_idx]
