@@ -39,12 +39,16 @@ export default function CrossLingualSearch() {
   const [chartFilter, setChartFilter] = useState(null);
   const chartRef = useRef(null);
   const hasSearchedRef = useRef(false);
+  const abortRef = useRef(null);
 
   const doSearch = useCallback(async () => {
     if (!sourceSection || !targetSection) {
       setError('Please select both source and target texts');
       return;
     }
+    if (abortRef.current) abortRef.current.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
     setSearchLoading(true);
     setError(null);
     try {
@@ -58,7 +62,8 @@ export default function CrossLingualSearch() {
           target_language: 'la',
           match_type: 'crosslingual_fusion',
           min_matches: minMatches
-        })
+        }),
+        signal: controller.signal
       });
       const data = await res.json();
       if (data.error) {
@@ -68,10 +73,22 @@ export default function CrossLingualSearch() {
         setResults(data.results || []);
       }
     } catch (err) {
-      setError('Search failed. Please try again.');
+      if (err.name === 'AbortError') {
+        setError(null);
+      } else {
+        setError('Search failed. Please try again.');
+      }
     }
+    abortRef.current = null;
     setSearchLoading(false);
   }, [sourceSection, targetSection, minMatches]);
+
+  const cancelSearch = useCallback(() => {
+    if (abortRef.current) {
+      abortRef.current.abort();
+      abortRef.current = null;
+    }
+  }, []);
 
   useEffect(() => {
     loadHierarchies();
@@ -411,13 +428,23 @@ export default function CrossLingualSearch() {
             </select>
           </div>
         </div>
-        <button
-          onClick={handleSearch}
-          disabled={searchLoading || !sourceSection || !targetSection}
-          className="px-6 py-2 bg-red-700 text-white rounded hover:bg-red-800 disabled:opacity-50"
-        >
-          {searchLoading ? 'Searching...' : 'Find Cross-Lingual Parallels'}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleSearch}
+            disabled={searchLoading || !sourceSection || !targetSection}
+            className="px-4 py-1.5 text-sm bg-red-700 text-white rounded hover:bg-red-800 disabled:opacity-50"
+          >
+            {searchLoading ? 'Searching...' : 'Search'}
+          </button>
+          {searchLoading && (
+            <button
+              onClick={cancelSearch}
+              className="px-3 py-1.5 text-sm bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
+            >
+              Cancel
+            </button>
+          )}
+        </div>
       </div>
 
       {error && (
