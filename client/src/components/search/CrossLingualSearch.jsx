@@ -29,7 +29,7 @@ export default function CrossLingualSearch() {
   const [targetWork, setTargetWork] = useState('');
   const [targetSection, setTargetSection] = useState('');
 
-  const [minMatches, setMinMatches] = useState(1);
+  const [minMatches, setMinMatches] = useState(2);
   const [displayLimit, setDisplayLimit] = useState(50);
   const [sortBy, setSortBy] = useState('score');
   const [showDistributionChart, setShowDistributionChart] = useState(false);
@@ -76,6 +76,16 @@ export default function CrossLingualSearch() {
   useEffect(() => {
     loadHierarchies();
   }, []);
+
+  const prevMinMatchesRef = useRef(minMatches);
+  useEffect(() => {
+    if (prevMinMatchesRef.current !== minMatches) {
+      prevMinMatchesRef.current = minMatches;
+      if (hasSearchedRef.current && sourceSection && targetSection && !searchLoading) {
+        doSearch();
+      }
+    }
+  }, [minMatches, sourceSection, targetSection, searchLoading, doSearch]);
 
   useEffect(() => {
     if (searchLoading) {
@@ -394,10 +404,10 @@ export default function CrossLingualSearch() {
               onChange={(e) => setMinMatches(parseInt(e.target.value))}
               className="px-2 py-1 border rounded text-sm"
             >
-              <option value={1}>1 (show semantic-only)</option>
-              <option value={2}>2</option>
-              <option value={3}>3</option>
-              <option value={4}>4</option>
+              <option value={1}>Any (include semantic-only)</option>
+              <option value={2}>2+ words (default)</option>
+              <option value={3}>3+ words</option>
+              <option value={4}>4+ words</option>
             </select>
           </div>
         </div>

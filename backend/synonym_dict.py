@@ -277,6 +277,30 @@ CURATED_GREEK_LATIN = {
     "οινοσ": ["vinum", "vini", "bacchus"],
 }
 
+# Load V6 additions from CSV and merge into CURATED_GREEK_LATIN
+_V6_ADDITIONS_PATH = os.path.join(_DATA_DIR, 'v6_additions', 'greek_latin_v6_additions.csv')
+if os.path.exists(_V6_ADDITIONS_PATH):
+    _v6_count = 0
+    with open(_V6_ADDITIONS_PATH, 'r', encoding='utf-8') as _f:
+        for _line in _f:
+            _line = _line.strip()
+            if not _line or _line.startswith('#'):
+                continue
+            _parts = [p.strip() for p in _line.split(',') if p.strip()]
+            if len(_parts) < 2:
+                continue
+            _greek_word = _parts[0]
+            _greek_norm = _normalize_greek(_greek_word).replace('ς', 'σ')  # medial sigma to match existing keys
+            _latin_words = [w.lower() for w in _parts[1:]]
+            if _greek_norm in CURATED_GREEK_LATIN:
+                _existing = set(CURATED_GREEK_LATIN[_greek_norm])
+                _existing.update(_latin_words)
+                CURATED_GREEK_LATIN[_greek_norm] = list(_existing)
+            else:
+                CURATED_GREEK_LATIN[_greek_norm] = _latin_words
+            _v6_count += 1
+    print(f"Loaded {_v6_count} V6 Greek-Latin additions into CURATED_GREEK_LATIN (total: {len(CURATED_GREEK_LATIN)} entries)")
+
 CURATED_LATIN = {
     "bellum": ["bellum", "proelium", "pugna", "certamen", "acies"],
     "rex": ["rex", "tyrannus", "dominus", "princeps", "imperator"],
@@ -745,7 +769,8 @@ def find_greek_latin_matches(greek_lemmas: list, latin_lemmas: list, use_stoplis
         if use_stoplist and grc_norm in CROSSLINGUAL_STOPLIST_GREEK:
             continue
 
-        curated_translations = set(CURATED_GREEK_LATIN.get(grc_norm, []))
+        grc_lookup = grc_norm.replace('ς', 'σ')  # medial sigma to match dict keys
+        curated_translations = set(CURATED_GREEK_LATIN.get(grc_lookup, []))
         v3_translations = gl_dict_norm.get(grc_norm, set()) if gl_dict_norm else set()
         gazetteer_translations = gazetteer.get(grc_norm, set())
         latin_translations = curated_translations.union(v3_translations).union(gazetteer_translations)

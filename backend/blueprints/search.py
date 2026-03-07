@@ -331,11 +331,13 @@ def _find_dictionary_matches_fast(source_units, target_units, source_language, t
                 continue
 
             # Get all Latin translations for this Greek lemma
+            # Normalize final sigma (ς→σ) to match CURATED_GREEK_LATIN key convention
+            grc_lookup = grc_norm.replace('ς', 'σ')
             translations = set()
-            curated = CURATED_GREEK_LATIN.get(grc_norm, [])
+            curated = CURATED_GREEK_LATIN.get(grc_lookup, [])
             if curated:
                 translations.update(w.lower() for w in curated)
-            dict_trans = gl_dict_norm.get(grc_norm, set()) if gl_dict_norm else set()
+            dict_trans = gl_dict_norm.get(grc_norm, set()) or gl_dict_norm.get(grc_lookup, set()) if gl_dict_norm else set()
             if dict_trans:
                 translations.update(w.lower() for w in dict_trans)
 
@@ -517,12 +519,14 @@ def _handle_crosslingual_fusion(params, source_units, target_units, settings):
         # Dictionary score: avg_idf scaled by match count (multiple rare matches >> 1 common)
         dict_score = (min(avg_idf / 10.0, 1.0) * math.sqrt(dict_word_count)) if has_dict else 0.0
 
-        # Apply min_matches filter to dictionary side
+        # Apply min_matches filter: pairs below the dictionary threshold are excluded
         if has_dict and dict_word_count < min_matches:
             has_dict = False
             dict_score = 0.0
             dict_word_count = 0
             dict_wms = None
+        if not has_dict and min_matches > 1:
+            continue  # User requires dictionary confirmation; skip semantic-only pairs
 
         # Skip pairs with neither channel
         if not has_semantic and not has_dict:
