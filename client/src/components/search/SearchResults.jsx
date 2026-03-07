@@ -63,19 +63,42 @@ const SearchResults = ({
     }));
   };
 
+  const highlightMatchedWords = useCallback((text, matchedWords, side) => {
+    if (!text || !matchedWords || matchedWords.length === 0) return text;
+    const words = new Set();
+    matchedWords.forEach(m => {
+      const w = side === 'source' ? m.source_word : m.target_word;
+      if (w) words.add(w.toLowerCase());
+    });
+    if (words.size === 0) return text;
+    return text.replace(/\S+/g, token => {
+      const stripped = token.toLowerCase().replace(/^[.,;:!?'"()\u2014\u2013-]+/, '').replace(/[.,;:!?'"()\u2014\u2013-]+$/, '');
+      if (stripped && words.has(stripped)) {
+        const start = token.toLowerCase().indexOf(stripped);
+        return token.slice(0, start) + '**' + token.slice(start, start + stripped.length) + '**' + token.slice(start + stripped.length);
+      }
+      return token;
+    });
+  }, []);
+
   const exportCSV = useCallback(() => {
     if (!results || results.length === 0) return;
 
     const headers = ['Source Locus', 'Source Text', 'Target Locus', 'Target Text', 'Score', 'Matched Words', 'Channels'];
-    const rows = results.map(r => [
-      r.source_locus || r.source?.ref || '',
-      (r.source_text || r.source_snippet || r.source?.text || '').replace(/<[^>]*>/g, '').replace(/"/g, '""'),
-      r.target_locus || r.target?.ref || '',
-      (r.target_text || r.target_snippet || r.target?.text || '').replace(/<[^>]*>/g, '').replace(/"/g, '""'),
-      (r.score ?? r.overall_score)?.toFixed(3) || '',
-      (r.matched_words || []).map(w => typeof w === 'object' ? (w.lemma || w.word || '') : w).join('; '),
-      (r.channels || []).join('; ')
-    ]);
+    const rows = results.map(r => {
+      const mw = r.matched_words || [];
+      const sourceText = (r.source_text || r.source_snippet || r.source?.text || '').replace(/<[^>]*>/g, '').replace(/"/g, '""');
+      const targetText = (r.target_text || r.target_snippet || r.target?.text || '').replace(/<[^>]*>/g, '').replace(/"/g, '""');
+      return [
+        r.source_locus || r.source?.ref || '',
+        highlightMatchedWords(sourceText, mw, 'source'),
+        r.target_locus || r.target?.ref || '',
+        highlightMatchedWords(targetText, mw, 'target'),
+        (r.score ?? r.overall_score)?.toFixed(3) || '',
+        mw.map(w => typeof w === 'object' ? (w.lemma || w.word || '') : w).join('; '),
+        (r.channels || []).join('; ')
+      ];
+    });
 
     const csv = [headers.join(','), ...rows.map(r => r.map(c => `"${c}"`).join(','))].join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
