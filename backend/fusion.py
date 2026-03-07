@@ -806,7 +806,7 @@ def find_syntax_matches(source_units, target_units, source_id, target_id,
     # the text pair.  Common patterns (e.g., Verb+Object 2-token lines)
     # match hundreds of unrelated line pairs.  Rare patterns are the
     # ones that indicate genuine structural imitation.
-    MAX_FINGERPRINT_FREQ = 2  # combined source + target occurrences
+    MAX_FINGERPRINT_FREQ = 4  # combined source + target occurrences
     skipped_common = 0
 
     fingerprint_pairs = []
@@ -1757,9 +1757,18 @@ def merge_line_and_window(line_results, window_results):
                     novel = True
 
         if novel:
-            # Window covers at least one new line pair — keep it,
-            # and supersede overlapping line results that score lower
             window_score = r.get("fused_score", 0)
+            # Check if any overlapping line result scores higher —
+            # if so, the line result already captures this parallel
+            # better, and the window is redundant context.
+            best_overlap_score = max(
+                (line_results[idx].get("fused_score", 0) for idx in overlapping),
+                default=0
+            )
+            if overlapping and best_overlap_score > window_score:
+                # Window is a lower-scoring duplicate of a line result — drop it
+                continue
+            # Window scores higher or covers entirely new pairs — keep it
             kept_windows.append(r)
             for line_idx in overlapping:
                 line_score = line_results[line_idx].get("fused_score", 0)
