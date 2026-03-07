@@ -1777,6 +1777,57 @@ def penalize_single_line_windows(window_results):
     return out
 
 
+def _dedup_overlapping_windows(window_results):
+    """Remove overlapping window results that are duplicates of the same match.
+
+    Sliding windows produce overlapping 2-line pairs: (140-141) and (141-142)
+    on one side combined with (293-294) and (294-295) on the other yield up to
+    4 copies of the same match.  Keep only the highest-scoring window when both
+    the source and target ranges overlap with an already-kept window.
+    """
+    if not window_results:
+        return window_results
+
+    parsed = []
+    for r in window_results:
+        rs = r.get("source", {}).get("ref", "")
+        rt = r.get("target", {}).get("ref", "")
+        sb, ss, se = parse_range_ref(rs)
+        tb, ts, te = parse_range_ref(rt)
+        parsed.append((sb, ss, se, tb, ts, te))
+
+    # Sort by score descending so we greedily keep the best
+    scored = sorted(range(len(window_results)),
+                    key=lambda i: window_results[i].get('fused_score', 0),
+                    reverse=True)
+
+    kept = []
+    kept_ranges = []  # parallel list of parsed ranges for kept windows
+
+    for i in scored:
+        sb, ss, se, tb, ts, te = parsed[i]
+        if sb is None or tb is None:
+            kept.append(window_results[i])
+            kept_ranges.append(parsed[i])
+            continue
+
+        # Skip if BOTH source and target ranges overlap with the same kept window
+        is_dup = False
+        for kb, ks, ke, ktb, kts, kte in kept_ranges:
+            if sb == kb and tb == ktb:
+                src_overlaps = ss <= ke and ks <= se
+                tgt_overlaps = ts <= kte and kts <= te
+                if src_overlaps and tgt_overlaps:
+                    is_dup = True
+                    break
+
+        if not is_dup:
+            kept.append(window_results[i])
+            kept_ranges.append(parsed[i])
+
+    return kept
+
+
 def merge_line_and_window(line_results, window_results):
     """Merge line and window results, with windows superseding overlapping lines.
 
@@ -1786,6 +1837,7 @@ def merge_line_and_window(line_results, window_results):
     that are fully subsumed by line results (all their line pairs already
     covered) are dropped.  The merged list is sorted by fused_score.
     """
+    window_results = _dedup_overlapping_windows(window_results)
     # Index line results by their (book, line, book, line) tuple
     line_by_ref = {}
     for i, r in enumerate(line_results):
