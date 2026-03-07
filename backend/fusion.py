@@ -457,12 +457,17 @@ def parse_range_ref(ref):
 
 
 # ---------------------------------------------------------------------------
-# Syntax channel: load pre-parsed data from syntax_latin.db
+# Syntax channel: load pre-parsed data from syntax DBs
 # ---------------------------------------------------------------------------
 
 _SYNTAX_DB_PATH = os.path.join(
     os.path.dirname(os.path.dirname(__file__)),
     "data", "inverted_index", "syntax_latin.db",
+)
+
+_SYNTAX_GREEK_DB_PATH = os.path.join(
+    os.path.dirname(os.path.dirname(__file__)),
+    "data", "inverted_index", "syntax_greek.db",
 )
 
 _SYNTAX_PARSE_CACHE = {}
@@ -483,10 +488,23 @@ def _load_syntax_for_text(db_path, text_filename):
     if not os.path.exists(db_path):
         return {}
 
-    conn = sqlite3.connect(db_path)
+    try:
+        conn = sqlite3.connect(db_path, timeout=5)
+    except sqlite3.OperationalError:
+        # DB may be locked by a build process; try immutable read-only
+        uri = f"file:{db_path}?mode=ro&immutable=1"
+        conn = sqlite3.connect(uri, uri=True)
     cur = conn.cursor()
 
-    cur.execute("SELECT text_id FROM texts WHERE filename = ?", (text_filename,))
+    try:
+        cur.execute("SELECT text_id FROM texts WHERE filename = ?", (text_filename,))
+    except sqlite3.OperationalError:
+        conn.close()
+        # Retry with immutable read-only
+        uri = f"file:{db_path}?mode=ro&immutable=1"
+        conn = sqlite3.connect(uri, uri=True)
+        cur = conn.cursor()
+        cur.execute("SELECT text_id FROM texts WHERE filename = ?", (text_filename,))
     row = cur.fetchone()
     if not row:
         conn.close()
@@ -679,8 +697,9 @@ def _score_syntax_chunk(args):
 
 
 def find_syntax_matches(source_units, target_units, source_id, target_id,
-                        min_score=0.1, max_results=50000):
-    """Find syntax matches between source and target using syntax_latin.db.
+                        min_score=0.1, max_results=50000,
+                        source_language='la', target_language='la'):
+    """Find syntax matches between source and target using syntax DBs.
 
     Two paths:
       A) Lemma-gated: pairs sharing >=1 lemma, scored by deprel/upos agreement
@@ -690,10 +709,16 @@ def find_syntax_matches(source_units, target_units, source_id, target_id,
          (_compute_structural_score). Catches syntactic imitation without
          lexical overlap (e.g., Thomas's Georg. 3.481 / DRN 6.1140).
 
+    For cross-lingual pairs (e.g., Greek source, Latin target), loads from
+    the appropriate DB for each side. UD dependency labels are language-
+    independent, so structural fingerprint matching works cross-lingually.
+
     Returns results in the same format as other channels.
     """
-    source_parses = _load_syntax_for_text(_SYNTAX_DB_PATH, source_id)
-    target_parses = _load_syntax_for_text(_SYNTAX_DB_PATH, target_id)
+    source_db = _SYNTAX_GREEK_DB_PATH if source_language == 'grc' else _SYNTAX_DB_PATH
+    target_db = _SYNTAX_GREEK_DB_PATH if target_language == 'grc' else _SYNTAX_DB_PATH
+    source_parses = _load_syntax_for_text(source_db, source_id)
+    target_parses = _load_syntax_for_text(target_db, target_id)
 
     if not source_parses or not target_parses:
         print(f"[SYNTAX] No syntax data for {source_id} or {target_id}")
@@ -902,13 +927,14 @@ def find_syntax_matches(source_units, target_units, source_id, target_id,
 
 def run_channel(channel_name, config, source_units, target_units,
                 matcher, scorer, source_id, target_id,
-                source_path=None, target_path=None):
+                source_path=None, target_path=None,
+                source_language='la', target_language='la'):
     """Run a single search channel and return scored results."""
     match_type = config.get("match_type", "lemma")
     settings = dict(config)
 
     if match_type == "syntax":
-        # Syntax channel uses its own scoring from syntax_latin.db
+        # Syntax channel uses its own scoring from syntax DBs
         # Returns dict: {"syntax": [...], "syntax_structural": [...]}
         max_results = config.get("max_results", 50000)
         min_score = settings.get("min_score", 0.1)
@@ -917,6 +943,8 @@ def run_channel(channel_name, config, source_units, target_units,
             source_id, target_id,
             min_score=min_score,
             max_results=max_results,
+            source_language=source_language,
+            target_language=target_language,
         )
 
     if match_type == "semantic":
@@ -1813,7 +1841,8 @@ def merge_line_and_window(line_results, window_results):
 def _run_channels_sequential(channels, configs, source_units, target_units,
                              matcher, scorer, source_id, target_id,
                              source_path, target_path, phase_label,
-                             progress_callback):
+                             progress_callback,
+                             source_language='la', target_language='la'):
     """Run channels sequentially in the main process.
 
     The heavy channels (edit_distance, sound) use internal multiprocessing
@@ -1832,6 +1861,7 @@ def _run_channels_sequential(channels, configs, source_units, target_units,
             ch_name, config, source_units, target_units,
             matcher, scorer, source_id, target_id,
             source_path=source_path, target_path=target_path,
+            source_language=source_language, target_language=target_language,
         )
         if results:
             # Syntax returns dict with "syntax" and "syntax_structural" keys
@@ -1849,7 +1879,8 @@ def iter_fusion_search(source_units, target_units, matcher, scorer,
                        source_id, target_id, language='la',
                        mode='merged', max_results=5000,
                        source_path=None, target_path=None,
-                       user_settings=None):
+                       user_settings=None,
+                       source_language=None, target_language=None):
     """Generator version of run_fusion_search for progressive SSE streaming.
 
     Yields (event_type, data) tuples as the search progresses:
@@ -1862,6 +1893,10 @@ def iter_fusion_search(source_units, target_units, matcher, scorer,
     appear within seconds of starting the search.
     """
     user_settings = user_settings or {}
+    if source_language is None:
+        source_language = language
+    if target_language is None:
+        target_language = language
 
     # Build per-channel configs with language override and user settings
     configs = {}
@@ -1892,6 +1927,7 @@ def iter_fusion_search(source_units, target_units, matcher, scorer,
             ch_name, configs[ch_name], source_units, target_units,
             matcher, scorer, source_id, target_id,
             source_path=source_path, target_path=target_path,
+            source_language=source_language, target_language=target_language,
         )
         # Syntax returns dict with "syntax" and "syntax_structural" keys
         if isinstance(results, dict):
@@ -2012,6 +2048,7 @@ def iter_fusion_search(source_units, target_units, matcher, scorer,
             ch_name, configs[ch_name], source_windows, target_windows,
             matcher, scorer, source_id, target_id,
             source_path=source_path, target_path=target_path,
+            source_language=source_language, target_language=target_language,
         )
         count = len(results) if results else 0
         if results:
@@ -2043,7 +2080,8 @@ def run_fusion_search(source_units, target_units, matcher, scorer,
                       source_id, target_id, language='la',
                       mode='merged', max_results=500,
                       source_path=None, target_path=None,
-                      progress_callback=None):
+                      progress_callback=None,
+                      source_language=None, target_language=None):
     """Run two-pass weighted fusion search.
 
     Pass 1 (line-level): All 9 channels run on individual verse lines.
@@ -2069,6 +2107,11 @@ def run_fusion_search(source_units, target_units, matcher, scorer,
     Returns:
         List of result dicts sorted by fused_score descending.
     """
+    if source_language is None:
+        source_language = language
+    if target_language is None:
+        target_language = language
+
     # Update language in all configs
     configs = {}
     for name, cfg in CHANNEL_CONFIGS.items():
@@ -2085,6 +2128,7 @@ def run_fusion_search(source_units, target_units, matcher, scorer,
         matcher, scorer, source_id, target_id,
         source_path, target_path, "line",
         progress_callback,
+        source_language=source_language, target_language=target_language,
     )
 
     # Recover semantic scores for structural fingerprint pairs that were
@@ -2154,6 +2198,7 @@ def run_fusion_search(source_units, target_units, matcher, scorer,
         matcher, scorer, source_id, target_id,
         source_path, target_path, "window",
         progress_callback,
+        source_language=source_language, target_language=target_language,
     )
     window_fused = fuse_results(window_channel_results, language=language)
     window_fused = penalize_single_line_windows(window_fused)

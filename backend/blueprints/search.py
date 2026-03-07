@@ -484,12 +484,51 @@ def _handle_crosslingual_fusion(params, source_units, target_units, settings):
         df = doc_freq.get(key, 1)
         return math.log((total_docs + 1) / (df + 1)) + 1
 
+    # Build ref→index maps for syntax channel
+    src_ref_to_idx = {u.get('ref', ''): i for i, u in enumerate(source_units)}
+    tgt_ref_to_idx = {u.get('ref', ''): i for i, u in enumerate(target_units)}
+
+    # --- Channel 3: Syntax (structural fingerprint matching) ---
+    # UD dependency labels are language-independent, so cross-lingual matching
+    # works directly between Greek and Latin syntax DBs.
+    syntax_by_pair = {}
+    try:
+        from backend.fusion import find_syntax_matches
+        syntax_results = find_syntax_matches(
+            source_units, target_units, source_id, target_id,
+            min_score=0.1, max_results=50000,
+            source_language=params['source_language'],
+            target_language=params['target_language'],
+        )
+        # syntax_results is a dict: {"syntax": [...], "syntax_structural": [...]}
+        if isinstance(syntax_results, dict):
+            for sub_ch, sub_results in syntax_results.items():
+                if sub_results:
+                    for r in sub_results:
+                        src_ref = r.get('source', {}).get('ref', '')
+                        tgt_ref = r.get('target', {}).get('ref', '')
+                        score = r.get('score', r.get('overall_score', 0))
+                        # Map refs back to unit indices
+                        si = src_ref_to_idx.get(src_ref)
+                        ti = tgt_ref_to_idx.get(tgt_ref)
+                        if si is not None and ti is not None:
+                            pair_key = (si, ti)
+                            if score > syntax_by_pair.get(pair_key, 0):
+                                syntax_by_pair[pair_key] = score
+            total_syntax = sum(len(v) for v in syntax_results.values() if v)
+            print(f"Syntax found {total_syntax} matches ({len(syntax_by_pair)} unique pairs)")
+        else:
+            print("Syntax returned no results")
+    except Exception as e:
+        print(f"Syntax channel failed (may not have Greek DB yet): {e}")
+
     # --- Merge ---
-    all_keys = set(sem_by_pair.keys()) | set(dict_by_pair.keys())
+    all_keys = set(sem_by_pair.keys()) | set(dict_by_pair.keys()) | set(syntax_by_pair.keys())
 
     SEMANTIC_WEIGHT = 1.2
     DICTIONARY_WEIGHT = 2.0
-    CONVERGENCE_BONUS = 0.5  # additive bonus when both channels fire
+    SYNTAX_WEIGHT = 0.5
+    CONVERGENCE_BONUS = 0.5  # additive bonus when multiple channels fire
 
     fused = []
     for key in all_keys:
@@ -499,6 +538,8 @@ def _handle_crosslingual_fusion(params, source_units, target_units, settings):
 
         has_semantic = cosine > 0
         has_dict = dict_wms is not None
+        syntax_score = syntax_by_pair.get(key, 0.0)
+        has_syntax = syntax_score > 0
 
         # Count unique words per side for dict matches
         dict_word_count = 0
@@ -529,14 +570,14 @@ def _handle_crosslingual_fusion(params, source_units, target_units, settings):
         if not has_dict and min_matches > 1:
             continue  # User requires dictionary confirmation; skip semantic-only pairs
 
-        # Skip pairs with neither channel
-        if not has_semantic and not has_dict:
+        # Skip pairs with no channel
+        if not has_semantic and not has_dict and not has_syntax:
             continue
 
         # Fused score (additive, matching article formula)
-        score = (cosine * SEMANTIC_WEIGHT) + (dict_score * DICTIONARY_WEIGHT)
-        n_channels = (1 if has_semantic else 0) + (1 if has_dict else 0)
-        if n_channels == 2:
+        score = (cosine * SEMANTIC_WEIGHT) + (dict_score * DICTIONARY_WEIGHT) + (syntax_score * SYNTAX_WEIGHT)
+        n_channels = (1 if has_semantic else 0) + (1 if has_dict else 0) + (1 if has_syntax else 0)
+        if n_channels >= 2:
             score += CONVERGENCE_BONUS
 
         # Build result
@@ -620,6 +661,8 @@ def _handle_crosslingual_fusion(params, source_units, target_units, settings):
             channels.append(f'semantic ({int(cosine*100)}%)')
         if has_dict:
             channels.append(f'dictionary ({dict_word_count} words)')
+        if has_syntax:
+            channels.append(f'syntax ({syntax_score:.2f})')
 
         fused.append({
             'source': {
@@ -640,6 +683,7 @@ def _handle_crosslingual_fusion(params, source_units, target_units, settings):
             'features': {
                 'semantic_score': cosine,
                 'dict_score': dict_score,
+                'syntax_score': syntax_score,
                 'n_channels': n_channels,
             },
             'channels': ', '.join(channels),
@@ -654,7 +698,8 @@ def _handle_crosslingual_fusion(params, source_units, target_units, settings):
 
     print(f"Cross-lingual fusion: {len(fused)} results "
           f"({len(sem_by_pair)} semantic, {len(dict_by_pair)} dictionary, "
-          f"{len(set(sem_by_pair) & set(dict_by_pair))} overlap)")
+          f"{len(syntax_by_pair)} syntax, "
+          f"{len(set(sem_by_pair) & set(dict_by_pair))} sem+dict overlap)")
 
     return jsonify(_finalize_results(fused, source_units, target_units,
                                       0, settings, source_id, target_id, language))
