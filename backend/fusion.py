@@ -1191,46 +1191,78 @@ def _recover_semantic_for_structural(line_channel_results, source_units,
         print(f"[SEMANTIC RECOVERY] Failed to load embeddings: {e}")
         return
 
-    # Compute cosine similarity for each structural pair
-    min_score = 0.575  # stricter than semantic channel (0.5); at 0.55
-                       # too many Latin poetry pairs pass due to shared domain
-                       # Thomas tricolon (Georg 3.481/DRN 6.1140) cosine = 0.5787
+    # Two-tier semantic threshold for structural pairs:
+    #   - With dictionary confirmation (≥1 synonym pair): 0.575
+    #   - Without dictionary confirmation: 0.70 (much stricter)
+    # Thomas tricolon (Georg 3.481/DRN 6.1140) has cosine 0.5787 and
+    # corrumpo↔vasto dictionary match, so it passes tier 1.
+    MIN_SCORE_WITH_DICT = 0.575
+    MIN_SCORE_NO_DICT = 0.70
+
+    from backend.synonym_dict import find_synonym_pairs_in_passages
+
     recovered = []
+    dict_confirmed = 0
     for src_ref, tgt_ref, src_idx, tgt_idx in pairs_to_check:
         if src_idx >= len(source_emb) or tgt_idx >= len(target_emb):
             continue
         s_vec = source_emb[src_idx]
         t_vec = target_emb[tgt_idx]
-        # Cosine similarity (embeddings are typically already normalized,
-        # but normalize to be safe)
         s_norm = np.linalg.norm(s_vec)
         t_norm = np.linalg.norm(t_vec)
         if s_norm == 0 or t_norm == 0:
             continue
         sim = float(np.dot(s_vec, t_vec) / (s_norm * t_norm))
-        if sim >= min_score:
-            src_unit = source_units[src_idx]
-            tgt_unit = target_units[tgt_idx]
-            recovered.append({
-                "source": {
-                    "ref": src_ref,
-                    "text": src_unit.get("text", ""),
-                    "tokens": src_unit.get("tokens", []),
-                    "lemmas": src_unit.get("lemmas", []),
-                    "highlight_indices": [],
-                },
-                "target": {
-                    "ref": tgt_ref,
-                    "text": tgt_unit.get("text", ""),
-                    "tokens": tgt_unit.get("tokens", []),
-                    "lemmas": tgt_unit.get("lemmas", []),
-                    "highlight_indices": [],
-                },
-                "score": sim,
-                "overall_score": sim,
-                "matched_words": [],
-                "match_basis": "semantic",
+
+        # Check dictionary synonyms between the two lines
+        src_unit = source_units[src_idx]
+        tgt_unit = target_units[tgt_idx]
+        src_lemmas = src_unit.get("lemmas", [])
+        tgt_lemmas = tgt_unit.get("lemmas", [])
+        syn_pairs = find_synonym_pairs_in_passages(
+            src_lemmas, tgt_lemmas, language, include_lemma_matches=True
+        ) if src_lemmas and tgt_lemmas else []
+
+        has_dict = len(syn_pairs) > 0
+        threshold = MIN_SCORE_WITH_DICT if has_dict else MIN_SCORE_NO_DICT
+
+        if sim < threshold:
+            continue
+
+        if has_dict:
+            dict_confirmed += 1
+
+        # Build matched_words from dictionary pairs for display
+        mw_list = []
+        for sp in syn_pairs:
+            mw_list.append({
+                "lemma": sp["source_lemma"],
+                "source_word": sp["source_lemma"],
+                "target_word": sp["target_lemma"],
+                "type": "dictionary" if sp["source_lemma"].lower() != sp["target_lemma"].lower() else "lemma",
+                "similarity": 1.0,
             })
+
+        recovered.append({
+            "source": {
+                "ref": src_ref,
+                "text": src_unit.get("text", ""),
+                "tokens": src_unit.get("tokens", []),
+                "lemmas": src_lemmas,
+                "highlight_indices": [],
+            },
+            "target": {
+                "ref": tgt_ref,
+                "text": tgt_unit.get("text", ""),
+                "tokens": tgt_unit.get("tokens", []),
+                "lemmas": tgt_lemmas,
+                "highlight_indices": [],
+            },
+            "score": sim,
+            "overall_score": sim,
+            "matched_words": mw_list,
+            "match_basis": "semantic",
+        })
 
     if recovered:
         if "semantic" not in line_channel_results:
@@ -1238,7 +1270,8 @@ def _recover_semantic_for_structural(line_channel_results, source_units,
         line_channel_results["semantic"].extend(recovered)
         print(f"[SEMANTIC RECOVERY] Recovered {len(recovered)} semantic scores "
               f"for {len(pairs_to_check)} structural pairs "
-              f"(skipped {len(pairs_to_check) - len(recovered)} below threshold)")
+              f"({dict_confirmed} dictionary-confirmed, "
+              f"skipped {len(pairs_to_check) - len(recovered)} below threshold)")
 
 
 def fuse_results(channel_results, weights=None, convergence_bonus=None,
@@ -1415,6 +1448,7 @@ def fuse_results(channel_results, weights=None, convergence_bonus=None,
         n_content_tgt = sum(1 for w in unique_tgt_words
                            if w.replace('v', 'u') not in _stoplist)
         n_content_words = min(n_content_src, n_content_tgt)
+        has_structural = "syntax_structural" in info["channels"]
 
         if corpus_idfs:
             # Geometric mean via exp(mean(log(x))), with floor of 0.001
@@ -1466,8 +1500,11 @@ def fuse_results(channel_results, weights=None, convergence_bonus=None,
             # Single-word penalty: demote matches sharing only one
             # distinct word.  Applied before Layer 1 squaring, so
             # effective penalty is SINGLE_WORD_PENALTY^2.
+            # Exception: structural fingerprint pairs — the syntactic
+            # pattern match counts as additional evidence beyond lexical,
+            # so even 1 dictionary synonym is meaningful confirmation.
             min_idf_gate_fired = False
-            if n_unique_words <= 1:
+            if n_unique_words <= 1 and not has_structural:
                 multiplier *= SINGLE_WORD_PENALTY
             elif n_content_words == 0:
                 # All-function-words penalty: every matched lemma is on the
@@ -1528,7 +1565,7 @@ def fuse_results(channel_results, weights=None, convergence_bonus=None,
         # Common content-word pairs (pectus+cura, arma+genus) do NOT
         # get zeroed — their convergence is naturally suppressed by
         # the min-word-IDF^2 weighting in idf_weight above.
-        if n_unique_words <= 1 or min_idf_gate_fired:
+        if (n_unique_words <= 1 and not has_structural) or min_idf_gate_fired:
             weighted_n = 0.0
         conv_score = _convergence_bonus * (weighted_n - 1.0) if weighted_n > 1.0 else 0.0
 
@@ -1907,24 +1944,56 @@ def iter_fusion_search(source_units, target_units, matcher, scorer,
             line_channel_results, source_units, target_units,
             source_path, target_path, language)
 
-        # Gate: only keep structural pairs that also have semantic confirmation
-        # (from the main semantic channel or from recovery).  Structural
-        # pattern identity alone produces too many false positives.
-        semantic_pairs = set()
+        # Gate: keep structural pairs that have semantic confirmation AND
+        # either (a) dictionary synonym confirmation or (b) high cosine.
+        # Semantic + structural alone is too noisy — many unrelated Latin
+        # lines share dependency patterns and have moderate cosine (0.5-0.6).
+        from backend.synonym_dict import find_synonym_pairs_in_passages as _find_syn
+        semantic_scores = {}
         for r in line_channel_results.get("semantic", []):
             rs = r.get("source", {}).get("ref", "")
             rt = r.get("target", {}).get("ref", "")
-            semantic_pairs.add((rs, rt))
+            score = r.get("score", r.get("overall_score", 0))
+            # Keep highest score if multiple semantic results for same pair
+            if score > semantic_scores.get((rs, rt), 0):
+                semantic_scores[(rs, rt)] = score
+
+        # Build ref→unit index for dictionary lookup
+        src_ref_to_idx = {u.get("ref", ""): i for i, u in enumerate(source_units)}
+        tgt_ref_to_idx = {u.get("ref", ""): i for i, u in enumerate(target_units)}
+
+        MIN_COSINE_NO_DICT = 0.70
         before = len(line_channel_results["syntax_structural"])
-        line_channel_results["syntax_structural"] = [
-            r for r in line_channel_results["syntax_structural"]
-            if (r.get("source", {}).get("ref", ""),
-                r.get("target", {}).get("ref", "")) in semantic_pairs
-        ]
-        after = len(line_channel_results["syntax_structural"])
+        kept = []
+        for r in line_channel_results["syntax_structural"]:
+            src_ref = r.get("source", {}).get("ref", "")
+            tgt_ref = r.get("target", {}).get("ref", "")
+            pair_key = (src_ref, tgt_ref)
+
+            # Must have semantic confirmation
+            if pair_key not in semantic_scores:
+                continue
+
+            cosine = semantic_scores[pair_key]
+
+            # Check dictionary synonyms
+            si = src_ref_to_idx.get(src_ref)
+            ti = tgt_ref_to_idx.get(tgt_ref)
+            has_dict = False
+            if si is not None and ti is not None:
+                sl = source_units[si].get("lemmas", [])
+                tl = target_units[ti].get("lemmas", [])
+                if sl and tl:
+                    has_dict = len(_find_syn(sl, tl, language, include_lemma_matches=True)) > 0
+
+            if has_dict or cosine >= MIN_COSINE_NO_DICT:
+                kept.append(r)
+
+        line_channel_results["syntax_structural"] = kept
+        after = len(kept)
         if before != after:
             print(f"[STRUCTURAL GATE] Kept {after}/{before} structural pairs "
-                  f"with semantic confirmation")
+                  f"(dictionary or cosine >= {MIN_COSINE_NO_DICT})")
 
     line_fused = fuse_results(line_channel_results, language=language)
 
@@ -2035,22 +2104,46 @@ def run_fusion_search(source_units, target_units, matcher, scorer,
             line_channel_results, source_units, target_units,
             source_path, target_path, language)
 
-        # Gate: only keep structural pairs that also have semantic confirmation
-        semantic_pairs = set()
+        # Gate: keep structural pairs that have semantic confirmation AND
+        # either (a) dictionary synonym confirmation or (b) high cosine.
+        from backend.synonym_dict import find_synonym_pairs_in_passages as _find_syn2
+        semantic_scores2 = {}
         for r in line_channel_results.get("semantic", []):
             rs = r.get("source", {}).get("ref", "")
             rt = r.get("target", {}).get("ref", "")
-            semantic_pairs.add((rs, rt))
+            score = r.get("score", r.get("overall_score", 0))
+            if score > semantic_scores2.get((rs, rt), 0):
+                semantic_scores2[(rs, rt)] = score
+
+        src_ref_to_idx2 = {u.get("ref", ""): i for i, u in enumerate(source_units)}
+        tgt_ref_to_idx2 = {u.get("ref", ""): i for i, u in enumerate(target_units)}
+
+        MIN_COSINE_NO_DICT2 = 0.70
         before = len(line_channel_results["syntax_structural"])
-        line_channel_results["syntax_structural"] = [
-            r for r in line_channel_results["syntax_structural"]
-            if (r.get("source", {}).get("ref", ""),
-                r.get("target", {}).get("ref", "")) in semantic_pairs
-        ]
-        after = len(line_channel_results["syntax_structural"])
+        kept2 = []
+        for r in line_channel_results["syntax_structural"]:
+            src_ref = r.get("source", {}).get("ref", "")
+            tgt_ref = r.get("target", {}).get("ref", "")
+            pair_key = (src_ref, tgt_ref)
+            if pair_key not in semantic_scores2:
+                continue
+            cosine = semantic_scores2[pair_key]
+            si = src_ref_to_idx2.get(src_ref)
+            ti = tgt_ref_to_idx2.get(tgt_ref)
+            has_dict = False
+            if si is not None and ti is not None:
+                sl = source_units[si].get("lemmas", [])
+                tl = target_units[ti].get("lemmas", [])
+                if sl and tl:
+                    has_dict = len(_find_syn2(sl, tl, language, include_lemma_matches=True)) > 0
+            if has_dict or cosine >= MIN_COSINE_NO_DICT2:
+                kept2.append(r)
+
+        line_channel_results["syntax_structural"] = kept2
+        after = len(kept2)
         if before != after:
             print(f"[STRUCTURAL GATE] Kept {after}/{before} structural pairs "
-                  f"with semantic confirmation")
+                  f"(dictionary or cosine >= {MIN_COSINE_NO_DICT2})")
 
     line_fused = fuse_results(line_channel_results, language=language)
 
