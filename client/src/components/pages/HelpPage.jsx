@@ -328,7 +328,7 @@ export default function HelpPage() {
               <div className="mt-6 bg-gray-50 p-4 rounded-lg">
                 <h4 className="font-medium text-gray-900 mb-2">Performance</h4>
                 <p className="text-gray-700 text-sm">
-                  Evaluated against five benchmark datasets (862 parallels from published commentaries), fusion search finds <strong>91% of known parallels</strong> —
+                  Evaluated against five benchmark datasets (862 parallels from published commentaries), fusion search finds <strong>93% of known parallels</strong> —
                   up from ~27% in Tesserae V3. On the Valerius Flaccus benchmark, 9 of the top 10 results are attested in scholarly commentary.
                 </p>
               </div>
@@ -448,9 +448,10 @@ export default function HelpPage() {
                 <div className="border-l-4 border-blue-500 pl-4">
                   <h4 className="font-medium text-gray-900">Greek↔Latin (Cross-Lingual Search)</h4>
                   <p className="text-gray-600 text-sm mt-1">
-                    Finds parallels across languages — Greek source vs. Latin target or vice versa. Two modes:
-                    AI Semantic (SPhilBERTa neural embeddings for meaning-based matching) and Dictionary
-                    (34,500+ curated Greek-Latin word pairs plus cognate detection).
+                    Finds parallels across languages — Greek source vs. Latin target. Combines
+                    AI semantic matching (SPhilBERTa neural embeddings) with a four-layer Greek-Latin
+                    dictionary (925 curated pairs, 34,500+ V3 entries, proper names, and cognate detection).
+                    Pairs detected by multiple channels receive a convergence bonus.
                   </p>
                   <p className="text-gray-500 text-sm mt-2">
                     <strong>Use for:</strong> Tracing how Latin authors adapted Greek sources — e.g., Vergil echoing Homer.
@@ -474,7 +475,7 @@ export default function HelpPage() {
                   <h4 className="font-medium text-red-900">Fusion — All Channels (default)</h4>
                   <p className="text-gray-700 text-sm mt-1">
                     Runs all nine detection channels simultaneously and combines results with weighted score fusion.
-                    Finds 91% of known parallels across five benchmark datasets — the recommended choice for general use.
+                    Finds 93% of known parallels across five benchmark datasets — the recommended choice for general use.
                     See{' '}
                     <button onClick={() => setActiveSection('fusion-search')} className="text-red-600 hover:underline">
                       How Fusion Search Works
@@ -817,11 +818,12 @@ export default function HelpPage() {
                 <div className="bg-amber-50 p-4 rounded-lg border border-amber-200">
                   <h4 className="font-medium text-amber-900 mb-2">Channel 2: Greek↔Latin Dictionary</h4>
                   <p className="text-amber-700 text-sm mb-2">
-                    Finds shared vocabulary across languages using three matching layers:
+                    Finds shared vocabulary across languages using four matching layers:
                   </p>
                   <ul className="text-amber-700 text-sm space-y-1 ml-4 list-disc list-inside">
-                    <li><strong>Curated pairs</strong> — hand-verified Greek-Latin equivalences (e.g., ἀνήρ→vir, ἐνέπω→cano)</li>
-                    <li><strong>V3 dictionary</strong> — 34,500+ Greek-Latin word pairs from Tesserae V3 scholars</li>
+                    <li><strong>Curated pairs</strong> — 925 hand-verified Greek-Latin translation equivalences across 17 semantic categories (e.g., ἀνήρ→vir, ἐνέπω→cano, μένος→furor)</li>
+                    <li><strong>V3 dictionary</strong> — 34,500+ Greek-Latin word pairs from Lewis & Short / LSJ</li>
+                    <li><strong>Proper names</strong> — 1,500+ Greek-Latin name pairs from Wikidata and the Pleiades gazetteer (e.g., Ἀχιλλεύς→Achilles)</li>
                     <li><strong>Cognate detection</strong> — automatic transliteration matching (e.g., Greek <em>philosophia</em> → Latin <em>philosophia</em>)</li>
                   </ul>
                   <p className="text-amber-700 text-sm mt-2">
@@ -832,9 +834,10 @@ export default function HelpPage() {
                 <div className="bg-green-50 p-4 rounded-lg border border-green-200">
                   <h4 className="font-medium text-green-800 mb-2">Fusion &amp; Convergence</h4>
                   <p className="text-green-700 text-sm">
-                    Pairs found by both channels receive a 1.5× convergence bonus. For example, <em>Odyssey</em> 1.1 /
+                    Pairs found by multiple channels receive a convergence bonus that boosts their score. For example, <em>Odyssey</em> 1.1 /
                     {' '}<em>Aeneid</em> 1.1 is detected semantically (48% cosine) and confirmed by dictionary matches
-                    (ἄνδρα→virum, ἔννεπε→cano). The "Min Dictionary Matches" filter lets you require a minimum number
+                    (ἄνδρα→virum, ἔννεπε→cano), so the convergence bonus pushes it above pairs detected by only one channel.
+                    The "Min Dictionary Matches" filter lets you require a minimum number
                     of dictionary word matches — set to 1 to include semantic-only pairs, or raise it to focus on
                     vocabulary-confirmed parallels.
                   </p>
@@ -893,10 +896,19 @@ export default function HelpPage() {
               </div>
 
               <div className="bg-amber-50 p-4 rounded border border-amber-200 mb-4">
-                <h4 className="font-medium text-amber-800 mb-2">Greek & English — Not Yet Available</h4>
+                <h4 className="font-medium text-amber-800 mb-2">Greek — In Progress</h4>
                 <p className="text-sm text-gray-700">
-                  Syntax parsing has not yet been completed for Greek or English texts. When both texts in a comparison
-                  are Greek or English, the syntax channel contributes no results. This is a planned future enhancement.
+                  Greek syntax parsing is currently being built using the Stanza <code className="bg-amber-100 px-1 rounded">grc_proiel</code> model.
+                  Coverage is expanding incrementally — Homer's <em>Iliad</em> and other major texts are already parsed.
+                  As more Greek texts are added, syntax matching will become available for Greek-Greek and Greek-Latin comparisons.
+                  Cross-lingual syntax matching is already integrated: because Universal Dependencies labels are language-independent,
+                  structural fingerprint matching works directly across the Greek-Latin boundary.
+                </p>
+              </div>
+              <div className="bg-gray-50 p-4 rounded border border-gray-200 mb-4">
+                <h4 className="font-medium text-gray-800 mb-2">English — Not Yet Available</h4>
+                <p className="text-sm text-gray-700">
+                  Syntax parsing for English texts is planned but has not yet begun.
                 </p>
               </div>
 
@@ -958,7 +970,7 @@ export default function HelpPage() {
                   <h4 className="font-medium text-gray-900">What is Fusion search and should I use it?</h4>
                   <p className="text-gray-600 text-sm mt-1">
                     Fusion is the default search mode. It runs nine independent detection channels simultaneously
-                    and combines their results, finding 91% of known parallels in benchmark tests. Unless you need
+                    and combines their results, finding 93% of known parallels in benchmark tests. Unless you need
                     to isolate a specific detection method, Fusion is recommended for general use.
                   </p>
                 </div>
@@ -1005,9 +1017,10 @@ export default function HelpPage() {
                 <div>
                   <h4 className="font-medium text-gray-900">Does syntax matching work for Greek and English?</h4>
                   <p className="text-gray-600 text-sm mt-1">
-                    Not yet. All 1,429 Latin texts have been parsed for syntax, but Greek and English syntax
-                    parsing is a planned future enhancement. The syntax channel simply contributes no results for
-                    non-Latin text pairs.
+                    All 1,429 Latin texts have full syntax coverage. Greek syntax parsing is in progress —
+                    major texts including Homer are already parsed, with more being added. English syntax
+                    parsing is planned but not yet started. The syntax channel contributes no results for
+                    text pairs where parsing is unavailable.
                   </p>
                 </div>
               </div>
