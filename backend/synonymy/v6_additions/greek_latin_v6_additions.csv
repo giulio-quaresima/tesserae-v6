@@ -1042,3 +1042,224 @@
 ἐϋπλόκαμος,pulchricoma,bene compta
 καλλιπάρῃος,pulchra genas
 βοῶπις,magna oculis
+
+# ============================================================================
+# Round 4: Knauer-informed core vocabulary (2026-03-07)
+# Translation equivalences identified from analysis of Knauer gold pairs,
+# verified against standard lexica (LSJ, Lewis & Short). 184 headwords,
+# 297 genuinely new pairs not already in V3 or previous V6 additions.
+# ============================================================================
+
+# --- Core vocabulary: gods, family, people ---
+ἀγαθός,fortis
+Ἀγαμέμνων,atrides
+ἀθάνατος,divus
+Ἀλέξανδρος,paris
+ἀνδρεῖος,fortis,strenuus
+ἀνήρ,heros
+ἀντίθεος,divus
+Ἄργος,Argivus,Argos,Mycenae
+Ἄρης,bellum
+Ἀχαιός,Achivus,Argivus,Danaus,Graius
+βασιλεύς,princeps
+βοῶπις,augusta,magna
+γενεά,gens,genus,progenies
+γένος,progenies
+γεραιός,senex
+γυνή,coniunx
+δαίμων,deus,genius
+Ζεύς,deus
+Ἥφαιστος,Vulcanus
+θεῖος,divinus,divus
+θεράπων,comes
+Ἴλιος,Ilium,Troia
+κούρη,filia,puella,virgo
+νέος,novus
+Πηλείδης,Achilles,Aeacides
+Ποσειδάων,Neptunus
+Τρώς,Dardanus,Teucri,Troia,Troianus
+Τυδείδης,Diomedes
+υἱός,progenies,proles
+φίλτατος,carissimus
+
+# --- Body, mind, senses ---
+γαστήρ,alvus
+γυῖον,artus,membrum
+δέμας,corpus
+δέρμα,corium,tergus
+ἦτορ,animus,cor,pectus
+θυμός,cor
+μέλος,artus
+μένος,animus,furor,impetus,ira,vis
+νῶτον,dorsum,tergum
+οὖς,auris
+πρόσωπον,ora
+στῆθος,cor
+φρήν,mens
+ψυχή,spiritus
+ὦμος,humerus,umerus
+
+# --- Emotions, states, abstract ---
+ἀργαλέος,difficilis
+ἄτη,culpa,fraus,noxa
+κίνδυνος,discrimen,periculum
+κλέος,decus
+κότος,odium
+μῆτις,calliditas
+ὄλεθρος,ruina
+πῆμα,clades,damnum,malum
+φόβος,metus,pavor,terror,timor
+χαρά,laetitia
+χάρμη,gaudium,pugna
+χόλος,dolor
+
+# --- Speech and thought ---
+αὐδάω,dico,for,inquam
+εἶπον,aio,dico,inquam
+ἔπος,dictum,verbum,vox
+μερμηρίζω,cogito,meditor,voluto
+μυθέομαι,dico,loquor,narro
+μῦθος,sermo,verbum
+ὁρμαίνω,cogito
+προσαυδάω,affari,compello
+προσεῖπον,alloquor,compello
+φημί,for
+φρονέω,cogito,sentio
+
+# --- Actions: movement ---
+βαίνω,cedo
+ἐλαύνω,impello
+ἱκάνω,advenio,pervenio,venio
+ἵπταμαι,volo
+νέομαι,reverto
+ὁρμάω,feror,irruo
+στάω,sisto,sto
+
+# --- Actions: combat and force ---
+αἰχμή,telum
+αἱρέω,tollo
+ἀνέχω,attollo,tollo
+ἁρπάζω,rapio
+βάλλω,ferio,icio
+δαμάζω,domo,subigo,vinco
+ἐμπίμπρημι,cremo,uro
+πείρω,perforo,transfigo
+
+# --- Actions: mental, desire, perception ---
+ἄνωγα,impero,iubeo
+βούλομαι,opto
+γιγνώσκω,scio
+δύναμαι,possum,valeo
+εὔχομαι,opto
+κελεύω,mando
+οἶδα,nosco
+ὁράω,aspicio
+πειράω,conor,tempto
+
+# --- Actions: other ---
+ἀσκέω,colo,exerceo
+ἄρχω,duco
+δίδωμι,tribuo
+διώκω,insequor
+ἐργάζομαι,laboro
+καλέω,appello,nomino
+κομίζω,porto
+μένω,sto
+πάσχω,fero
+πέμπω,dimitto
+πλέω,veho
+ποιέω,efficio
+σπένδω,fundo
+τελέω,conficio,perficio
+τεύχω,fabrico,facio
+τίκτω,gigno,pario
+τρέπω,torqueo
+τρέφω,educo
+
+# --- Lamentation ---
+οἰμώζω,gemo,lugeo,plango
+στένω,gemo,ingemo
+
+# --- Adjectives ---
+ἀγλαός,clarus
+ἀφνειός,dives,opulentus
+βένθος,altum,profundum
+γλυκύς,dulcis
+δεινός,saevus
+ἐρικυδής,gloriosus,inclutus
+ἠχήεις,resonans,sonorus
+κακός,improbus,malus
+καλός,bonus
+κλυτός,clarus,inclutus,nobilis
+κρατερός,durus,fortis,validus
+κρατύς,fortis,validus
+μέγας,grandis
+πικρός,acerbus,amarus
+πολύμητις,prudens
+πολύς,multus
+σχέτλιος,crudelis,durus,infelix
+χαλεπός,difficilis,durus,gravis
+ἄκρος,altus,summus,supremus
+ἀριστος,fortissimus
+ἱρός,sacer,sanctus
+
+# --- Nature, geography, weather ---
+ἄελλα,procella,turbo
+αἰγίς,aegis
+ἄμμος,arena,harena
+ἀντρον,specus
+ἠέλιος,sol
+ἠιών,ripa
+καπνός,fumus
+κέλευθος,iter,semita,via
+κορυφή,iugum
+Ὄλυμπος,caelum,Olympus
+ὄρος,iugum,mons
+πέτρη,rupes,saxum,scopulus
+ῥοδοδάκτυλος,aurora
+σκόπελος,rupes
+
+# --- Weapons, armor ---
+ἅρμα,iugum
+ἀσπίς,parma
+βέλος,missile
+ἔγχος,iaculum
+πύλη,fores,limen
+τόξον,sagitta
+τρυφάλεια,cassis,galea
+φαρέτρη,pharetra
+πληγή,plaga,vulnus
+
+# --- Ships, sailing ---
+ἐρετμόν,remus
+ἱστός,velum
+πτερόεις,alatus,volucer
+
+# --- Food, objects, materials ---
+ἀργυρος,argenteus
+ἐσθής,amictus,vestis
+θρόνος,sedes
+κλισμός,sella,solium
+κρέας,viscus
+κρητήρ,crater,cratera
+κοσμέω,instruo,orno
+λέχος,cubile,lectus,torus
+μίστυλλω,disseco,seco
+μοῖρα,pars
+ὄνομα,nomen
+χαλκός,aereus
+χρυσός,aureus
+δεῖπνον,cena,epulae
+δῶμα,tectum
+
+# --- Animals ---
+ἀετός,aquila
+βοῦς,taurus
+ἰχθύς,piscis
+ἵππος,currus
+
+# --- Formulaic / epithets ---
+πόλεμος,Mars
+αὐδάω,dico
+κῆρυξ,nuntius
+ἀοιδός,cantor
