@@ -328,7 +328,7 @@ export default function HelpPage() {
               <div className="mt-6 bg-gray-50 p-4 rounded-lg">
                 <h4 className="font-medium text-gray-900 mb-2">Performance</h4>
                 <p className="text-gray-700 text-sm">
-                  Evaluated against five benchmark datasets (862 parallels from published commentaries), fusion search finds <strong>93% of known parallels</strong> —
+                  Evaluated against five benchmark datasets (862 parallels from published commentaries), fusion search finds <strong>92% of known parallels</strong> —
                   up from ~27% in Tesserae V3. On the Valerius Flaccus benchmark, 9 of the top 10 results are attested in scholarly commentary.
                 </p>
               </div>
@@ -475,7 +475,7 @@ export default function HelpPage() {
                   <h4 className="font-medium text-red-900">Fusion — All Channels (default)</h4>
                   <p className="text-gray-700 text-sm mt-1">
                     Runs all nine detection channels simultaneously and combines results with weighted score fusion.
-                    Finds 93% of known parallels across five benchmark datasets — the recommended choice for general use.
+                    Finds 92% of known parallels across five benchmark datasets — the recommended choice for general use.
                     See{' '}
                     <button onClick={() => setActiveSection('fusion-search')} className="text-red-600 hover:underline">
                       How Fusion Search Works
@@ -869,7 +869,7 @@ export default function HelpPage() {
                   <li>The remaining ~60% are thematic/narrative echoes beyond the reach of current lexical and AI methods</li>
                 </ul>
                 <p className="text-purple-700 text-sm mt-2">
-                  For comparison, the Latin fusion system achieves 92.8% recall across five benchmarks using
+                  For comparison, the Latin fusion system achieves 91.9% recall across five benchmarks using
                   nine channels. Cross-lingual search currently uses two channels (semantic + dictionary), with
                   cross-lingual syntax matching under development as a third.
                 </p>
@@ -970,7 +970,7 @@ export default function HelpPage() {
                   <h4 className="font-medium text-gray-900">What is Fusion search and should I use it?</h4>
                   <p className="text-gray-600 text-sm mt-1">
                     Fusion is the default search mode. It runs nine independent detection channels simultaneously
-                    and combines their results, finding 93% of known parallels in benchmark tests. Unless you need
+                    and combines their results, finding 92% of known parallels in benchmark tests. Unless you need
                     to isolate a specific detection method, Fusion is recommended for general use.
                   </p>
                 </div>
