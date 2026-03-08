@@ -1783,7 +1783,9 @@ def _dedup_overlapping_windows(window_results):
     Sliding windows produce overlapping 2-line pairs: (140-141) and (141-142)
     on one side combined with (293-294) and (294-295) on the other yield up to
     4 copies of the same match.  Keep only the highest-scoring window when both
-    the source and target ranges overlap with an already-kept window.
+    the source and target ranges overlap with an already-kept window AND the
+    lower-scored window's matched words are a subset of the kept window's.
+    This preserves windows with genuinely different matches on adjacent lines.
     """
     if not window_results:
         return window_results
@@ -1796,6 +1798,15 @@ def _dedup_overlapping_windows(window_results):
         tb, ts, te = parse_range_ref(rt)
         parsed.append((sb, ss, se, tb, ts, te))
 
+    # Extract matched-word lemma sets for each result
+    word_sets = []
+    for r in window_results:
+        lemmas = frozenset(
+            mw.get("lemma", "") for mw in r.get("matched_words", [])
+            if mw.get("lemma")
+        )
+        word_sets.append(lemmas)
+
     # Sort by score descending so we greedily keep the best
     scored = sorted(range(len(window_results)),
                     key=lambda i: window_results[i].get('fused_score', 0),
@@ -1803,27 +1814,34 @@ def _dedup_overlapping_windows(window_results):
 
     kept = []
     kept_ranges = []  # parallel list of parsed ranges for kept windows
+    kept_words = []   # parallel list of matched-word lemma sets
 
     for i in scored:
         sb, ss, se, tb, ts, te = parsed[i]
         if sb is None or tb is None:
             kept.append(window_results[i])
             kept_ranges.append(parsed[i])
+            kept_words.append(word_sets[i])
             continue
 
-        # Skip if BOTH source and target ranges overlap with the same kept window
+        # Skip if BOTH source and target ranges overlap with the same kept
+        # window AND this window's matched lemmas are a subset of the kept one
         is_dup = False
-        for kb, ks, ke, ktb, kts, kte in kept_ranges:
+        cand_lemmas = word_sets[i]
+        for j, (kb, ks, ke, ktb, kts, kte) in enumerate(kept_ranges):
             if sb == kb and tb == ktb:
                 src_overlaps = ss <= ke and ks <= se
                 tgt_overlaps = ts <= kte and kts <= te
                 if src_overlaps and tgt_overlaps:
-                    is_dup = True
-                    break
+                    # Range overlaps — check if matched words are redundant
+                    if not cand_lemmas or cand_lemmas <= kept_words[j]:
+                        is_dup = True
+                        break
 
         if not is_dup:
             kept.append(window_results[i])
             kept_ranges.append(parsed[i])
+            kept_words.append(cand_lemmas)
 
     return kept
 
