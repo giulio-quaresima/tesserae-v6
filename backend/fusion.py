@@ -702,8 +702,10 @@ def find_syntax_matches(source_units, target_units, source_id, target_id,
     """Find syntax matches between source and target using syntax DBs.
 
     Two paths:
-      A) Lemma-gated: pairs sharing >=1 lemma, scored by deprel/upos agreement
-         at shared lemma positions (_compute_syntax_score).
+      A) Lemma-gated: pairs sharing content lemmas (excluding function words),
+         scored by deprel/upos agreement at shared lemma positions
+         (_compute_syntax_score). For Greek (large texts), requires 2+ shared
+         content lemmas to keep candidates manageable. For Latin, 1+ suffices.
       B) Structural fingerprint: pairs with identical head patterns (no shared
          lemmas required), scored by deprel/upos sequence similarity
          (_compute_structural_score). Catches syntactic imitation without
@@ -728,6 +730,22 @@ def find_syntax_matches(source_units, target_units, source_id, target_id,
     source_by_ref = {u["ref"]: u for u in source_units}
     target_by_ref = {u["ref"]: u for u in target_units}
 
+    # For large Greek text pairs, use function-word stoplists to limit
+    # candidate explosion. For Latin, skip stoplist filtering — function-word
+    # syntax matches add convergence bonus for multi-channel pairs.
+    n_source = len(source_parses)
+    n_target = len(target_parses)
+    large_pair = n_source * n_target > 20_000_000
+
+    if large_pair:
+        source_stoplist = _STOPLISTS.get(source_language, set())
+        target_stoplist = _STOPLISTS.get(target_language, set())
+        stoplist = source_stoplist | target_stoplist
+        MIN_SHARED_CONTENT_LEMMAS = 2
+    else:
+        stoplist = set()
+        MIN_SHARED_CONTENT_LEMMAS = 1
+
     # Build lemma → [target_ref] inverted index from parsed target data
     target_lemma_index = defaultdict(set)
     for ref, parse in target_parses.items():
@@ -736,25 +754,31 @@ def find_syntax_matches(source_units, target_units, source_id, target_id,
                 i < len(parse["upos"])
                 and parse["upos"][i] not in ("PUNCT", "X")
                 and lemma
+                and (not stoplist or lemma.lower() not in stoplist)
             ):
                 target_lemma_index[lemma.lower()].add(ref)
 
-    # --- Path A: Lemma-gated candidates (existing) ---
+    # --- Path A: Lemma-gated candidates ---
     candidate_pairs = []
     for source_ref, source_parse in source_parses.items():
         if source_ref not in source_by_ref:
             continue
 
-        candidate_targets = set()
+        # Count shared lemmas per target ref
+        target_hit_counts = Counter()
         for i, lemma in enumerate(source_parse["lemmas"]):
             if (
                 i < len(source_parse["upos"])
                 and source_parse["upos"][i] not in ("PUNCT", "X")
                 and lemma
+                and (not stoplist or lemma.lower() not in stoplist)
             ):
-                candidate_targets |= target_lemma_index.get(lemma.lower(), set())
+                for target_ref in target_lemma_index.get(lemma.lower(), set()):
+                    target_hit_counts[target_ref] += 1
 
-        for target_ref in candidate_targets:
+        for target_ref, count in target_hit_counts.items():
+            if count < MIN_SHARED_CONTENT_LEMMAS:
+                continue
             if target_ref not in target_by_ref:
                 continue
             target_parse = target_parses.get(target_ref)
@@ -883,6 +907,16 @@ def find_syntax_matches(source_units, target_units, source_id, target_id,
             if score >= min_score:
                 fingerprint_scored.append((source_ref, target_ref, score))
 
+    # Cap scored pairs BEFORE building result dicts (avoids building millions
+    # of dicts only to discard most of them)
+    if max_results > 0 and len(scored_pairs) > max_results:
+        scored_pairs.sort(key=lambda x: x[2], reverse=True)
+        scored_pairs = scored_pairs[:max_results]
+
+    print(f"[SYNTAX] {len(source_parses)} source, {len(target_parses)} target parses; "
+          f"{num_candidates:,} lemma-gated + {num_fp_candidates:,} fingerprint comparisons; "
+          f"{len(scored_pairs)} lemma + {len(fingerprint_scored)} fingerprint matches (score >= {min_score})")
+
     # Build result dicts — separate lists for lemma-gated and fingerprint
     def _build_results(pair_list):
         out = []
@@ -912,15 +946,6 @@ def find_syntax_matches(source_units, target_units, source_id, target_id,
 
     lemma_results = _build_results(scored_pairs)
     fp_results = _build_results(fingerprint_scored)
-
-    print(f"[SYNTAX] {len(source_parses)} source, {len(target_parses)} target parses; "
-          f"{num_candidates:,} lemma-gated + {num_fp_candidates:,} fingerprint comparisons; "
-          f"{len(lemma_results)} lemma + {len(fp_results)} fingerprint matches (score >= {min_score})")
-
-    # Keep top results by score
-    if max_results > 0 and len(lemma_results) > max_results:
-        lemma_results.sort(key=lambda r: r["overall_score"], reverse=True)
-        lemma_results = lemma_results[:max_results]
 
     return {"syntax": lemma_results, "syntax_structural": fp_results}
 
@@ -1347,6 +1372,9 @@ def fuse_results(channel_results, weights=None, convergence_bonus=None,
         "all_matched_words": {},
     })
 
+    import time as _time
+    _t0 = _time.time()
+
     for ch_name, results in channel_results.items():
         weight = _weights.get(ch_name, 1.0)
         for r in results:
@@ -1380,6 +1408,29 @@ def fuse_results(channel_results, weights=None, convergence_bonus=None,
             if raw_score > pair_scores[key]["best_score"]:
                 pair_scores[key]["best_result"] = r
                 pair_scores[key]["best_score"] = raw_score
+
+    _t1 = _time.time()
+    print(f"[FUSION] Accumulated {len(pair_scores):,} unique pairs from "
+          f"{sum(len(r) for r in channel_results.values()):,} channel results in {_t1-_t0:.1f}s")
+
+    # --- Pre-fusion cap: limit pairs entering rarity scoring ---
+    # Rarity scoring is O(n) with expensive per-pair IDF lookups. For
+    # large Greek text pairs, pair_scores can exceed 500K entries. Since
+    # rarity scoring can only reduce scores (mult <= 1 for common words)
+    # or boost already-high multi-channel pairs, the final top results
+    # are almost always within the top 200K by raw weighted score. Cap
+    # here to keep fusion tractable.
+    PRE_FUSION_CAP = 500000
+    total_pairs = len(pair_scores)
+    if total_pairs > PRE_FUSION_CAP:
+        # Keep pairs with highest raw weighted score (before rarity adjustment).
+        # Rarity Layer 3 can boost rare-word pairs, so we use a generous cap
+        # (500K) to avoid dropping gold pairs with low raw scores but rare vocab.
+        top_keys = sorted(pair_scores.keys(),
+                          key=lambda k: pair_scores[k]["score"],
+                          reverse=True)[:PRE_FUSION_CAP]
+        pair_scores = {k: pair_scores[k] for k in top_keys}
+        print(f"[FUSION] Pre-fusion cap: kept top {PRE_FUSION_CAP:,} of {total_pairs:,} pairs by raw score")
 
     # ===================================================================
     # RARITY SCORING: Three-layer system applied to every fused pair
@@ -1610,6 +1661,9 @@ def fuse_results(channel_results, weights=None, convergence_bonus=None,
         conv_mult = multiplier ** _conv_idf_power
         info["score"] = base_score * (multiplier ** _penalty_power) + conv_score * conv_mult
 
+    _t2 = _time.time()
+    print(f"[FUSION] Rarity scoring complete for {len(pair_scores):,} pairs in {_t2-_t1:.1f}s")
+
     # Sort by fused score and build output
     sorted_pairs = sorted(pair_scores.items(), key=lambda x: x[1]["score"], reverse=True)
     merged = []
@@ -1670,9 +1724,10 @@ def _which_line_has_matches(positions, boundary):
 def _trim_to_line(side, line_num):
     """Trim a window unit dict to show only one line of text.
 
-    Keeps the original range ref (so benchmark gold-matching still works)
-    but trims text, tokens, and highlight_indices to the relevant line.
-    Removes line_token_counts so the frontend renders as single line.
+    Keeps the original range ref so merge_line_and_window treats it as a
+    window (with one novel line pair), preserving recall for pairs found
+    only via window channels. Trims text, tokens, and highlights to the
+    relevant line. Removes line_token_counts so frontend renders as single line.
     """
     counts = side.get('line_token_counts', [])
     if not counts or len(counts) < 2:
@@ -1694,11 +1749,9 @@ def _trim_to_line(side, line_num):
     side['tokens'] = new_tokens
     side['text'] = new_text
     side['highlight_indices'] = sorted(new_highlights)
-    # Update ref to the single line so merge_line_and_window can dedup properly
-    line_refs = side.get('line_refs', [])
-    if line_refs and len(line_refs) > line_num:
-        side['ref'] = line_refs[line_num]
-    # Remove window metadata so frontend renders as single line
+    # Keep the original range ref — merge_line_and_window needs it to
+    # correctly identify this as a window result with a novel line pair.
+    # Removing window metadata so frontend renders as single line.
     side.pop('line_token_counts', None)
     side.pop('line_refs', None)
     return side
@@ -1816,35 +1869,44 @@ def _dedup_overlapping_windows(window_results):
                     reverse=True)
 
     kept = []
-    kept_ranges = []  # parallel list of parsed ranges for kept windows
-    kept_words = []   # parallel list of matched-word lemma sets
+    # Index kept windows by target line numbers for fast overlap lookup.
+    # Each target line maps to the kept windows that cover it, so we only
+    # compare against windows that could actually overlap in the target.
+    kept_by_tgt_line = defaultdict(list)  # tgt_line -> [(sb, ss, se, tb, ts, te, lemmas)]
 
     for i in scored:
         sb, ss, se, tb, ts, te = parsed[i]
         if sb is None or tb is None:
             kept.append(window_results[i])
-            kept_ranges.append(parsed[i])
-            kept_words.append(word_sets[i])
             continue
 
-        # Skip if BOTH source and target ranges overlap with the same kept
-        # window AND this window's matched lemmas are a subset of the kept one
+        # Check only kept windows that overlap this window's target lines
         is_dup = False
         cand_lemmas = word_sets[i]
-        for j, (kb, ks, ke, ktb, kts, kte) in enumerate(kept_ranges):
-            if sb == kb and tb == ktb:
-                src_overlaps = ss <= ke and ks <= se
-                tgt_overlaps = ts <= kte and kts <= te
-                if src_overlaps and tgt_overlaps:
-                    # Range overlaps — check if matched words are redundant
-                    if not cand_lemmas or cand_lemmas <= kept_words[j]:
+        # Collect candidate overlapping windows from target line index
+        checked = set()  # avoid checking same kept window twice
+        for tl in range(ts, te + 1):
+            for entry in kept_by_tgt_line.get((tb, tl), []):
+                eid = id(entry)
+                if eid in checked:
+                    continue
+                checked.add(eid)
+                ksb, kss, kse, _, kts, kte, k_lemmas = entry
+                if sb != ksb:
+                    continue
+                src_overlaps = ss <= kse and kss <= se
+                if src_overlaps:
+                    if not cand_lemmas or cand_lemmas <= k_lemmas:
                         is_dup = True
                         break
+            if is_dup:
+                break
 
         if not is_dup:
             kept.append(window_results[i])
-            kept_ranges.append(parsed[i])
-            kept_words.append(cand_lemmas)
+            entry = (sb, ss, se, tb, ts, te, cand_lemmas)
+            for tl in range(ts, te + 1):
+                kept_by_tgt_line[(tb, tl)].append(entry)
 
     return kept
 
