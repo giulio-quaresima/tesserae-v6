@@ -146,6 +146,8 @@ function App() {
     elapsedTime: searchElapsedTime,
     fusionProgress,
     hasSearched,
+    isQueued,
+    queuedMessage,
     search,
     searchRareWords,
     searchWordPairs,
@@ -645,6 +647,8 @@ function App() {
                     progressText={searchProgressText}
                     matchType={settings.match_type}
                     fusionProgress={fusionProgress}
+                    isQueued={isQueued}
+                    queuedMessage={queuedMessage}
                   />
                 )}
               </div>

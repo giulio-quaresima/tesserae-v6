@@ -335,6 +335,36 @@ pip install -r requirements.txt
 - Reduce Gunicorn workers to 1
 - Ensure server has 4GB+ RAM
 - Check for memory leaks with: `ps aux --sort=-%mem | head`
+- Tune the concurrency gate (see below)
+
+### Search concurrency gate
+
+Heavy searches (fusion, sound, edit distance, semantic, cross-lingual) are limited by a file-based concurrency gate to prevent OOM crashes when multiple users search simultaneously.
+
+**How it works:** Each active search holds an exclusive `flock` on a file in a lock directory. Before starting, new searches count active locks. If the limit is reached or available RAM is too low, the search waits and sends "queued" messages to the user's browser. The gate is crash-safe: when a process dies, the OS releases its flock automatically, and stale lock files are cleaned up on the next search attempt.
+
+**Configuration (environment variables):**
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `TESSERAE_MAX_HEAVY_SEARCHES` | 2 | Max concurrent heavy searches across all processes |
+| `TESSERAE_MEMORY_THRESHOLD_GB` | 8 | Min available RAM (GB) to start a new search |
+| `TESSERAE_LOCK_DIR` | `/tmp/tesserae_search_slots` | Directory for lock files (must be writable) |
+
+**Tuning:**
+- On a server with 32GB+ RAM: set `TESSERAE_MAX_HEAVY_SEARCHES=3` or `4`
+- On a server with 8–16GB RAM: keep at `2` (default)
+- On a server with < 8GB RAM: set to `1` and raise `TESSERAE_MEMORY_THRESHOLD_GB` to `4`
+- The lock directory must be on a local filesystem (not NFS) for `flock` to work correctly
+
+**Adding to your environment:**
+```bash
+# In .env or systemd service file:
+export TESSERAE_MAX_HEAVY_SEARCHES=2
+export TESSERAE_MEMORY_THRESHOLD_GB=8
+```
+
+**Implementation:** `backend/concurrency_gate.py`
 
 ### Searches timeout
 - Increase Gunicorn timeout: `--timeout 600`

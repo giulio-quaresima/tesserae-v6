@@ -24,7 +24,7 @@ const LANG_PAIRS = [
 const LANG_LABELS = {
   grc: { name: 'Greek', color: 'amber', bgClass: 'bg-amber-50', textClass: 'text-amber-700', refClass: 'text-amber-600', btnClass: 'bg-amber-600 text-white' },
   la: { name: 'Latin', color: 'red', bgClass: 'bg-red-50', textClass: 'text-red-700', refClass: 'text-red-600', btnClass: 'bg-red-700 text-white' },
-  en: { name: 'English', color: 'blue', bgClass: 'bg-blue-50', textClass: 'text-blue-700', refClass: 'text-blue-600', btnClass: 'bg-blue-600 text-white' },
+  en: { name: 'English', color: 'red', bgClass: 'bg-red-50', textClass: 'text-red-700', refClass: 'text-red-600', btnClass: 'bg-red-700 text-white' },
 };
 
 const LANG_DEFAULTS = {
@@ -588,26 +588,28 @@ export default function CrossLingualSearch() {
                     </span>
                   )}
                   {result.features?.n_channels === 2 && (
-                    <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">
+                    <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
                       2-channel
                     </span>
                   )}
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className={`${srcLang.bgClass} p-3 rounded`}>
-                    <div className={`text-xs ${srcLang.refClass} mb-1`}>{result.source?.ref || result.source_locus}</div>
+                  <div>
+                    <div className="text-xs text-gray-500 mb-1">Source</div>
+                    <div className="font-medium text-gray-900">{result.source?.ref || result.source_locus}</div>
                     {result.source?.tokens && result.source?.highlight_indices?.length > 0 ? (
-                      <div className="text-gray-800" dangerouslySetInnerHTML={{ __html: highlightTokens(result.source.tokens, result.source.highlight_indices) }} />
+                      <div className="text-gray-700 mt-1" dangerouslySetInnerHTML={{ __html: highlightTokens(result.source.tokens, result.source.highlight_indices) }} />
                     ) : (
-                      <div className="text-gray-800">{result.source?.text || result.source_text || ''}</div>
+                      <div className="text-gray-700 mt-1">{result.source?.text || result.source_text || ''}</div>
                     )}
                   </div>
-                  <div className={`${tgtLang.bgClass} p-3 rounded`}>
-                    <div className={`text-xs ${tgtLang.refClass} mb-1`}>{result.target?.ref || result.target_locus}</div>
+                  <div>
+                    <div className="text-xs text-gray-500 mb-1">Target</div>
+                    <div className="font-medium text-gray-900">{result.target?.ref || result.target_locus}</div>
                     {result.target?.tokens && result.target?.highlight_indices?.length > 0 ? (
-                      <div className="text-gray-800" dangerouslySetInnerHTML={{ __html: highlightTokens(result.target.tokens, result.target.highlight_indices) }} />
+                      <div className="text-gray-700 mt-1" dangerouslySetInnerHTML={{ __html: highlightTokens(result.target.tokens, result.target.highlight_indices) }} />
                     ) : (
-                      <div className="text-gray-800">{result.target?.text || result.target_text || ''}</div>
+                      <div className="text-gray-700 mt-1">{result.target?.text || result.target_text || ''}</div>
                     )}
                   </div>
                 </div>

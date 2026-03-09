@@ -11,6 +11,8 @@ export const useSearch = () => {
   const [searchStats, setSearchStats] = useState(null);
   const [fusionProgress, setFusionProgress] = useState(null);
   const [hasSearched, setHasSearched] = useState(false);
+  const [isQueued, setIsQueued] = useState(false);
+  const [queuedMessage, setQueuedMessage] = useState('');
   const abortController = useRef(null);
   const timerRef = useRef(null);
   const startTimeRef = useRef(null);
@@ -47,10 +49,19 @@ export const useSearch = () => {
     setProgressText('');
     setSearchStats(null);
     setFusionProgress(null);
+    setIsQueued(false);
+    setQueuedMessage('');
 
     const handleProgress = (step, detail, elapsed) => {
+      setIsQueued(false);
+      setQueuedMessage('');
       setProgressText(detail ? `${step}: ${detail}` : step);
       setElapsedTime(Math.floor(elapsed));
+    };
+
+    const handleQueued = (reason, waitTime) => {
+      setIsQueued(true);
+      setQueuedMessage(reason || 'Server is busy, your search is queued...');
     };
 
     try {
@@ -68,12 +79,12 @@ export const useSearch = () => {
             phase: intermediateData.phase || 'line',
           });
         };
-        data = await searchFusionStream(params, handleProgress, abortController.current.signal, handleIntermediate);
+        data = await searchFusionStream(params, handleProgress, abortController.current.signal, handleIntermediate, handleQueued);
       } else if (isCrossLingual) {
         data = await searchTexts(params, abortController.current.signal);
       } else {
         try {
-          data = await searchTextsStream(params, handleProgress, abortController.current.signal);
+          data = await searchTextsStream(params, handleProgress, abortController.current.signal, handleQueued);
         } catch (streamErr) {
           if (streamErr.message && streamErr.message.includes('405')) {
             setProgressText('Streaming not available, using standard search...');
@@ -206,6 +217,8 @@ export const useSearch = () => {
     searchStats,
     fusionProgress,
     hasSearched,
+    isQueued,
+    queuedMessage,
     search,
     searchCrossLingual,
     searchRareWords,

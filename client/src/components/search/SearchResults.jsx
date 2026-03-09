@@ -24,7 +24,9 @@ const SearchResults = ({
   elapsedTime = 0,
   progressText = '',
   matchType = 'lemma',
-  fusionProgress = null
+  fusionProgress = null,
+  isQueued = false,
+  queuedMessage = ''
 }) => {
   const [expandedResults, setExpandedResults] = useState({});
   const [showDistributionChart, setShowDistributionChart] = useState(false);
@@ -364,7 +366,14 @@ const SearchResults = ({
       const isSlowSearch = matchType === 'sound' || matchType === 'edit_distance' || matchType === 'fusion';
       return (
         <div className="flex flex-col items-center justify-center py-12">
-          {isSlowSearch && (
+          {isQueued && (
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4 text-center max-w-md">
+              <div className="text-amber-800 font-medium mb-1">Search queued</div>
+              <div className="text-amber-600 text-sm">{queuedMessage}</div>
+              <div className="text-amber-500 text-xs mt-2">Your search will start automatically when a slot opens.</div>
+            </div>
+          )}
+          {isSlowSearch && !isQueued && (
             <div className="text-sm text-gray-600 mb-4 text-center">
               {matchType === 'fusion'
                 ? 'Fusion search runs all 9 channels \u2014 results will appear as channels complete.'
@@ -373,7 +382,7 @@ const SearchResults = ({
           )}
           <LoadingSpinner
             size="lg"
-            text={progressText || "Searching for parallels..."}
+            text={isQueued ? 'Waiting for server...' : (progressText || "Searching for parallels...")}
             elapsedTime={elapsedTime}
           />
         </div>

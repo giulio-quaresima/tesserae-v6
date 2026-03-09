@@ -188,6 +188,42 @@ A score-based analysis reveals a natural structural break at fused_score ≈ 2.5
 
 See `evaluation/scripts/compute_recall_at_k.py` and `research/studies/fusion_experiment_phase1/` for the underlying data.
 
+## Concurrency Control
+
+Fusion search is memory-intensive — a full 9-channel run on large text pairs (e.g., Aeneid × Metamorphoses) can consume several GB of RAM. To prevent out-of-memory crashes when multiple users search simultaneously, all heavy search endpoints are protected by a **file-based concurrency gate** (`backend/concurrency_gate.py`).
+
+### Mechanism
+
+The gate uses POSIX advisory file locks (`fcntl.flock`) to coordinate across Apache mod_wsgi worker processes, which share no Python state. Each active heavy search holds an exclusive lock on a unique file in `/tmp/tesserae_search_slots/`. Before starting, a new search:
+
+1. Counts how many lock files are currently held by live processes
+2. Checks available system RAM via `/proc/meminfo`
+3. If either limit is exceeded, yields `queued` SSE events to the frontend while polling every 2 seconds
+4. Starts the search once a slot opens (or errors after a 5-minute timeout)
+
+The gate is **crash-safe**: when a worker process dies (OOM kill, segfault, restart), the OS releases its flock automatically. Stale lock files from dead processes are detected and cleaned up on the next acquisition attempt.
+
+### Gated endpoints
+
+| Endpoint | Gate type |
+|----------|-----------|
+| `POST /api/search-fusion` | SSE generator — yields `queued` events while waiting |
+| `POST /api/search-stream` | SSE generator — yields `queued` events while waiting |
+| `POST /api/search` | Context manager — blocks until slot available, returns 503 on timeout |
+
+Cached results bypass the gate entirely (no compute needed).
+
+### Configuration
+
+| Environment Variable | Default | Description |
+|---------------------|---------|-------------|
+| `TESSERAE_MAX_HEAVY_SEARCHES` | 2 | Maximum concurrent heavy searches |
+| `TESSERAE_MEMORY_THRESHOLD_GB` | 8 | Minimum available RAM (GB) to allow a new search |
+
+### Frontend behavior
+
+When a search is queued, the frontend displays an amber banner: "Search queued — server is busy" with the specific reason (e.g., "Server is running 2 searches (max 2)" or "Server memory low"). The spinner continues, and the search starts automatically when a slot opens. Users can cancel queued searches at any time.
+
 ## References
 
 - **Channel weights and recall figures**: `research/studies/fusion_experiment_phase1/publication/EVALUATION_REPORT.md`

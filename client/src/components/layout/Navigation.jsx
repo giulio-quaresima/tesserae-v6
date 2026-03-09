@@ -14,8 +14,8 @@ const mainTabs = [
 const languageTabs = [
   { code: 'la', label: 'Latin' },
   { code: 'grc', label: 'Greek' },
-  { code: 'cross', label: 'Greek↔Latin' },
-  { code: 'en', label: 'English' }
+  { code: 'en', label: 'English' },
+  { code: 'cross', label: 'Cross-Language' }
 ];
 
 const Navigation = ({ 

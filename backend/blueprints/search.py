@@ -35,6 +35,7 @@ import time
 from backend.logging_config import get_logger
 from backend.services import get_user_location, log_search
 from backend.cache import get_cached_results, save_cached_results, clear_cache
+from backend.concurrency_gate import SearchSlot
 
 logger = get_logger('search')
 
@@ -966,6 +967,7 @@ def search_stream():
     data = request.get_json()
 
     def generate():
+        slot = None
         try:
             start_time = time.time()
 
@@ -1006,6 +1008,15 @@ def search_stream():
                     "cached": True
                 }
                 yield f"data: {json.dumps(result)}\n\n"
+                return
+
+            # Concurrency gate: wait for a slot before starting heavy work
+            slot = SearchSlot()
+            try:
+                for queued_event in slot.acquire():
+                    yield f"data: {json.dumps({'type': 'queued', 'step': 'Search queued — server is busy', 'detail': queued_event.get('reason', ''), 'wait_time': queued_event.get('wait_time', 0), 'elapsed': round(time.time() - start_time, 1)})}\n\n"
+            except TimeoutError as e:
+                yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
                 return
 
             # Load text units (with per-text progress messages)
@@ -1074,6 +1085,9 @@ def search_stream():
         except Exception as e:
             logger.error(f"Search stream error: {e}")
             yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+        finally:
+            if slot is not None:
+                slot.release()
 
     return Response(generate(), mimetype='text/event-stream', headers={
         'Cache-Control': 'no-cache',
@@ -1118,32 +1132,36 @@ def search():
                 "cached": True
             })
 
-        # Load text units and corpus frequencies
-        source_units, target_units = _load_units(params)
-        corpus_frequencies = _load_corpus_frequencies(language, settings)
+        # Concurrency gate: blocks until a slot is available
+        with SearchSlot():
+            # Load text units and corpus frequencies
+            source_units, target_units = _load_units(params)
+            corpus_frequencies = _load_corpus_frequencies(language, settings)
 
-        # Cross-lingual fusion (default for cross-lingual searches)
-        if match_type == 'crosslingual_fusion':
-            return _handle_crosslingual_fusion(params, source_units, target_units, settings)
+            # Cross-lingual fusion (default for cross-lingual searches)
+            if match_type == 'crosslingual_fusion':
+                return _handle_crosslingual_fusion(params, source_units, target_units, settings)
 
-        # Legacy single-channel cross-lingual paths
-        if match_type == 'dictionary_cross':
-            return _handle_dictionary_cross(params, source_units, target_units, settings)
-        if match_type == 'semantic_cross':
-            from backend.semantic_similarity import find_crosslingual_matches
-            matches, stoplist_size = find_crosslingual_matches(
-                source_units, target_units, params['source_language'],
-                params['target_language'], settings)
-        else:
-            matches, stoplist_size = _run_matcher(match_type, source_units, target_units,
-                                                   settings, corpus_frequencies)
+            # Legacy single-channel cross-lingual paths
+            if match_type == 'dictionary_cross':
+                return _handle_dictionary_cross(params, source_units, target_units, settings)
+            if match_type == 'semantic_cross':
+                from backend.semantic_similarity import find_crosslingual_matches
+                matches, stoplist_size = find_crosslingual_matches(
+                    source_units, target_units, params['source_language'],
+                    params['target_language'], settings)
+            else:
+                matches, stoplist_size = _run_matcher(match_type, source_units, target_units,
+                                                       settings, corpus_frequencies)
 
-        # Score, cache, log, and return
-        scored_results = _scorer.score_matches(matches, source_units, target_units, settings, source_id, target_id)
-        scored_results.sort(key=lambda x: x['overall_score'], reverse=True)
-        return jsonify(_finalize_results(scored_results, source_units, target_units,
-                                          stoplist_size, settings, source_id, target_id, language))
+            # Score, cache, log, and return
+            scored_results = _scorer.score_matches(matches, source_units, target_units, settings, source_id, target_id)
+            scored_results.sort(key=lambda x: x['overall_score'], reverse=True)
+            return jsonify(_finalize_results(scored_results, source_units, target_units,
+                                              stoplist_size, settings, source_id, target_id, language))
 
+    except TimeoutError as e:
+        return jsonify({"error": f"Server busy: {e}"}), 503
     except Exception as e:
         import traceback
         traceback.print_exc()

@@ -499,6 +499,47 @@ Toggle specific features on/off.
 
 ---
 
+## Search Concurrency & Queuing
+
+Heavy searches (fusion, sound, edit distance, semantic, cross-lingual) are protected by a **concurrency gate** that limits how many run simultaneously. This prevents out-of-memory crashes when multiple users search at the same time.
+
+### Streaming endpoints (`/api/search-stream`, `/api/search-fusion`)
+
+When the server is busy, streaming endpoints emit `queued` SSE events before the search begins:
+
+```
+data: {"type": "queued", "step": "Search queued — server is busy", "detail": "Server is running 2 searches (max 2)", "wait_time": 4.2, "elapsed": 5.0}
+```
+
+The search starts automatically when a slot opens. If no slot opens within 5 minutes, an `error` event is sent.
+
+**SSE event types** (in order):
+| Event | When |
+|-------|------|
+| `queued` | Server is busy, search is waiting for a slot |
+| `progress` | Search is running, status updates |
+| `intermediate` | (Fusion only) Partial results after each channel |
+| `complete` | Final results |
+| `error` | Search failed or timed out in queue |
+
+### Non-streaming endpoint (`/api/search`)
+
+When the server is busy, the request blocks until a slot is available. If the queue timeout (5 minutes) is exceeded, a `503 Service Unavailable` response is returned:
+
+```json
+{"error": "Server busy: Search queue timeout after 300s: Server is running 2 searches (max 2)"}
+```
+
+### Configuration
+
+| Environment Variable | Default | Description |
+|---------------------|---------|-------------|
+| `TESSERAE_MAX_HEAVY_SEARCHES` | 2 | Maximum concurrent heavy searches |
+| `TESSERAE_MEMORY_THRESHOLD_GB` | 8 | Minimum available RAM (GB) to start a search |
+| `TESSERAE_LOCK_DIR` | `/tmp/tesserae_search_slots` | Directory for lock files |
+
+---
+
 ## Error Responses
 
 All endpoints return errors in this format:

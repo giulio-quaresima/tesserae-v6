@@ -35,31 +35,31 @@ export const searchTexts = async (params, signal) => {
   return response.json();
 };
 
-export const searchTextsStream = async (params, onProgress, signal) => {
+export const searchTextsStream = async (params, onProgress, signal, onQueued) => {
   const response = await fetch(`${API_BASE}/search-stream`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(params),
     signal
   });
-  
+
   if (!response.ok) {
     throw new Error(`Search failed: ${response.status}`);
   }
-  
+
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
   let buffer = '';
   let finalResult = null;
-  
+
   while (true) {
     const { done, value } = await reader.read();
     if (done) break;
-    
+
     buffer += decoder.decode(value, { stream: true });
     const lines = buffer.split('\n');
     buffer = lines.pop() || '';
-    
+
     for (const line of lines) {
       if (line.startsWith('data: ')) {
         try {
@@ -67,6 +67,10 @@ export const searchTextsStream = async (params, onProgress, signal) => {
           if (data.type === 'progress') {
             if (onProgress) {
               onProgress(data.step, data.detail, data.elapsed);
+            }
+          } else if (data.type === 'queued') {
+            if (onQueued) {
+              onQueued(data.detail, data.wait_time);
             }
           } else if (data.type === 'complete') {
             finalResult = data;
@@ -81,11 +85,11 @@ export const searchTextsStream = async (params, onProgress, signal) => {
       }
     }
   }
-  
+
   return finalResult || { results: [], total_matches: 0 };
 };
 
-export const searchFusionStream = async (params, onProgress, signal, onIntermediate) => {
+export const searchFusionStream = async (params, onProgress, signal, onIntermediate, onQueued) => {
   const response = await fetch(`${API_BASE}/search-fusion`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -117,6 +121,10 @@ export const searchFusionStream = async (params, onProgress, signal, onIntermedi
           if (data.type === 'progress') {
             if (onProgress) {
               onProgress(data.step, data.detail, data.elapsed);
+            }
+          } else if (data.type === 'queued') {
+            if (onQueued) {
+              onQueued(data.detail, data.wait_time);
             }
           } else if (data.type === 'intermediate') {
             if (onIntermediate) {

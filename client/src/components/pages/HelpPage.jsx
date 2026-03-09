@@ -984,6 +984,15 @@ export default function HelpPage() {
                   </p>
                 </div>
                 <div>
+                  <h4 className="font-medium text-gray-900">What does "Search queued" mean?</h4>
+                  <p className="text-gray-600 text-sm mt-1">
+                    When the server is already running heavy searches for other users, your search is placed in a
+                    queue to prevent the server from running out of memory. You'll see a "Search queued" message
+                    with a spinner. Your search will start automatically when a slot opens — typically within a few
+                    minutes. You can cancel and retry later if you prefer.
+                  </p>
+                </div>
+                <div>
                   <h4 className="font-medium text-gray-900">Can I request a text that's not in the corpus?</h4>
                   <p className="text-gray-600 text-sm mt-1">
                     Yes! Use the{' '}
