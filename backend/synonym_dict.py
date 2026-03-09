@@ -17,6 +17,8 @@ _GREEK_LOOKUP = None
 _GREEK_LATIN_DICT = None
 _GREEK_LATIN_DICT_NORMALIZED = None
 _GAZETTEER_DICT = None
+_LATIN_ENGLISH_DICT = None
+_GREEK_ENGLISH_DICT = None
 _DATA_DIR = os.path.join(os.path.dirname(__file__), 'synonymy')
 _PROPER_NAMES_DIR = os.path.join(os.path.dirname(__file__), 'proper_names')
 
@@ -68,6 +70,35 @@ CROSSLINGUAL_STOPLIST_LATIN = {
     'olim', 'nunc', 'tunc', 'tum', 'iam', 'semper', 'umquam', 'numquam', 'adhuc', 'mox', 'tandem',
     # Common adverbs/particles
     'sic', 'ita', 'tam', 'quam', 'magis', 'minus', 'bene', 'male', 'valde', 'nimis',
+}
+
+CROSSLINGUAL_STOPLIST_ENGLISH = {
+    # Articles and determiners
+    'the', 'a', 'an', 'this', 'that', 'these', 'those',
+    # Pronouns
+    'i', 'me', 'my', 'we', 'us', 'our', 'you', 'your', 'he', 'him', 'his',
+    'she', 'her', 'it', 'its', 'they', 'them', 'their', 'who', 'whom', 'what', 'which',
+    'myself', 'himself', 'herself', 'itself', 'themselves', 'oneself',
+    # Prepositions
+    'in', 'on', 'at', 'to', 'for', 'with', 'from', 'by', 'of', 'about',
+    'into', 'through', 'during', 'before', 'after', 'above', 'below', 'between',
+    'out', 'off', 'over', 'under', 'up', 'down', 'against', 'among', 'upon',
+    # Conjunctions
+    'and', 'or', 'but', 'if', 'when', 'while', 'because', 'although', 'though',
+    'as', 'than', 'whether', 'so', 'yet', 'nor', 'neither', 'either',
+    # Common verbs (copula, auxiliaries)
+    'be', 'is', 'am', 'are', 'was', 'were', 'been', 'being',
+    'have', 'has', 'had', 'having',
+    'do', 'does', 'did', 'done',
+    'will', 'would', 'shall', 'should', 'may', 'might', 'can', 'could', 'must',
+    # Negation
+    'not', 'no', 'never',
+    # Common adverbs/particles
+    'very', 'also', 'too', 'just', 'now', 'then', 'here', 'there',
+    'still', 'even', 'only', 'already', 'ever', 'how', 'where', 'why',
+    # Archaic forms (Shakespeare, Milton, KJV)
+    'thou', 'thee', 'thy', 'thine', 'ye', 'art', 'doth', 'hath', 'dost',
+    'hast', 'wilt', 'shalt', 'wouldst', 'shouldst', 'canst', 'didst',
 }
 
 
@@ -300,6 +331,30 @@ if os.path.exists(_V6_ADDITIONS_PATH):
                 CURATED_GREEK_LATIN[_greek_norm] = _latin_words
             _v6_count += 1
     print(f"Loaded {_v6_count} V6 Greek-Latin additions into CURATED_GREEK_LATIN (total: {len(CURATED_GREEK_LATIN)} entries)")
+
+# Load Perseus Dynamic Lexicon additions (3,001 novel Greek-Latin pairs)
+_PERSEUS_ADDITIONS_PATH = os.path.join(_DATA_DIR, 'v6_additions', 'perseus_greek_latin_v6_additions.csv')
+if os.path.exists(_PERSEUS_ADDITIONS_PATH):
+    _perseus_count = 0
+    with open(_PERSEUS_ADDITIONS_PATH, 'r', encoding='utf-8') as _f:
+        for _line in _f:
+            _line = _line.strip()
+            if not _line or _line.startswith('#'):
+                continue
+            _parts = [p.strip() for p in _line.split(',') if p.strip()]
+            if len(_parts) < 2:
+                continue
+            _greek_word = _parts[0]
+            _greek_norm = _normalize_greek(_greek_word).replace('ς', 'σ')
+            _latin_words = [w.lower() for w in _parts[1:]]
+            if _greek_norm in CURATED_GREEK_LATIN:
+                _existing = set(CURATED_GREEK_LATIN[_greek_norm])
+                _existing.update(_latin_words)
+                CURATED_GREEK_LATIN[_greek_norm] = list(_existing)
+            else:
+                CURATED_GREEK_LATIN[_greek_norm] = _latin_words
+            _perseus_count += 1
+    print(f"Loaded {_perseus_count} Perseus Greek-Latin additions into CURATED_GREEK_LATIN (total: {len(CURATED_GREEK_LATIN)} entries)")
 
 CURATED_LATIN = {
     "bellum": ["bellum", "proelium", "pugna", "certamen", "acies"],
@@ -619,6 +674,184 @@ def get_greek_latin_dict():
         else:
             print(f"Greek-Latin dictionary not found at {filepath}")
     return _GREEK_LATIN_DICT, _GREEK_LATIN_DICT_NORMALIZED
+
+
+def _load_english_dict(filepath):
+    """Load a classical→English dictionary from Perseus-derived CSV.
+    Format: classical_word,english_word (one pair per line).
+    Returns dict mapping classical_word → set of English words.
+    """
+    result = {}
+    if not os.path.exists(filepath):
+        return result
+    with open(filepath, 'r', encoding='utf-8') as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith('#'):
+                continue
+            parts = [p.strip().lower() for p in line.split(',') if p.strip()]
+            if len(parts) >= 2:
+                classical = parts[0]
+                english = parts[1]
+                if classical not in result:
+                    result[classical] = set()
+                result[classical].add(english)
+    return result
+
+
+def get_latin_english_dict():
+    """Load the Latin-English cross-lingual dictionary (Perseus Dynamic Lexicon).
+    Returns dict mapping Latin lemma → set of English words.
+    """
+    global _LATIN_ENGLISH_DICT
+    if _LATIN_ENGLISH_DICT is None:
+        _LATIN_ENGLISH_DICT = {}
+        # Primary: Perseus extracted pairs
+        filepath = os.path.join(os.path.dirname(__file__), '..', 'data',
+                                'perseus_lexicon', 'extracted', 'perseus_latin_english_dict.csv')
+        if os.path.exists(filepath):
+            _LATIN_ENGLISH_DICT = _load_english_dict(filepath)
+            print(f"Loaded {len(_LATIN_ENGLISH_DICT)} Latin-English dictionary entries (Perseus)")
+        else:
+            print(f"Latin-English dictionary not found at {filepath}")
+        # V6 curated additions (optional)
+        additions_path = os.path.join(_DATA_DIR, 'v6_additions', 'latin_english_v6_additions.csv')
+        if os.path.exists(additions_path):
+            additions = _load_english_dict(additions_path)
+            for k, v in additions.items():
+                _LATIN_ENGLISH_DICT.setdefault(k, set()).update(v)
+            print(f"  + {len(additions)} curated Latin-English additions")
+    return _LATIN_ENGLISH_DICT
+
+
+def get_greek_english_dict():
+    """Load the Greek-English cross-lingual dictionary (Perseus Dynamic Lexicon).
+    Returns dict mapping normalized Greek lemma → set of English words.
+    Greek keys are accent-stripped and sigma-normalized.
+    """
+    global _GREEK_ENGLISH_DICT
+    if _GREEK_ENGLISH_DICT is None:
+        _GREEK_ENGLISH_DICT = {}
+        filepath = os.path.join(os.path.dirname(__file__), '..', 'data',
+                                'perseus_lexicon', 'extracted', 'perseus_greek_english_dict.csv')
+        if os.path.exists(filepath):
+            raw = _load_english_dict(filepath)
+            # Normalize Greek keys: strip accents + sigma normalization
+            for greek_key, english_set in raw.items():
+                norm = _normalize_greek(greek_key).replace('ς', 'σ')
+                _GREEK_ENGLISH_DICT.setdefault(norm, set()).update(english_set)
+            print(f"Loaded {len(_GREEK_ENGLISH_DICT)} Greek-English dictionary entries (Perseus)")
+        else:
+            print(f"Greek-English dictionary not found at {filepath}")
+        # V6 curated additions (optional)
+        additions_path = os.path.join(_DATA_DIR, 'v6_additions', 'greek_english_v6_additions.csv')
+        if os.path.exists(additions_path):
+            raw_add = _load_english_dict(additions_path)
+            for greek_key, english_set in raw_add.items():
+                norm = _normalize_greek(greek_key).replace('ς', 'σ')
+                _GREEK_ENGLISH_DICT.setdefault(norm, set()).update(english_set)
+            print(f"  + {len(raw_add)} curated Greek-English additions")
+    return _GREEK_ENGLISH_DICT
+
+
+def find_latin_english_matches(latin_lemmas: list, english_lemmas: list,
+                                use_stoplist: bool = True) -> list:
+    """Find Latin-English word matches using Perseus dictionary.
+
+    Args:
+        latin_lemmas: List of Latin lemma strings
+        english_lemmas: List of English lemma strings
+        use_stoplist: Whether to filter stopwords
+
+    Returns:
+        List of match dicts with source/target indices and matched words
+    """
+    le_dict = get_latin_english_dict()
+    matches = []
+    seen = set()
+
+    english_lower_list = [l.lower() for l in english_lemmas]
+
+    for lat_idx, lat_lemma in enumerate(latin_lemmas):
+        lat_lower = lat_lemma.lower()
+
+        if use_stoplist and lat_lower in CROSSLINGUAL_STOPLIST_LATIN:
+            continue
+
+        # v→u normalization for lookup
+        lat_lookup = lat_lower.replace('v', 'u')
+        translations = le_dict.get(lat_lookup, set()) | le_dict.get(lat_lower, set())
+
+        for en_word in translations:
+            if use_stoplist and en_word in CROSSLINGUAL_STOPLIST_ENGLISH:
+                continue
+
+            pair_key = (lat_lower, en_word)
+            if pair_key in seen:
+                continue
+
+            en_indices = [i for i, l in enumerate(english_lower_list) if l == en_word]
+            if en_indices:
+                seen.add(pair_key)
+                lat_indices = [i for i, l in enumerate(latin_lemmas) if l.lower() == lat_lower]
+                matches.append({
+                    'source_lemma': lat_lemma,
+                    'target_lemma': en_word,
+                    'source_indices': lat_indices,
+                    'target_indices': en_indices,
+                    'type': 'dictionary',
+                })
+
+    return matches
+
+
+def find_greek_english_matches(greek_lemmas: list, english_lemmas: list,
+                                use_stoplist: bool = True) -> list:
+    """Find Greek-English word matches using Perseus dictionary.
+
+    Args:
+        greek_lemmas: List of Greek lemma strings
+        english_lemmas: List of English lemma strings
+        use_stoplist: Whether to filter stopwords
+
+    Returns:
+        List of match dicts with source/target indices and matched words
+    """
+    ge_dict = get_greek_english_dict()
+    matches = []
+    seen = set()
+
+    english_lower_list = [l.lower() for l in english_lemmas]
+
+    for grc_idx, grc_lemma in enumerate(greek_lemmas):
+        grc_norm = _normalize_greek(grc_lemma).replace('ς', 'σ')
+
+        if use_stoplist and grc_norm in CROSSLINGUAL_STOPLIST_GREEK:
+            continue
+
+        translations = ge_dict.get(grc_norm, set())
+
+        for en_word in translations:
+            if use_stoplist and en_word in CROSSLINGUAL_STOPLIST_ENGLISH:
+                continue
+
+            pair_key = (grc_norm, en_word)
+            if pair_key in seen:
+                continue
+
+            en_indices = [i for i, l in enumerate(english_lower_list) if l == en_word]
+            if en_indices:
+                seen.add(pair_key)
+                grc_indices = [i for i, l in enumerate(greek_lemmas) if _normalize_greek(l) == grc_norm]
+                matches.append({
+                    'source_lemma': grc_lemma,
+                    'target_lemma': en_word,
+                    'source_indices': grc_indices,
+                    'target_indices': en_indices,
+                    'type': 'dictionary',
+                })
+
+    return matches
 
 
 def _get_gazetteer_dict():

@@ -15,13 +15,32 @@ const highlightTokens = (tokens, highlightIndices) => {
   ).join(' ');
 };
 
+const LANG_PAIRS = [
+  { key: 'grc-la', source: 'grc', target: 'la', label: 'Greek → Latin' },
+  { key: 'la-en', source: 'la', target: 'en', label: 'Latin → English' },
+  { key: 'grc-en', source: 'grc', target: 'en', label: 'Greek → English' },
+];
+
+const LANG_LABELS = {
+  grc: { name: 'Greek', color: 'amber', bgClass: 'bg-amber-50', textClass: 'text-amber-700', refClass: 'text-amber-600', btnClass: 'bg-amber-600 text-white' },
+  la: { name: 'Latin', color: 'red', bgClass: 'bg-red-50', textClass: 'text-red-700', refClass: 'text-red-600', btnClass: 'bg-red-700 text-white' },
+  en: { name: 'English', color: 'blue', bgClass: 'bg-blue-50', textClass: 'text-blue-700', refClass: 'text-blue-600', btnClass: 'bg-blue-600 text-white' },
+};
+
+const LANG_DEFAULTS = {
+  grc: { author: 'homer', work: 'iliad', part: '.part.1.' },
+  la: { author: 'vergil', work: 'aeneid', part: '.part.1.' },
+  en: { author: 'milton', work: 'paradise_lost', part: null },
+};
+
 export default function CrossLingualSearch() {
-  const [hierarchy, setHierarchy] = useState({ grc: [], la: [] });
+  const [hierarchy, setHierarchy] = useState({ grc: [], la: [], en: [] });
   const [loading, setLoading] = useState(true);
   const [searchLoading, setSearchLoading] = useState(false);
   const [results, setResults] = useState([]);
   const [error, setError] = useState(null);
 
+  const [langPair, setLangPair] = useState('grc-la');
   const [sourceAuthor, setSourceAuthor] = useState('');
   const [sourceWork, setSourceWork] = useState('');
   const [sourceSection, setSourceSection] = useState('');
@@ -41,6 +60,10 @@ export default function CrossLingualSearch() {
   const hasSearchedRef = useRef(false);
   const abortRef = useRef(null);
 
+  const currentPair = LANG_PAIRS.find(p => p.key === langPair) || LANG_PAIRS[0];
+  const srcLang = LANG_LABELS[currentPair.source];
+  const tgtLang = LANG_LABELS[currentPair.target];
+
   const doSearch = useCallback(async () => {
     if (!sourceSection || !targetSection) {
       setError('Please select both source and target texts');
@@ -58,8 +81,8 @@ export default function CrossLingualSearch() {
         body: JSON.stringify({
           source: sourceSection,
           target: targetSection,
-          source_language: 'grc',
-          target_language: 'la',
+          source_language: currentPair.source,
+          target_language: currentPair.target,
           match_type: 'crosslingual_fusion',
           min_matches: minMatches
         }),
@@ -81,7 +104,7 @@ export default function CrossLingualSearch() {
     }
     abortRef.current = null;
     setSearchLoading(false);
-  }, [sourceSection, targetSection, minMatches]);
+  }, [sourceSection, targetSection, minMatches, currentPair]);
 
   const cancelSearch = useCallback(() => {
     if (abortRef.current) {
@@ -124,39 +147,40 @@ export default function CrossLingualSearch() {
     };
   }, [searchLoading]);
 
+  const setDefaultsForLang = useCallback((authors, lang, setSA, setSW, setSS) => {
+    if (!authors?.length) return;
+    const defaults = LANG_DEFAULTS[lang];
+    const author = (defaults && authors.find(a => a.author_key === defaults.author)) || authors[0];
+    setSA(author.author_key);
+    if (author.works?.length > 0) {
+      const work = (defaults && author.works.find(w => w.work_key === defaults.work)) || author.works[0];
+      setSW(work.work_key);
+      const part = defaults?.part
+        ? work.parts?.find(p => p.id?.includes(defaults.part) || p.id?.endsWith('.1.tess'))
+        : null;
+      setSS(part?.id || work.whole_text || work.parts?.[0]?.id || '');
+    }
+  }, []);
+
   const loadHierarchies = async () => {
     setLoading(true);
     try {
-      const [grcRes, laRes] = await Promise.all([
+      const [grcRes, laRes, enRes] = await Promise.all([
         fetch('/api/texts/hierarchy?language=grc'),
-        fetch('/api/texts/hierarchy?language=la')
+        fetch('/api/texts/hierarchy?language=la'),
+        fetch('/api/texts/hierarchy?language=en')
       ]);
       const grcData = await grcRes.json();
       const laData = await laRes.json();
-      setHierarchy({
+      const enData = await enRes.json();
+      const h = {
         grc: grcData.authors || [],
-        la: laData.authors || []
-      });
-      if (grcData.authors?.length > 0) {
-        const homer = grcData.authors.find(a => a.author_key === 'homer') || grcData.authors[0];
-        setSourceAuthor(homer.author_key);
-        if (homer.works?.length > 0) {
-          const iliad = homer.works.find(w => w.work_key === 'iliad') || homer.works[0];
-          setSourceWork(iliad.work_key);
-          const book1 = iliad.parts?.find(p => p.id?.includes('.part.1.') || p.id?.endsWith('.1.tess'));
-          setSourceSection(book1?.id || iliad.whole_text || iliad.parts?.[0]?.id || '');
-        }
-      }
-      if (laData.authors?.length > 0) {
-        const vergil = laData.authors.find(a => a.author_key === 'vergil') || laData.authors[0];
-        setTargetAuthor(vergil.author_key);
-        if (vergil.works?.length > 0) {
-          const aeneid = vergil.works.find(w => w.work_key === 'aeneid') || vergil.works[0];
-          setTargetWork(aeneid.work_key);
-          const book1 = aeneid.parts?.find(p => p.id?.includes('.part.1.') || p.id?.endsWith('.1.tess'));
-          setTargetSection(book1?.id || aeneid.whole_text || aeneid.parts?.[0]?.id || '');
-        }
-      }
+        la: laData.authors || [],
+        en: enData.authors || []
+      };
+      setHierarchy(h);
+      setDefaultsForLang(h[currentPair.source], currentPair.source, setSourceAuthor, setSourceWork, setSourceSection);
+      setDefaultsForLang(h[currentPair.target], currentPair.target, setTargetAuthor, setTargetWork, setTargetSection);
     } catch (err) {
       console.error('Failed to load text hierarchies:', err);
     }
@@ -175,13 +199,23 @@ export default function CrossLingualSearch() {
     return { wholeText: work.whole_text, parts: work.parts || [], workName: work.work };
   };
 
+  const handleLangPairChange = useCallback((newKey) => {
+    setLangPair(newKey);
+    setResults([]);
+    setChartFilter(null);
+    hasSearchedRef.current = false;
+    const pair = LANG_PAIRS.find(p => p.key === newKey) || LANG_PAIRS[0];
+    setDefaultsForLang(hierarchy[pair.source], pair.source, setSourceAuthor, setSourceWork, setSourceSection);
+    setDefaultsForLang(hierarchy[pair.target], pair.target, setTargetAuthor, setTargetWork, setTargetSection);
+  }, [hierarchy, setDefaultsForLang]);
+
   const handleSearch = () => {
     hasSearchedRef.current = true;
     doSearch();
   };
 
   const exportCSV = useCallback(() => {
-    const headers = ['Score', 'Channels', 'Greek Locus', 'Greek Text', 'Latin Locus', 'Latin Text', 'Semantic', 'Matched Words'];
+    const headers = ['Score', 'Channels', `${srcLang.name} Locus`, `${srcLang.name} Text`, `${tgtLang.name} Locus`, `${tgtLang.name} Text`, 'Semantic', 'Matched Words'];
     const rows = results.map(r => [
       (r.overall_score || r.score)?.toFixed(3) || '',
       (r.channels || ''),
@@ -190,17 +224,17 @@ export default function CrossLingualSearch() {
       (r.target?.ref || r.target_locus || ''),
       (r.target?.text || r.target_text || '').replace(/"/g, '""'),
       r.features?.semantic_score ? (r.features.semantic_score * 100).toFixed(0) + '%' : '',
-      (r.matched_words || []).map(m => m.display || `${m.greek_word}→${m.latin_word}`).join('; ')
+      (r.matched_words || []).map(m => m.display || `${m.source_word || m.greek_word}→${m.target_word || m.latin_word}`).join('; ')
     ]);
     const csv = [headers, ...rows].map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'cross_lingual_results.csv';
+    a.download = `cross_lingual_${langPair}_results.csv`;
     a.click();
     URL.revokeObjectURL(url);
-  }, [results]);
+  }, [results, srcLang, tgtLang, langPair]);
 
   const sortedResults = useMemo(() => {
     if (!results || results.length === 0) return [];
@@ -257,17 +291,19 @@ export default function CrossLingualSearch() {
       datasets: [{
         label: 'Parallels',
         data: sortedBooks.map(b => bookData[b].count),
-        backgroundColor: isSourceView ? 'rgba(217, 119, 6, 0.7)' : 'rgba(185, 28, 28, 0.7)'
+        backgroundColor: isSourceView
+          ? { amber: 'rgba(217, 119, 6, 0.7)', red: 'rgba(185, 28, 28, 0.7)', blue: 'rgba(37, 99, 235, 0.7)' }[srcLang.color]
+          : { amber: 'rgba(217, 119, 6, 0.7)', red: 'rgba(185, 28, 28, 0.7)', blue: 'rgba(37, 99, 235, 0.7)' }[tgtLang.color]
       }]
     };
-  }, [results, distributionChartView]);
+  }, [results, distributionChartView, langPair]);
 
   const chartOptions = {
     responsive: true,
     maintainAspectRatio: false,
     plugins: { legend: { display: false } },
     scales: {
-      x: { title: { display: true, text: distributionChartView === 'source' ? 'Greek Source' : 'Latin Target' } },
+      x: { title: { display: true, text: distributionChartView === 'source' ? `${srcLang.name} Source` : `${tgtLang.name} Target` } },
       y: { beginAtZero: true, ticks: { precision: 0 } }
     },
     onClick: (event, elements) => {
@@ -287,18 +323,35 @@ export default function CrossLingualSearch() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-xl font-semibold text-gray-900">
-          Cross-Lingual Search (Greek ↔ Latin)
-        </h2>
-        <p className="text-sm text-gray-500 mt-1">
-          Find parallels between Greek and Latin texts using AI semantic + dictionary fusion
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-semibold text-gray-900">
+            Cross-Lingual Search
+          </h2>
+          <p className="text-sm text-gray-500 mt-1">
+            Find parallels across languages using AI semantic + dictionary fusion
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          {LANG_PAIRS.map(p => (
+            <button
+              key={p.key}
+              onClick={() => handleLangPairChange(p.key)}
+              className={`text-xs px-3 py-1.5 rounded border transition-colors ${
+                langPair === p.key
+                  ? 'bg-gray-800 text-white border-gray-800'
+                  : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
+              }`}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white rounded-lg shadow p-4">
-          <h3 className="text-lg font-medium text-amber-700 mb-4">Greek Source</h3>
+          <h3 className={`text-lg font-medium ${srcLang.textClass} mb-4`}>{srcLang.name} Source</h3>
           <div className="space-y-3">
             <div>
               <label className="block text-sm text-gray-600 mb-1">Author</label>
@@ -306,13 +359,13 @@ export default function CrossLingualSearch() {
                 value={sourceAuthor}
                 onChange={(key) => {
                   setSourceAuthor(key);
-                  const works = getAuthorWorks(hierarchy.grc, key);
+                  const works = getAuthorWorks(hierarchy[currentPair.source], key);
                   if (works.length > 0) {
                     setSourceWork(works[0].work_key);
                     setSourceSection(works[0].whole_text || works[0].parts?.[0]?.id || '');
                   }
                 }}
-                authors={hierarchy.grc}
+                authors={hierarchy[currentPair.source]}
               />
             </div>
             <div>
@@ -321,12 +374,12 @@ export default function CrossLingualSearch() {
                 value={sourceWork}
                 onChange={e => {
                   setSourceWork(e.target.value);
-                  const { wholeText, parts } = getWorkParts(hierarchy.grc, sourceAuthor, e.target.value);
+                  const { wholeText, parts } = getWorkParts(hierarchy[currentPair.source], sourceAuthor, e.target.value);
                   setSourceSection(wholeText || parts[0]?.id || '');
                 }}
                 className="w-full border rounded px-3 py-2"
               >
-                {getAuthorWorks(hierarchy.grc, sourceAuthor).map(w => (
+                {getAuthorWorks(hierarchy[currentPair.source], sourceAuthor).map(w => (
                   <option key={w.work_key} value={w.work_key}>{w.work}</option>
                 ))}
               </select>
@@ -339,7 +392,7 @@ export default function CrossLingualSearch() {
                 className="w-full border rounded px-3 py-2"
               >
                 {(() => {
-                  const { wholeText, parts, workName } = getWorkParts(hierarchy.grc, sourceAuthor, sourceWork);
+                  const { wholeText, parts, workName } = getWorkParts(hierarchy[currentPair.source], sourceAuthor, sourceWork);
                   return (
                     <>
                       {wholeText && <option value={wholeText}>{workName} (Complete)</option>}
@@ -353,7 +406,7 @@ export default function CrossLingualSearch() {
         </div>
 
         <div className="bg-white rounded-lg shadow p-4">
-          <h3 className="text-lg font-medium text-red-700 mb-4">Latin Target</h3>
+          <h3 className={`text-lg font-medium ${tgtLang.textClass} mb-4`}>{tgtLang.name} Target</h3>
           <div className="space-y-3">
             <div>
               <label className="block text-sm text-gray-600 mb-1">Author</label>
@@ -361,13 +414,13 @@ export default function CrossLingualSearch() {
                 value={targetAuthor}
                 onChange={(key) => {
                   setTargetAuthor(key);
-                  const works = getAuthorWorks(hierarchy.la, key);
+                  const works = getAuthorWorks(hierarchy[currentPair.target], key);
                   if (works.length > 0) {
                     setTargetWork(works[0].work_key);
                     setTargetSection(works[0].whole_text || works[0].parts?.[0]?.id || '');
                   }
                 }}
-                authors={hierarchy.la}
+                authors={hierarchy[currentPair.target]}
               />
             </div>
             <div>
@@ -376,12 +429,12 @@ export default function CrossLingualSearch() {
                 value={targetWork}
                 onChange={e => {
                   setTargetWork(e.target.value);
-                  const { wholeText, parts } = getWorkParts(hierarchy.la, targetAuthor, e.target.value);
+                  const { wholeText, parts } = getWorkParts(hierarchy[currentPair.target], targetAuthor, e.target.value);
                   setTargetSection(wholeText || parts[0]?.id || '');
                 }}
                 className="w-full border rounded px-3 py-2"
               >
-                {getAuthorWorks(hierarchy.la, targetAuthor).map(w => (
+                {getAuthorWorks(hierarchy[currentPair.target], targetAuthor).map(w => (
                   <option key={w.work_key} value={w.work_key}>{w.work}</option>
                 ))}
               </select>
@@ -394,7 +447,7 @@ export default function CrossLingualSearch() {
                 className="w-full border rounded px-3 py-2"
               >
                 {(() => {
-                  const { wholeText, parts, workName } = getWorkParts(hierarchy.la, targetAuthor, targetWork);
+                  const { wholeText, parts, workName } = getWorkParts(hierarchy[currentPair.target], targetAuthor, targetWork);
                   return (
                     <>
                       {wholeText && <option value={wholeText}>{workName} (Complete)</option>}
@@ -411,7 +464,7 @@ export default function CrossLingualSearch() {
       <div className="bg-white rounded-lg shadow p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <span className="text-sm text-gray-500">
-            Combines AI semantic matching (SPhilBERTa) with Greek↔Latin dictionary lookup.
+            Combines AI semantic matching (SPhilBERTa) with cross-lingual dictionary lookup.
             Pairs detected by both channels are boosted.
           </span>
           <div className="flex items-center gap-2 ml-4">
@@ -482,8 +535,8 @@ export default function CrossLingualSearch() {
                 className="text-xs border rounded px-2 py-1"
               >
                 <option value="score">Score</option>
-                <option value="source">Greek Locus</option>
-                <option value="target">Latin Locus</option>
+                <option value="source">{srcLang.name} Locus</option>
+                <option value="target">{tgtLang.name} Locus</option>
               </select>
             </div>
           </div>
@@ -494,15 +547,15 @@ export default function CrossLingualSearch() {
                 <span className="text-sm text-gray-600">View:</span>
                 <button
                   onClick={() => { setDistributionChartView('source'); setChartFilter(null); }}
-                  className={`text-xs px-3 py-1 rounded ${distributionChartView === 'source' ? 'bg-amber-600 text-white' : 'bg-gray-200'}`}
+                  className={`text-xs px-3 py-1 rounded ${distributionChartView === 'source' ? srcLang.btnClass : 'bg-gray-200'}`}
                 >
-                  Greek Source
+                  {srcLang.name} Source
                 </button>
                 <button
                   onClick={() => { setDistributionChartView('target'); setChartFilter(null); }}
-                  className={`text-xs px-3 py-1 rounded ${distributionChartView === 'target' ? 'bg-red-700 text-white' : 'bg-gray-200'}`}
+                  className={`text-xs px-3 py-1 rounded ${distributionChartView === 'target' ? tgtLang.btnClass : 'bg-gray-200'}`}
                 >
-                  Latin Target
+                  {tgtLang.name} Target
                 </button>
                 {chartFilter && (
                   <button
@@ -541,16 +594,16 @@ export default function CrossLingualSearch() {
                   )}
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="bg-amber-50 p-3 rounded">
-                    <div className="text-xs text-amber-600 mb-1">{result.source?.ref || result.source_locus}</div>
+                  <div className={`${srcLang.bgClass} p-3 rounded`}>
+                    <div className={`text-xs ${srcLang.refClass} mb-1`}>{result.source?.ref || result.source_locus}</div>
                     {result.source?.tokens && result.source?.highlight_indices?.length > 0 ? (
                       <div className="text-gray-800" dangerouslySetInnerHTML={{ __html: highlightTokens(result.source.tokens, result.source.highlight_indices) }} />
                     ) : (
                       <div className="text-gray-800">{result.source?.text || result.source_text || ''}</div>
                     )}
                   </div>
-                  <div className="bg-red-50 p-3 rounded">
-                    <div className="text-xs text-red-600 mb-1">{result.target?.ref || result.target_locus}</div>
+                  <div className={`${tgtLang.bgClass} p-3 rounded`}>
+                    <div className={`text-xs ${tgtLang.refClass} mb-1`}>{result.target?.ref || result.target_locus}</div>
                     {result.target?.tokens && result.target?.highlight_indices?.length > 0 ? (
                       <div className="text-gray-800" dangerouslySetInnerHTML={{ __html: highlightTokens(result.target.tokens, result.target.highlight_indices) }} />
                     ) : (
@@ -560,7 +613,7 @@ export default function CrossLingualSearch() {
                 </div>
                 {result.matched_words?.length > 0 && (
                   <div className="mt-2 text-xs text-gray-500">
-                    Matched: {result.matched_words.map(m => m.display || `${m.greek_word} → ${m.latin_word}`).join(', ')}
+                    Matched: {result.matched_words.map(m => m.display || `${m.source_word || m.greek_word} → ${m.target_word || m.latin_word}`).join(', ')}
                   </div>
                 )}
               </div>

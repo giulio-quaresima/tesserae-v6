@@ -134,7 +134,10 @@ def precompute_all(language: str = None, force: bool = False,
         if not lang_texts:
             continue
         
-        model_name = 'all-MiniLM-L6-v2' if lang == 'en' else 'bowphs/SPhilBerta'
+        # Use SPhilBERTa for all languages (including English) to enable
+        # cross-lingual search. SPhilBERTa's XLM-RoBERTa base handles English
+        # well (tested: cosine 0.75+ for English-Latin translation pairs).
+        model_name = 'bowphs/SPhilBerta'
         
         if model_name not in models:
             print(f"\nLoading model {model_name}...")

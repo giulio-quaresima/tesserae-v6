@@ -1694,10 +1694,13 @@ def _trim_to_line(side, line_num):
     side['tokens'] = new_tokens
     side['text'] = new_text
     side['highlight_indices'] = sorted(new_highlights)
+    # Update ref to the single line so merge_line_and_window can dedup properly
+    line_refs = side.get('line_refs', [])
+    if line_refs and len(line_refs) > line_num:
+        side['ref'] = line_refs[line_num]
     # Remove window metadata so frontend renders as single line
     side.pop('line_token_counts', None)
     side.pop('line_refs', None)
-    # Keep original range ref for gold-matching compatibility
     return side
 
 

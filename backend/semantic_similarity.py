@@ -47,18 +47,20 @@ _lemma_embeddings_cache = {}
 def get_model(language: str = 'la'):
     """
     Lazily load the appropriate sentence transformer model based on language.
-    - Latin/Greek: SPhilBERTa (trained on classical texts)
-    - English: all-MiniLM-L6-v2 (general-purpose, fast)
-    
+    Uses SPhilBERTa for all languages (Latin, Greek, English) to enable
+    cross-lingual search. SPhilBERTa's XLM-RoBERTa base handles English
+    well (cosine 0.75+ for English-Latin translation pairs).
+
     Args:
         language: Language code ('la', 'grc', or 'en')
-    
+
     Returns:
         SentenceTransformer model or None if loading fails
     """
     global _models
-    
-    model_name = ENGLISH_MODEL if language == 'en' else LATIN_GREEK_MODEL
+
+    # Use SPhilBERTa for all languages to share embedding space
+    model_name = LATIN_GREEK_MODEL
     
     if model_name not in _models:
         try:
@@ -374,8 +376,8 @@ def find_crosslingual_matches(source_units: List[Dict], target_units: List[Dict]
     source_indices = settings.get('source_line_indices')
     target_indices = settings.get('target_line_indices')
     
-    if source_language not in ('la', 'grc') or target_language not in ('la', 'grc'):
-        print(f"Cross-lingual matching only supports Latin (la) and Greek (grc)")
+    if source_language not in ('la', 'grc', 'en') or target_language not in ('la', 'grc', 'en'):
+        print(f"Cross-lingual matching only supports Latin (la), Greek (grc), and English (en)")
         return [], 0
     
     if source_language == target_language:
@@ -504,8 +506,8 @@ def find_dictionary_crosslingual_matches(source_units: List[Dict], target_units:
     min_matches = settings.get('min_matches', 2)  # Default to 2 (bigrams) like standard Tesserae
     max_results = settings.get('max_results', 500)
     
-    if source_language not in ('la', 'grc') or target_language not in ('la', 'grc'):
-        print(f"Dictionary matching only supports Latin (la) and Greek (grc)")
+    if source_language not in ('la', 'grc', 'en') or target_language not in ('la', 'grc', 'en'):
+        print(f"Dictionary matching only supports Latin (la), Greek (grc), and English (en)")
         return [], 0
     
     # Get frequency data for IDF calculation
@@ -661,19 +663,17 @@ def is_available(language: str = 'la') -> bool:
 
 def get_model_info(language: str = 'la') -> Dict:
     """Get information about the semantic model for a language."""
-    model_name = ENGLISH_MODEL if language == 'en' else LATIN_GREEK_MODEL
-    if language == 'en':
-        capabilities = ['English semantic similarity']
-    else:
-        capabilities = [
-            'Latin semantic similarity',
-            'Greek semantic similarity', 
-            'Cross-lingual Latin-Greek matching (future)'
-        ]
+    model_name = LATIN_GREEK_MODEL
+    capabilities = [
+        'Latin semantic similarity',
+        'Greek semantic similarity',
+        'English semantic similarity',
+        'Cross-lingual matching (Latin-Greek, Latin-English, Greek-English)',
+    ]
     return {
         'model_name': model_name,
-        'model_source': 'Hugging Face' if language == 'en' else 'Heidelberg NLP',
-        'paper': 'Graecia capta ferum victorem cepit (ACL 2023)' if language != 'en' else 'N/A',
+        'model_source': 'Heidelberg NLP',
+        'paper': 'Graecia capta ferum victorem cepit (ACL 2023)',
         'capabilities': capabilities,
         'available': is_available(language)
     }
