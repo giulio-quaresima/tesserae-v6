@@ -481,9 +481,9 @@ const SearchResults = ({
               <button
                 onClick={onRerunFresh}
                 className="text-xs bg-gray-100 text-gray-600 px-3 py-1.5 rounded hover:bg-gray-200 whitespace-nowrap"
-                title="Clear cached results and re-run the search from scratch"
+                title="Clear cached results and run the search again"
               >
-                Re-run fresh
+                Refresh results
               </button>
             )}
           </div>
