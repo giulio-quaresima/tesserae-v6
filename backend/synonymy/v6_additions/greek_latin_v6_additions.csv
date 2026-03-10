@@ -1263,3 +1263,78 @@
 αὐδάω,dico
 κῆρυξ,nuntius
 ἀοιδός,cantor
+
+# ============================================================================
+# Round 5: EPIC PATRONYMICS, COMPOUND ADJECTIVES, AND INVOCATION VOCABULARY
+# Added 2026-03-09. Fills gaps in heroic naming conventions, epic epithets,
+# and opening-formula vocabulary attested across Homer, Vergil, Statius,
+# Apollonius, and Valerius Flaccus.
+# ============================================================================
+
+# --- Patronymic cross-references (Achilles) ---
+# Achilles is addressed by multiple patronymics in Greek and Latin epic.
+# Each patronymic should map to ALL Latin forms used for the same hero.
+Πηληϊάδης,aeacides,aeaciden,pelides,achilles
+Αἰακίδης,pelides,pelidae,achilles,achillem
+Ἀχιλλεύς,aeacides,aeaciden,pelides,pelidae
+
+# --- Other major patronymics ---
+Ἀτρεΐδης,atrides,atridae
+Τυδεΐδης,tydides,tydidae
+Λαερτιάδης,ulixes,ulixem
+Πριαμίδης,priamides
+Κρονίδης,saturnius
+Κρονίων,saturnius
+
+# --- Epic compound adjectives ---
+μεγάθυμος,magnanimus,fortis,animosus
+μεγαλήτωρ,magnanimus,magnanimum
+θρασυμέμνων,audax,fortis
+δαΐφρων,prudens,callidus
+πολύμητις,callidus,astutus,versutus
+πολύτροπος,callidus,versutus,varius,multiplex
+πολύτλας,patiens,multum passus
+ποδώκης,pernix,velox,celer
+πτολίπορθος,urbium eversor
+ταλασίφρων,patiens,audax
+ὠκύμορος,brevis,immatura mors
+
+# --- Fear and dread ---
+φόβος,formido,timor,metus,terror,pavor
+δέος,formido,timor,metus
+δείδω,timeo,formido,metuo,paveo
+φρίκη,horror,tremor
+δεινός,formidabilis,terribilis,dirus
+φοβερός,terribilis,formidolosus
+τρέω,tremo,paveo,trepido
+
+# --- Thunder and divine power ---
+κεραυνός,fulmen,tonitrus
+βροντή,tonitrus
+βροντάω,tono
+Ζεύς,Iuppiter,Iovis
+κελαινεφής,nubilus,atrox
+
+# --- Epic opening and invocation vocabulary ---
+παλαιγενής,antiquus,priscus,vetustus
+κλέος,fama,gloria,laus,decus
+φώς,vir,homo,mortalis
+ἔσπετε,dicite,memorate
+ὑπόθεσις,argumentum
+ὑμνέω,cano,celebro,canto
+μιμνήσκω,memoro,memini
+μνῆμα,monumentum,memoria
+ὕμνος,carmen,cantus
+
+# --- Invocation addressees and formulas ---
+Μοῦσα,camena,camenae,musa,musae
+θεά,diva,diua,dea
+ἐνέπω,memoro,narro,cano,refero,dico
+ὑποτίθημι,memoro,doceo
+
+# --- Wrath and anger (epic theme) ---
+χόλος,ira,furor,bilis
+μῆνις,ira,furor,indignatio
+κότος,ira,odium,invidia
+νεμεσάω,indignor,irascor
+ὀργή,ira,furor

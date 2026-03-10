@@ -332,6 +332,19 @@ function App() {
     }
   }, [sourceText, targetText, activeTab, settings, searchMode, search, searchRareWords, searchWordPairs]);
 
+  const handleRerunFresh = useCallback(async () => {
+    if (!sourceText || !targetText) return;
+    const params = {
+      source: sourceText,
+      target: targetText,
+      language: activeTab,
+      skip_cache: true,
+      ...settings
+    };
+    if (searchMode === 'parallel') {
+      await search(params);
+    }
+  }, [sourceText, targetText, activeTab, settings, searchMode, search]);
 
   const handleRegister = useCallback((result) => {
     setRegisterPending(result);
@@ -637,6 +650,7 @@ function App() {
                     setDisplayLimit={setDisplayLimit}
                     onRegister={handleRegister}
                     onCorpusSearch={handleCorpusSearch}
+                    onRerunFresh={handleRerunFresh}
                     sortBy={sortBy}
                     setSortBy={setSortBy}
                     searchStats={searchStats}

@@ -98,6 +98,7 @@ def search_fusion_stream():
                 return
 
             # Check cache (keyed on fusion-specific settings)
+            skip_cache = data.get('skip_cache', False)
             cache_settings = {
                 'match_type': 'fusion',
                 'mode': mode,
@@ -107,9 +108,8 @@ def search_fusion_stream():
                 'target_unit_type': target_unit_type,
                 'use_meter': use_meter,
             }
-            cached_results, cached_meta = get_cached_results(
-                source_id, target_id, language, cache_settings
-            )
+            cached_results, cached_meta = (None, None) if skip_cache else \
+                get_cached_results(source_id, target_id, language, cache_settings)
             if cached_results is not None:
                 yield send_event("progress", {
                     "step": "Loading cached fusion results", "detail": ""

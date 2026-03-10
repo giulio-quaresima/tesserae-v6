@@ -831,6 +831,23 @@ export default function HelpPage() {
                     so rare vocabulary matches rank higher than common ones.
                   </p>
                 </div>
+                <div className="bg-teal-50 p-4 rounded-lg border border-teal-200">
+                  <h4 className="font-medium text-teal-900 mb-2">Channel 3: Cross-Lingual Syntax</h4>
+                  <p className="text-teal-700 text-sm">
+                    Compares grammatical dependency structures across languages. Because Universal Dependencies labels
+                    (nsubj, obj, obl, etc.) are language-independent, lines with identical dependency patterns are
+                    matched directly — no shared vocabulary needed.
+                  </p>
+                </div>
+                <div className="bg-violet-50 p-4 rounded-lg border border-violet-200">
+                  <h4 className="font-medium text-violet-900 mb-2">Channel 4: Phonetic Transliteration</h4>
+                  <p className="text-violet-700 text-sm">
+                    Transliterates Greek tokens to Latin characters (e.g., μῆνιν → <em>menin</em>, Ἀχιλλεύς → <em>achileus</em>)
+                    and compares them by edit distance against Latin tokens. Detects phonetic echoes across the script
+                    boundary, such as Homer's μῆνιν echoed in Vergil's <em>Mene</em>. Acts as a convergence booster —
+                    strengthens pairs already found by semantic or dictionary channels.
+                  </p>
+                </div>
                 <div className="bg-green-50 p-4 rounded-lg border border-green-200">
                   <h4 className="font-medium text-green-800 mb-2">Fusion &amp; Convergence</h4>
                   <p className="text-green-700 text-sm">
@@ -870,8 +887,9 @@ export default function HelpPage() {
                 </ul>
                 <p className="text-purple-700 text-sm mt-2">
                   For comparison, the Latin fusion system achieves 91.9% recall across five benchmarks using
-                  nine channels. Cross-lingual search currently uses two channels (semantic + dictionary), with
-                  cross-lingual syntax matching under development as a third.
+                  nine channels. Cross-lingual search uses four channels: semantic embeddings, dictionary,
+                  cross-lingual syntax (structural fingerprint matching via Universal Dependencies),
+                  and phonetic transliteration (Greek→Latin character mapping for detecting sound echoes like μῆνιν ≈ Mene).
                 </p>
               </div>
             </div>

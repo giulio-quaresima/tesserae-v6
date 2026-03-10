@@ -546,9 +546,11 @@ def _find_greek_latin_dictionary_matches_fast(source_units, target_units, source
 
 
 def _handle_crosslingual_fusion(params, source_units, target_units, settings):
-    """Multi-channel cross-lingual fusion: semantic (SPhilBERTa) + dictionary + syntax.
+    """Multi-channel cross-lingual fusion: semantic + dictionary + syntax + phonetic.
 
     Supports Greek-Latin, Latin-English, and Greek-English pairs.
+    Phonetic channel (Greek-Latin only): transliterates Greek → Latin alphabet,
+    then runs token-level edit distance to catch phonetic echoes (e.g. μῆνιν/mene).
     Runs all applicable channels, merges by (source_idx, target_idx), and
     applies a convergence bonus when multiple channels fire on the same pair.
     """
@@ -592,8 +594,11 @@ def _handle_crosslingual_fusion(params, source_units, target_units, settings):
     # --- Semantic recovery for dictionary-only pairs ---
     # Dictionary pairs not found by the semantic channel (filtered by top-N cap)
     # get their actual cosine looked up from pre-computed embeddings.
-    dict_only_keys = set(dict_by_pair.keys()) - set(sem_by_pair.keys())
-    if dict_only_keys:
+    # Note: phonetic-only pairs are NOT recovered here — they're too numerous.
+    # Phonetic acts only as a convergence booster on pairs already found by
+    # semantic or dictionary.
+    recovery_keys = set(dict_by_pair.keys()) - set(sem_by_pair.keys())
+    if recovery_keys:
         try:
             from backend.embedding_storage import load_embeddings
             import numpy as np
@@ -610,14 +615,14 @@ def _handle_crosslingual_fusion(params, source_units, target_units, settings):
                 src_emb = src_emb / (src_norms + 1e-8)
                 tgt_emb = tgt_emb / (tgt_norms + 1e-8)
                 recovered = 0
-                for key in dict_only_keys:
+                for key in recovery_keys:
                     si, ti = key
                     if si < len(src_emb) and ti < len(tgt_emb):
                         cosine = float(np.dot(src_emb[si], tgt_emb[ti]))
                         if cosine > 0.4:
                             sem_by_pair[key] = cosine
                             recovered += 1
-                print(f"Semantic recovery: {recovered}/{len(dict_only_keys)} dictionary-only pairs got cosine scores")
+                print(f"Semantic recovery: {recovered}/{len(recovery_keys)} dictionary-only pairs got cosine scores")
         except Exception as e:
             print(f"Semantic recovery failed: {e}")
 
@@ -694,12 +699,32 @@ def _handle_crosslingual_fusion(params, source_units, target_units, settings):
         except Exception as e:
             print(f"Syntax channel failed (may not have syntax DB): {e}")
 
+    # --- Channel 4: Cross-lingual phonetic (transliteration + edit distance) ---
+    # Only for Greek-Latin pairs: transliterate Greek → Latin alphabet, then
+    # compare tokens by edit distance to catch phonetic echoes (e.g. μῆνιν / mene).
+    phonetic_by_pair = {}
+    if is_greek_latin:
+        try:
+            from backend.matcher import find_crosslingual_phonetic_matches
+            phonetic_by_pair = find_crosslingual_phonetic_matches(
+                source_units, target_units,
+                source_language, target_language,
+                min_similarity=0.60, min_token_len=3)
+            print(f"Phonetic found {len(phonetic_by_pair)} pairs with transliteration matches")
+        except Exception as e:
+            print(f"Phonetic channel failed: {e}")
+
     # --- Merge ---
+    # Phonetic alone is too noisy (thousands of false positives from short-word
+    # coincidences).  Only include phonetic pairs that also have semantic,
+    # dictionary, or syntax support.  Semantic recovery above ensures phonetic
+    # pairs with cosine > 0.4 get sem_by_pair entries, so they participate.
     all_keys = set(sem_by_pair.keys()) | set(dict_by_pair.keys()) | set(syntax_by_pair.keys())
 
     SEMANTIC_WEIGHT = 1.2
     DICTIONARY_WEIGHT = 2.0
     SYNTAX_WEIGHT = 0.5
+    PHONETIC_WEIGHT = 1.5  # conservative; phonetic echoes across languages are high-precision
     CONVERGENCE_BONUS = 0.5  # additive bonus when multiple channels fire
 
     fused = []
@@ -712,6 +737,8 @@ def _handle_crosslingual_fusion(params, source_units, target_units, settings):
         has_dict = dict_wms is not None
         syntax_score = syntax_by_pair.get(key, 0.0)
         has_syntax = syntax_score > 0
+        phonetic_matches = phonetic_by_pair.get(key)
+        has_phonetic = phonetic_matches is not None and len(phonetic_matches) > 0
 
         # Count unique words per side for dict matches
         dict_word_count = 0
@@ -744,13 +771,20 @@ def _handle_crosslingual_fusion(params, source_units, target_units, settings):
         if not has_dict and min_matches > 1:
             continue  # User requires dictionary confirmation; skip semantic-only pairs
 
+        # Phonetic score: average similarity of matched token pairs
+        phonetic_score = 0.0
+        if has_phonetic:
+            phonetic_score = sum(m['similarity'] for m in phonetic_matches) / len(phonetic_matches)
+
         # Skip pairs with no channel
-        if not has_semantic and not has_dict and not has_syntax:
+        if not has_semantic and not has_dict and not has_syntax and not has_phonetic:
             continue
 
         # Fused score (additive, matching article formula)
-        score = (cosine * SEMANTIC_WEIGHT) + (dict_score * DICTIONARY_WEIGHT) + (syntax_score * SYNTAX_WEIGHT)
-        n_channels = (1 if has_semantic else 0) + (1 if has_dict else 0) + (1 if has_syntax else 0)
+        score = ((cosine * SEMANTIC_WEIGHT) + (dict_score * DICTIONARY_WEIGHT)
+                 + (syntax_score * SYNTAX_WEIGHT) + (phonetic_score * PHONETIC_WEIGHT))
+        n_channels = ((1 if has_semantic else 0) + (1 if has_dict else 0)
+                      + (1 if has_syntax else 0) + (1 if has_phonetic else 0))
         if n_channels >= 2:
             score += CONVERGENCE_BONUS
 
@@ -839,6 +873,36 @@ def _handle_crosslingual_fusion(params, source_units, target_units, settings):
             except Exception:
                 pass
 
+        # Add phonetic match highlighting
+        if has_phonetic:
+            for pm in phonetic_matches:
+                src_orig = pm['source_original']
+                tgt_orig = pm['target_original']
+                sim_pct = int(pm['similarity'] * 100)
+                # Find token indices for highlighting
+                src_idx_h = next((i for i, t in enumerate(src_tokens)
+                                  if t.lower() == src_orig.lower() or t == src_orig), None)
+                tgt_idx_h = next((i for i, t in enumerate(tgt_tokens)
+                                  if t.lower() == tgt_orig.lower() or t == tgt_orig), None)
+                if src_idx_h is not None:
+                    source_highlights.append(src_idx_h)
+                if tgt_idx_h is not None:
+                    target_highlights.append(tgt_idx_h)
+                mw_entry = {
+                    'source_word': src_orig,
+                    'target_word': tgt_orig,
+                    'display': f"{src_orig}\u2248{tgt_orig} ({sim_pct}%)",
+                    'type': 'phonetic',
+                }
+                if is_greek_latin:
+                    if source_language == 'grc':
+                        mw_entry['greek_word'] = src_orig
+                        mw_entry['latin_word'] = tgt_orig
+                    else:
+                        mw_entry['greek_word'] = tgt_orig
+                        mw_entry['latin_word'] = src_orig
+                matched_words.append(mw_entry)
+
         if not matched_words:
             matched_words = [{
                 'type': 'semantic_cross',
@@ -854,6 +918,8 @@ def _handle_crosslingual_fusion(params, source_units, target_units, settings):
             channels.append(f'dictionary ({dict_word_count} words)')
         if has_syntax:
             channels.append(f'syntax ({syntax_score:.2f})')
+        if has_phonetic:
+            channels.append(f'phonetic ({len(phonetic_matches)} tokens)')
 
         fused.append({
             'source': {
@@ -875,6 +941,7 @@ def _handle_crosslingual_fusion(params, source_units, target_units, settings):
                 'semantic_score': cosine,
                 'dict_score': dict_score,
                 'syntax_score': syntax_score,
+                'phonetic_score': phonetic_score,
                 'n_channels': n_channels,
             },
             'channels': ', '.join(channels),
@@ -889,7 +956,7 @@ def _handle_crosslingual_fusion(params, source_units, target_units, settings):
 
     print(f"Cross-lingual fusion: {len(fused)} results "
           f"({len(sem_by_pair)} semantic, {len(dict_by_pair)} dictionary, "
-          f"{len(syntax_by_pair)} syntax, "
+          f"{len(syntax_by_pair)} syntax, {len(phonetic_by_pair)} phonetic, "
           f"{len(set(sem_by_pair) & set(dict_by_pair))} sem+dict overlap)")
 
     return jsonify(_finalize_results(fused, source_units, target_units,
@@ -990,8 +1057,10 @@ def search_stream():
             language = params['language']
             match_type = settings.get('match_type', 'lemma')
 
-            # Check cache
-            cached_results, cached_meta = get_cached_results(source_id, target_id, language, settings)
+            # Check cache (skip if user requested a fresh search)
+            skip_cache = data.get('skip_cache', False)
+            cached_results, cached_meta = (None, None) if skip_cache else \
+                get_cached_results(source_id, target_id, language, settings)
             if cached_results is not None:
                 yield send_progress("Loading cached results")
                 max_results = settings.get('max_results', 0)
@@ -1113,8 +1182,10 @@ def search():
         language = params['language']
         match_type = settings.get('match_type', 'lemma')
 
-        # Check cache
-        cached_results, cached_meta = get_cached_results(source_id, target_id, language, settings)
+        # Check cache (skip if user requested a fresh search)
+        skip_cache = data.get('skip_cache', False)
+        cached_results, cached_meta = (None, None) if skip_cache else \
+            get_cached_results(source_id, target_id, language, settings)
         if cached_results is not None:
             max_results = settings.get('max_results', 0)
             display_results = cached_results[:max_results] if max_results > 0 else cached_results
