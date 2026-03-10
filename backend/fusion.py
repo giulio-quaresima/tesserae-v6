@@ -63,11 +63,14 @@ import math
 import os
 import re
 import sqlite3
-from collections import defaultdict
+from collections import Counter, defaultdict
 
 import numpy as np
 
+from backend.logging_config import get_logger
 from backend.matcher import DEFAULT_LATIN_STOP_WORDS, DEFAULT_GREEK_STOP_WORDS, DEFAULT_ENGLISH_STOP_WORDS
+
+logger = get_logger('fusion')
 
 # Stoplist lookup by language code
 _STOPLISTS = {
@@ -136,8 +139,9 @@ CHANNEL_WEIGHTS = {
                             #   is strong allusion evidence; min_matches=1 is sufficient)
     "syntax": 0.3,          # structural: dependency pattern match (low — supplements other
                             #   channels but unreliable as primary signal)
-    "syntax_structural": 1.5,  # structural: identical dependency head pattern with no shared
-                            #   lemmas (catches pure syntactic imitation like Thomas's tricolon)
+    "syntax_structural": 0.5,  # structural: identical dependency head pattern with no shared
+                            #   lemmas (low alone — too many false positives from common
+                            #   syntactic patterns; rises when semantic recovery adds 2nd channel)
     "lemma_min1": 0.3,      # lexical: single shared lemma (low — very high recall, very
                             #   noisy; serves as a catch-all for otherwise missed pairs)
 }
@@ -456,7 +460,7 @@ def parse_range_ref(ref):
 
 
 # ---------------------------------------------------------------------------
-# Syntax channel: load pre-parsed data from syntax_latin.db
+# Syntax channel: load pre-parsed data from syntax DBs
 # ---------------------------------------------------------------------------
 
 _SYNTAX_DB_PATH = os.path.join(
@@ -464,14 +468,21 @@ _SYNTAX_DB_PATH = os.path.join(
     "data", "inverted_index", "syntax_latin.db",
 )
 
+_SYNTAX_GREEK_DB_PATH = os.path.join(
+    os.path.dirname(os.path.dirname(__file__)),
+    "data", "inverted_index", "syntax_greek.db",
+)
+
 _SYNTAX_PARSE_CACHE = {}
+_SYNTAX_CACHE_MAX = 50  # LRU-style cap: evict oldest when exceeded
 
 
 def _load_syntax_for_text(db_path, text_filename):
     """Load syntax parses from syntax_latin.db for a text.
 
     Results are cached at module level so repeated searches on the same
-    text avoid re-reading the database.
+    text avoid re-reading the database.  Cache is bounded to
+    _SYNTAX_CACHE_MAX entries to prevent unbounded memory growth.
 
     Returns dict: ref → {"lemmas": [...], "upos": [...], "heads": [...],
                           "deprels": [...], "feats": [...], "tokens": [...]}
@@ -482,10 +493,23 @@ def _load_syntax_for_text(db_path, text_filename):
     if not os.path.exists(db_path):
         return {}
 
-    conn = sqlite3.connect(db_path)
+    try:
+        conn = sqlite3.connect(db_path, timeout=5)
+    except sqlite3.OperationalError:
+        # DB may be locked by a build process; try immutable read-only
+        uri = f"file:{db_path}?mode=ro&immutable=1"
+        conn = sqlite3.connect(uri, uri=True)
     cur = conn.cursor()
 
-    cur.execute("SELECT text_id FROM texts WHERE filename = ?", (text_filename,))
+    try:
+        cur.execute("SELECT text_id FROM texts WHERE filename = ?", (text_filename,))
+    except sqlite3.OperationalError:
+        conn.close()
+        # Retry with immutable read-only
+        uri = f"file:{db_path}?mode=ro&immutable=1"
+        conn = sqlite3.connect(uri, uri=True)
+        cur = conn.cursor()
+        cur.execute("SELECT text_id FROM texts WHERE filename = ?", (text_filename,))
     row = cur.fetchone()
     if not row:
         conn.close()
@@ -510,6 +534,10 @@ def _load_syntax_for_text(db_path, text_filename):
         }
 
     conn.close()
+    # Evict oldest entries if cache exceeds limit
+    if len(_SYNTAX_PARSE_CACHE) >= _SYNTAX_CACHE_MAX:
+        oldest = next(iter(_SYNTAX_PARSE_CACHE))
+        del _SYNTAX_PARSE_CACHE[oldest]
     _SYNTAX_PARSE_CACHE[text_filename] = parses
     return parses
 
@@ -678,29 +706,54 @@ def _score_syntax_chunk(args):
 
 
 def find_syntax_matches(source_units, target_units, source_id, target_id,
-                        min_score=0.1, max_results=50000):
-    """Find syntax matches between source and target using syntax_latin.db.
+                        min_score=0.1, max_results=50000,
+                        source_language='la', target_language='la'):
+    """Find syntax matches between source and target using syntax DBs.
 
     Two paths:
-      A) Lemma-gated: pairs sharing >=1 lemma, scored by deprel/upos agreement
-         at shared lemma positions (_compute_syntax_score).
+      A) Lemma-gated: pairs sharing content lemmas (excluding function words),
+         scored by deprel/upos agreement at shared lemma positions
+         (_compute_syntax_score). For Greek (large texts), requires 2+ shared
+         content lemmas to keep candidates manageable. For Latin, 1+ suffices.
       B) Structural fingerprint: pairs with identical head patterns (no shared
          lemmas required), scored by deprel/upos sequence similarity
          (_compute_structural_score). Catches syntactic imitation without
          lexical overlap (e.g., Thomas's Georg. 3.481 / DRN 6.1140).
 
+    For cross-lingual pairs (e.g., Greek source, Latin target), loads from
+    the appropriate DB for each side. UD dependency labels are language-
+    independent, so structural fingerprint matching works cross-lingually.
+
     Returns results in the same format as other channels.
     """
-    source_parses = _load_syntax_for_text(_SYNTAX_DB_PATH, source_id)
-    target_parses = _load_syntax_for_text(_SYNTAX_DB_PATH, target_id)
+    source_db = _SYNTAX_GREEK_DB_PATH if source_language == 'grc' else _SYNTAX_DB_PATH
+    target_db = _SYNTAX_GREEK_DB_PATH if target_language == 'grc' else _SYNTAX_DB_PATH
+    source_parses = _load_syntax_for_text(source_db, source_id)
+    target_parses = _load_syntax_for_text(target_db, target_id)
 
     if not source_parses or not target_parses:
-        print(f"[SYNTAX] No syntax data for {source_id} or {target_id}")
+        logger.info(f"[SYNTAX] No syntax data for {source_id} or {target_id}")
         return []
 
     # Build ref → unit lookup for both texts
     source_by_ref = {u["ref"]: u for u in source_units}
     target_by_ref = {u["ref"]: u for u in target_units}
+
+    # For large Greek text pairs, use function-word stoplists to limit
+    # candidate explosion. For Latin, skip stoplist filtering — function-word
+    # syntax matches add convergence bonus for multi-channel pairs.
+    n_source = len(source_parses)
+    n_target = len(target_parses)
+    large_pair = n_source * n_target > 20_000_000
+
+    if large_pair:
+        source_stoplist = _STOPLISTS.get(source_language, set())
+        target_stoplist = _STOPLISTS.get(target_language, set())
+        stoplist = source_stoplist | target_stoplist
+        MIN_SHARED_CONTENT_LEMMAS = 2
+    else:
+        stoplist = set()
+        MIN_SHARED_CONTENT_LEMMAS = 1
 
     # Build lemma → [target_ref] inverted index from parsed target data
     target_lemma_index = defaultdict(set)
@@ -710,25 +763,31 @@ def find_syntax_matches(source_units, target_units, source_id, target_id,
                 i < len(parse["upos"])
                 and parse["upos"][i] not in ("PUNCT", "X")
                 and lemma
+                and (not stoplist or lemma.lower() not in stoplist)
             ):
                 target_lemma_index[lemma.lower()].add(ref)
 
-    # --- Path A: Lemma-gated candidates (existing) ---
+    # --- Path A: Lemma-gated candidates ---
     candidate_pairs = []
     for source_ref, source_parse in source_parses.items():
         if source_ref not in source_by_ref:
             continue
 
-        candidate_targets = set()
+        # Count shared lemmas per target ref
+        target_hit_counts = Counter()
         for i, lemma in enumerate(source_parse["lemmas"]):
             if (
                 i < len(source_parse["upos"])
                 and source_parse["upos"][i] not in ("PUNCT", "X")
                 and lemma
+                and (not stoplist or lemma.lower() not in stoplist)
             ):
-                candidate_targets |= target_lemma_index.get(lemma.lower(), set())
+                for target_ref in target_lemma_index.get(lemma.lower(), set()):
+                    target_hit_counts[target_ref] += 1
 
-        for target_ref in candidate_targets:
+        for target_ref, count in target_hit_counts.items():
+            if count < MIN_SHARED_CONTENT_LEMMAS:
+                continue
             if target_ref not in target_by_ref:
                 continue
             target_parse = target_parses.get(target_ref)
@@ -742,14 +801,15 @@ def find_syntax_matches(source_units, target_units, source_id, target_id,
     # Score lemma-gated candidates — use multiprocessing for large sets
     if num_candidates > 50000:
         import multiprocessing
-        num_workers = min(multiprocessing.cpu_count(), 8)
+        from backend.worker_util import safe_worker_count
+        num_workers = safe_worker_count()
         chunk_size = (num_candidates + num_workers - 1) // num_workers
         chunks = [
             candidate_pairs[i:i + chunk_size]
             for i in range(0, num_candidates, chunk_size)
         ]
-        print(f"[SYNTAX] Parallel: {num_candidates:,} candidates, "
-              f"{num_workers} workers, {chunk_size:,} per chunk")
+        logger.info(f"[SYNTAX] Parallel: {num_candidates:,} candidates, "
+                    f"{num_workers} workers, {chunk_size:,} per chunk")
         with multiprocessing.Pool(num_workers) as pool:
             chunk_results = pool.map(
                 _score_syntax_chunk,
@@ -782,12 +842,30 @@ def find_syntax_matches(source_units, target_units, source_id, target_id,
         return filtered if len(filtered) >= 3 else None  # skip trivially short
 
     target_fingerprint_index = defaultdict(list)
+    target_fp_counts = Counter()
     for ref, parse in target_parses.items():
         if ref not in target_by_ref:
             continue
         fp = _head_fingerprint(parse)
         if fp is not None:
             target_fingerprint_index[fp].append(ref)
+            target_fp_counts[fp] += 1
+
+    # Count source fingerprint frequencies for rarity filtering
+    source_fp_counts = Counter()
+    for source_ref, source_parse in source_parses.items():
+        if source_ref not in source_by_ref:
+            continue
+        fp = _head_fingerprint(source_parse)
+        if fp is not None:
+            source_fp_counts[fp] += 1
+
+    # Fingerprint rarity filter: skip patterns that are too common in
+    # the text pair.  Common patterns (e.g., Verb+Object 2-token lines)
+    # match hundreds of unrelated line pairs.  Rare patterns are the
+    # ones that indicate genuine structural imitation.
+    MAX_FINGERPRINT_FREQ = 4  # combined source + target occurrences
+    skipped_common = 0
 
     fingerprint_pairs = []
     for source_ref, source_parse in source_parses.items():
@@ -795,6 +873,10 @@ def find_syntax_matches(source_units, target_units, source_id, target_id,
             continue
         fp = _head_fingerprint(source_parse)
         if fp is None:
+            continue
+        combined_freq = source_fp_counts[fp] + target_fp_counts.get(fp, 0)
+        if combined_freq > MAX_FINGERPRINT_FREQ:
+            skipped_common += target_fp_counts.get(fp, 0)
             continue
         matching_targets = target_fingerprint_index.get(fp, [])
         for target_ref in matching_targets:
@@ -807,13 +889,15 @@ def find_syntax_matches(source_units, target_units, source_id, target_id,
             )
 
     num_fp_candidates = len(fingerprint_pairs)
-    print(f"[SYNTAX] Fingerprint: {len(target_fingerprint_index):,} unique patterns, "
-          f"{num_fp_candidates:,} novel candidate pairs")
+    logger.info(f"[SYNTAX] Fingerprint: {len(target_fingerprint_index):,} unique patterns, "
+                f"{num_fp_candidates:,} novel candidate pairs "
+                f"(skipped {skipped_common:,} from common patterns)")
 
     # Score fingerprint candidates
     if num_fp_candidates > 50000:
         import multiprocessing
-        num_workers = min(multiprocessing.cpu_count(), 8)
+        from backend.worker_util import safe_worker_count
+        num_workers = safe_worker_count()
         chunk_size = (num_fp_candidates + num_workers - 1) // num_workers
         chunks = [
             fingerprint_pairs[i:i + chunk_size]
@@ -831,6 +915,16 @@ def find_syntax_matches(source_units, target_units, source_id, target_id,
             score = _compute_structural_score(source_parse, target_parse)
             if score >= min_score:
                 fingerprint_scored.append((source_ref, target_ref, score))
+
+    # Cap scored pairs BEFORE building result dicts (avoids building millions
+    # of dicts only to discard most of them)
+    if max_results > 0 and len(scored_pairs) > max_results:
+        scored_pairs.sort(key=lambda x: x[2], reverse=True)
+        scored_pairs = scored_pairs[:max_results]
+
+    logger.info(f"[SYNTAX] {len(source_parses)} source, {len(target_parses)} target parses; "
+                f"{num_candidates:,} lemma-gated + {num_fp_candidates:,} fingerprint comparisons; "
+                f"{len(scored_pairs)} lemma + {len(fingerprint_scored)} fingerprint matches (score >= {min_score})")
 
     # Build result dicts — separate lists for lemma-gated and fingerprint
     def _build_results(pair_list):
@@ -862,27 +956,19 @@ def find_syntax_matches(source_units, target_units, source_id, target_id,
     lemma_results = _build_results(scored_pairs)
     fp_results = _build_results(fingerprint_scored)
 
-    print(f"[SYNTAX] {len(source_parses)} source, {len(target_parses)} target parses; "
-          f"{num_candidates:,} lemma-gated + {num_fp_candidates:,} fingerprint comparisons; "
-          f"{len(lemma_results)} lemma + {len(fp_results)} fingerprint matches (score >= {min_score})")
-
-    # Keep top results by score
-    if max_results > 0 and len(lemma_results) > max_results:
-        lemma_results.sort(key=lambda r: r["overall_score"], reverse=True)
-        lemma_results = lemma_results[:max_results]
-
     return {"syntax": lemma_results, "syntax_structural": fp_results}
 
 
 def run_channel(channel_name, config, source_units, target_units,
                 matcher, scorer, source_id, target_id,
-                source_path=None, target_path=None):
+                source_path=None, target_path=None,
+                source_language='la', target_language='la'):
     """Run a single search channel and return scored results."""
     match_type = config.get("match_type", "lemma")
     settings = dict(config)
 
     if match_type == "syntax":
-        # Syntax channel uses its own scoring from syntax_latin.db
+        # Syntax channel uses its own scoring from syntax DBs
         # Returns dict: {"syntax": [...], "syntax_structural": [...]}
         max_results = config.get("max_results", 50000)
         min_score = settings.get("min_score", 0.1)
@@ -891,6 +977,8 @@ def run_channel(channel_name, config, source_units, target_units,
             source_id, target_id,
             min_score=min_score,
             max_results=max_results,
+            source_language=source_language,
+            target_language=target_language,
         )
 
     if match_type == "semantic":
@@ -933,7 +1021,6 @@ def run_channel(channel_name, config, source_units, target_units,
     # of thousands of low-value matches (the main bottleneck for lemma_min1).
     max_results = config.get("max_results", 0)
     if max_results > 0 and len(matches) > max_results * 2:
-        from collections import Counter
         lemma_freq = Counter()
         for u in source_units:
             for lem in set(u.get('lemmas', [])):
@@ -953,7 +1040,7 @@ def run_channel(channel_name, config, source_units, target_units,
             m['_quick_score'] = _quick_idf(m)
         matches.sort(key=lambda m: m['_quick_score'], reverse=True)
         kept = max_results * 4  # 4x buffer for distance-factor reranking
-        print(f"[{channel_name.upper()}] IDF pre-filter: {len(matches):,} → {kept:,} matches")
+        logger.info(f"[{channel_name.upper()}] IDF pre-filter: {len(matches):,} → {kept:,} matches")
         matches = matches[:kept]
 
     scored = scorer.score_matches(
@@ -1163,55 +1250,90 @@ def _recover_semantic_for_structural(line_channel_results, source_units,
         if source_emb is None or target_emb is None:
             return
     except Exception as e:
-        print(f"[SEMANTIC RECOVERY] Failed to load embeddings: {e}")
+        logger.error(f"[SEMANTIC RECOVERY] Failed to load embeddings: {e}")
         return
 
-    # Compute cosine similarity for each structural pair
-    min_score = 0.5  # same threshold as semantic channel
+    # Two-tier semantic threshold for structural pairs:
+    #   - With dictionary confirmation (≥1 synonym pair): 0.575
+    #   - Without dictionary confirmation: 0.70 (much stricter)
+    # Thomas tricolon (Georg 3.481/DRN 6.1140) has cosine 0.5787 and
+    # corrumpo↔vasto dictionary match, so it passes tier 1.
+    MIN_SCORE_WITH_DICT = 0.575
+    MIN_SCORE_NO_DICT = 0.70
+
+    from backend.synonym_dict import find_synonym_pairs_in_passages
+
     recovered = []
+    dict_confirmed = 0
     for src_ref, tgt_ref, src_idx, tgt_idx in pairs_to_check:
         if src_idx >= len(source_emb) or tgt_idx >= len(target_emb):
             continue
         s_vec = source_emb[src_idx]
         t_vec = target_emb[tgt_idx]
-        # Cosine similarity (embeddings are typically already normalized,
-        # but normalize to be safe)
         s_norm = np.linalg.norm(s_vec)
         t_norm = np.linalg.norm(t_vec)
         if s_norm == 0 or t_norm == 0:
             continue
         sim = float(np.dot(s_vec, t_vec) / (s_norm * t_norm))
-        if sim >= min_score:
-            src_unit = source_units[src_idx]
-            tgt_unit = target_units[tgt_idx]
-            recovered.append({
-                "source": {
-                    "ref": src_ref,
-                    "text": src_unit.get("text", ""),
-                    "tokens": src_unit.get("tokens", []),
-                    "lemmas": src_unit.get("lemmas", []),
-                    "highlight_indices": [],
-                },
-                "target": {
-                    "ref": tgt_ref,
-                    "text": tgt_unit.get("text", ""),
-                    "tokens": tgt_unit.get("tokens", []),
-                    "lemmas": tgt_unit.get("lemmas", []),
-                    "highlight_indices": [],
-                },
-                "score": sim,
-                "overall_score": sim,
-                "matched_words": [],
-                "match_basis": "semantic",
+
+        # Check dictionary synonyms between the two lines
+        src_unit = source_units[src_idx]
+        tgt_unit = target_units[tgt_idx]
+        src_lemmas = src_unit.get("lemmas", [])
+        tgt_lemmas = tgt_unit.get("lemmas", [])
+        syn_pairs = find_synonym_pairs_in_passages(
+            src_lemmas, tgt_lemmas, language, include_lemma_matches=True
+        ) if src_lemmas and tgt_lemmas else []
+
+        has_dict = len(syn_pairs) > 0
+        threshold = MIN_SCORE_WITH_DICT if has_dict else MIN_SCORE_NO_DICT
+
+        if sim < threshold:
+            continue
+
+        if has_dict:
+            dict_confirmed += 1
+
+        # Build matched_words from dictionary pairs for display
+        mw_list = []
+        for sp in syn_pairs:
+            mw_list.append({
+                "lemma": sp["source_lemma"],
+                "source_word": sp["source_lemma"],
+                "target_word": sp["target_lemma"],
+                "type": "dictionary" if sp["source_lemma"].lower() != sp["target_lemma"].lower() else "lemma",
+                "similarity": 1.0,
             })
+
+        recovered.append({
+            "source": {
+                "ref": src_ref,
+                "text": src_unit.get("text", ""),
+                "tokens": src_unit.get("tokens", []),
+                "lemmas": src_lemmas,
+                "highlight_indices": [],
+            },
+            "target": {
+                "ref": tgt_ref,
+                "text": tgt_unit.get("text", ""),
+                "tokens": tgt_unit.get("tokens", []),
+                "lemmas": tgt_lemmas,
+                "highlight_indices": [],
+            },
+            "score": sim,
+            "overall_score": sim,
+            "matched_words": mw_list,
+            "match_basis": "semantic",
+        })
 
     if recovered:
         if "semantic" not in line_channel_results:
             line_channel_results["semantic"] = []
         line_channel_results["semantic"].extend(recovered)
-        print(f"[SEMANTIC RECOVERY] Recovered {len(recovered)} semantic scores "
-              f"for {len(pairs_to_check)} structural pairs "
-              f"(skipped {len(pairs_to_check) - len(recovered)} below threshold)")
+        logger.info(f"[SEMANTIC RECOVERY] Recovered {len(recovered)} semantic scores "
+                    f"for {len(pairs_to_check)} structural pairs "
+                    f"({dict_confirmed} dictionary-confirmed, "
+                    f"skipped {len(pairs_to_check) - len(recovered)} below threshold)")
 
 
 def fuse_results(channel_results, weights=None, convergence_bonus=None,
@@ -1259,6 +1381,9 @@ def fuse_results(channel_results, weights=None, convergence_bonus=None,
         "all_matched_words": {},
     })
 
+    import time as _time
+    _t0 = _time.time()
+
     for ch_name, results in channel_results.items():
         weight = _weights.get(ch_name, 1.0)
         for r in results:
@@ -1292,6 +1417,29 @@ def fuse_results(channel_results, weights=None, convergence_bonus=None,
             if raw_score > pair_scores[key]["best_score"]:
                 pair_scores[key]["best_result"] = r
                 pair_scores[key]["best_score"] = raw_score
+
+    _t1 = _time.time()
+    logger.info(f"[FUSION] Accumulated {len(pair_scores):,} unique pairs from "
+                f"{sum(len(r) for r in channel_results.values()):,} channel results in {_t1-_t0:.1f}s")
+
+    # --- Pre-fusion cap: limit pairs entering rarity scoring ---
+    # Rarity scoring is O(n) with expensive per-pair IDF lookups. For
+    # large Greek text pairs, pair_scores can exceed 500K entries. Since
+    # rarity scoring can only reduce scores (mult <= 1 for common words)
+    # or boost already-high multi-channel pairs, the final top results
+    # are almost always within the top 200K by raw weighted score. Cap
+    # here to keep fusion tractable.
+    PRE_FUSION_CAP = 500000
+    total_pairs = len(pair_scores)
+    if total_pairs > PRE_FUSION_CAP:
+        # Keep pairs with highest raw weighted score (before rarity adjustment).
+        # Rarity Layer 3 can boost rare-word pairs, so we use a generous cap
+        # (500K) to avoid dropping gold pairs with low raw scores but rare vocab.
+        top_keys = sorted(pair_scores.keys(),
+                          key=lambda k: pair_scores[k]["score"],
+                          reverse=True)[:PRE_FUSION_CAP]
+        pair_scores = {k: pair_scores[k] for k in top_keys}
+        logger.info(f"[FUSION] Pre-fusion cap: kept top {PRE_FUSION_CAP:,} of {total_pairs:,} pairs by raw score")
 
     # ===================================================================
     # RARITY SCORING: Three-layer system applied to every fused pair
@@ -1388,6 +1536,7 @@ def fuse_results(channel_results, weights=None, convergence_bonus=None,
         n_content_tgt = sum(1 for w in unique_tgt_words
                            if w.replace('v', 'u') not in _stoplist)
         n_content_words = min(n_content_src, n_content_tgt)
+        has_structural = "syntax_structural" in info["channels"]
 
         if corpus_idfs:
             # Geometric mean via exp(mean(log(x))), with floor of 0.001
@@ -1439,8 +1588,11 @@ def fuse_results(channel_results, weights=None, convergence_bonus=None,
             # Single-word penalty: demote matches sharing only one
             # distinct word.  Applied before Layer 1 squaring, so
             # effective penalty is SINGLE_WORD_PENALTY^2.
+            # Exception: structural fingerprint pairs — the syntactic
+            # pattern match counts as additional evidence beyond lexical,
+            # so even 1 dictionary synonym is meaningful confirmation.
             min_idf_gate_fired = False
-            if n_unique_words <= 1:
+            if n_unique_words <= 1 and not has_structural:
                 multiplier *= SINGLE_WORD_PENALTY
             elif n_content_words == 0:
                 # All-function-words penalty: every matched lemma is on the
@@ -1501,7 +1653,7 @@ def fuse_results(channel_results, weights=None, convergence_bonus=None,
         # Common content-word pairs (pectus+cura, arma+genus) do NOT
         # get zeroed — their convergence is naturally suppressed by
         # the min-word-IDF^2 weighting in idf_weight above.
-        if n_unique_words <= 1 or min_idf_gate_fired:
+        if (n_unique_words <= 1 and not has_structural) or min_idf_gate_fired:
             weighted_n = 0.0
         conv_score = _convergence_bonus * (weighted_n - 1.0) if weighted_n > 1.0 else 0.0
 
@@ -1517,6 +1669,9 @@ def fuse_results(channel_results, weights=None, convergence_bonus=None,
         #   weighting in weighted_n already provides steep suppression.
         conv_mult = multiplier ** _conv_idf_power
         info["score"] = base_score * (multiplier ** _penalty_power) + conv_score * conv_mult
+
+    _t2 = _time.time()
+    logger.info(f"[FUSION] Rarity scoring complete for {len(pair_scores):,} pairs in {_t2-_t1:.1f}s")
 
     # Sort by fused score and build output
     sorted_pairs = sorted(pair_scores.items(), key=lambda x: x[1]["score"], reverse=True)
@@ -1578,9 +1733,10 @@ def _which_line_has_matches(positions, boundary):
 def _trim_to_line(side, line_num):
     """Trim a window unit dict to show only one line of text.
 
-    Keeps the original range ref (so benchmark gold-matching still works)
-    but trims text, tokens, and highlight_indices to the relevant line.
-    Removes line_token_counts so the frontend renders as single line.
+    Keeps the original range ref so merge_line_and_window treats it as a
+    window (with one novel line pair), preserving recall for pairs found
+    only via window channels. Trims text, tokens, and highlights to the
+    relevant line. Removes line_token_counts so frontend renders as single line.
     """
     counts = side.get('line_token_counts', [])
     if not counts or len(counts) < 2:
@@ -1602,10 +1758,11 @@ def _trim_to_line(side, line_num):
     side['tokens'] = new_tokens
     side['text'] = new_text
     side['highlight_indices'] = sorted(new_highlights)
-    # Remove window metadata so frontend renders as single line
+    # Keep the original range ref — merge_line_and_window needs it to
+    # correctly identify this as a window result with a novel line pair.
+    # Removing window metadata so frontend renders as single line.
     side.pop('line_token_counts', None)
     side.pop('line_refs', None)
-    # Keep original range ref for gold-matching compatibility
     return side
 
 
@@ -1685,6 +1842,84 @@ def penalize_single_line_windows(window_results):
     return out
 
 
+def _dedup_overlapping_windows(window_results):
+    """Remove overlapping window results that are duplicates of the same match.
+
+    Sliding windows produce overlapping 2-line pairs: (140-141) and (141-142)
+    on one side combined with (293-294) and (294-295) on the other yield up to
+    4 copies of the same match.  Keep only the highest-scoring window when both
+    the source and target ranges overlap with an already-kept window AND the
+    lower-scored window's matched words are a subset of the kept window's.
+    This preserves windows with genuinely different matches on adjacent lines.
+    """
+    if not window_results:
+        return window_results
+
+    parsed = []
+    for r in window_results:
+        rs = r.get("source", {}).get("ref", "")
+        rt = r.get("target", {}).get("ref", "")
+        sb, ss, se = parse_range_ref(rs)
+        tb, ts, te = parse_range_ref(rt)
+        parsed.append((sb, ss, se, tb, ts, te))
+
+    # Extract matched-word lemma sets for each result
+    word_sets = []
+    for r in window_results:
+        lemmas = frozenset(
+            mw.get("lemma", "") for mw in r.get("matched_words", [])
+            if mw.get("lemma")
+        )
+        word_sets.append(lemmas)
+
+    # Sort by score descending so we greedily keep the best
+    scored = sorted(range(len(window_results)),
+                    key=lambda i: window_results[i].get('fused_score', 0),
+                    reverse=True)
+
+    kept = []
+    # Index kept windows by target line numbers for fast overlap lookup.
+    # Each target line maps to the kept windows that cover it, so we only
+    # compare against windows that could actually overlap in the target.
+    kept_by_tgt_line = defaultdict(list)  # tgt_line -> [(sb, ss, se, tb, ts, te, lemmas)]
+
+    for i in scored:
+        sb, ss, se, tb, ts, te = parsed[i]
+        if sb is None or tb is None:
+            kept.append(window_results[i])
+            continue
+
+        # Check only kept windows that overlap this window's target lines
+        is_dup = False
+        cand_lemmas = word_sets[i]
+        # Collect candidate overlapping windows from target line index
+        checked = set()  # avoid checking same kept window twice
+        for tl in range(ts, te + 1):
+            for entry in kept_by_tgt_line.get((tb, tl), []):
+                eid = id(entry)
+                if eid in checked:
+                    continue
+                checked.add(eid)
+                ksb, kss, kse, _, kts, kte, k_lemmas = entry
+                if sb != ksb:
+                    continue
+                src_overlaps = ss <= kse and kss <= se
+                if src_overlaps:
+                    if not cand_lemmas or cand_lemmas <= k_lemmas:
+                        is_dup = True
+                        break
+            if is_dup:
+                break
+
+        if not is_dup:
+            kept.append(window_results[i])
+            entry = (sb, ss, se, tb, ts, te, cand_lemmas)
+            for tl in range(ts, te + 1):
+                kept_by_tgt_line[(tb, tl)].append(entry)
+
+    return kept
+
+
 def merge_line_and_window(line_results, window_results):
     """Merge line and window results, with windows superseding overlapping lines.
 
@@ -1694,6 +1929,7 @@ def merge_line_and_window(line_results, window_results):
     that are fully subsumed by line results (all their line pairs already
     covered) are dropped.  The merged list is sorted by fused_score.
     """
+    window_results = _dedup_overlapping_windows(window_results)
     # Index line results by their (book, line, book, line) tuple
     line_by_ref = {}
     for i, r in enumerate(line_results):
@@ -1730,8 +1966,8 @@ def merge_line_and_window(line_results, window_results):
                     novel = True
 
         if novel:
-            # Window covers at least one new line pair — keep it,
-            # and supersede overlapping line results that score lower
+            # Window covers at least one line pair not in any line result —
+            # always keep it (dropping would lose those novel pairs).
             window_score = r.get("fused_score", 0)
             kept_windows.append(r)
             for line_idx in overlapping:
@@ -1749,7 +1985,8 @@ def merge_line_and_window(line_results, window_results):
 def _run_channels_sequential(channels, configs, source_units, target_units,
                              matcher, scorer, source_id, target_id,
                              source_path, target_path, phase_label,
-                             progress_callback):
+                             progress_callback,
+                             source_language='la', target_language='la'):
     """Run channels sequentially in the main process.
 
     The heavy channels (edit_distance, sound) use internal multiprocessing
@@ -1768,6 +2005,7 @@ def _run_channels_sequential(channels, configs, source_units, target_units,
             ch_name, config, source_units, target_units,
             matcher, scorer, source_id, target_id,
             source_path=source_path, target_path=target_path,
+            source_language=source_language, target_language=target_language,
         )
         if results:
             # Syntax returns dict with "syntax" and "syntax_structural" keys
@@ -1785,7 +2023,8 @@ def iter_fusion_search(source_units, target_units, matcher, scorer,
                        source_id, target_id, language='la',
                        mode='merged', max_results=5000,
                        source_path=None, target_path=None,
-                       user_settings=None):
+                       user_settings=None,
+                       source_language=None, target_language=None):
     """Generator version of run_fusion_search for progressive SSE streaming.
 
     Yields (event_type, data) tuples as the search progresses:
@@ -1798,6 +2037,10 @@ def iter_fusion_search(source_units, target_units, matcher, scorer,
     appear within seconds of starting the search.
     """
     user_settings = user_settings or {}
+    if source_language is None:
+        source_language = language
+    if target_language is None:
+        target_language = language
 
     # Build per-channel configs with language override and user settings
     configs = {}
@@ -1828,6 +2071,7 @@ def iter_fusion_search(source_units, target_units, matcher, scorer,
             ch_name, configs[ch_name], source_units, target_units,
             matcher, scorer, source_id, target_id,
             source_path=source_path, target_path=target_path,
+            source_language=source_language, target_language=target_language,
         )
         # Syntax returns dict with "syntax" and "syntax_structural" keys
         if isinstance(results, dict):
@@ -1871,6 +2115,57 @@ def iter_fusion_search(source_units, target_units, matcher, scorer,
             line_channel_results, source_units, target_units,
             source_path, target_path, language)
 
+        # Gate: keep structural pairs that have semantic confirmation AND
+        # either (a) dictionary synonym confirmation or (b) high cosine.
+        # Semantic + structural alone is too noisy — many unrelated Latin
+        # lines share dependency patterns and have moderate cosine (0.5-0.6).
+        from backend.synonym_dict import find_synonym_pairs_in_passages as _find_syn
+        semantic_scores = {}
+        for r in line_channel_results.get("semantic", []):
+            rs = r.get("source", {}).get("ref", "")
+            rt = r.get("target", {}).get("ref", "")
+            score = r.get("score", r.get("overall_score", 0))
+            # Keep highest score if multiple semantic results for same pair
+            if score > semantic_scores.get((rs, rt), 0):
+                semantic_scores[(rs, rt)] = score
+
+        # Build ref→unit index for dictionary lookup
+        src_ref_to_idx = {u.get("ref", ""): i for i, u in enumerate(source_units)}
+        tgt_ref_to_idx = {u.get("ref", ""): i for i, u in enumerate(target_units)}
+
+        MIN_COSINE_NO_DICT = 0.70
+        before = len(line_channel_results["syntax_structural"])
+        kept = []
+        for r in line_channel_results["syntax_structural"]:
+            src_ref = r.get("source", {}).get("ref", "")
+            tgt_ref = r.get("target", {}).get("ref", "")
+            pair_key = (src_ref, tgt_ref)
+
+            # Must have semantic confirmation
+            if pair_key not in semantic_scores:
+                continue
+
+            cosine = semantic_scores[pair_key]
+
+            # Check dictionary synonyms
+            si = src_ref_to_idx.get(src_ref)
+            ti = tgt_ref_to_idx.get(tgt_ref)
+            has_dict = False
+            if si is not None and ti is not None:
+                sl = source_units[si].get("lemmas", [])
+                tl = target_units[ti].get("lemmas", [])
+                if sl and tl:
+                    has_dict = len(_find_syn(sl, tl, language, include_lemma_matches=True)) > 0
+
+            if has_dict or cosine >= MIN_COSINE_NO_DICT:
+                kept.append(r)
+
+        line_channel_results["syntax_structural"] = kept
+        after = len(kept)
+        if before != after:
+            logger.info(f"[STRUCTURAL GATE] Kept {after}/{before} structural pairs "
+                        f"(dictionary or cosine >= {MIN_COSINE_NO_DICT})")
+
     line_fused = fuse_results(line_channel_results, language=language)
 
     if mode == 'line':
@@ -1897,6 +2192,7 @@ def iter_fusion_search(source_units, target_units, matcher, scorer,
             ch_name, configs[ch_name], source_windows, target_windows,
             matcher, scorer, source_id, target_id,
             source_path=source_path, target_path=target_path,
+            source_language=source_language, target_language=target_language,
         )
         count = len(results) if results else 0
         if results:
@@ -1928,7 +2224,8 @@ def run_fusion_search(source_units, target_units, matcher, scorer,
                       source_id, target_id, language='la',
                       mode='merged', max_results=500,
                       source_path=None, target_path=None,
-                      progress_callback=None):
+                      progress_callback=None,
+                      source_language=None, target_language=None):
     """Run two-pass weighted fusion search.
 
     Pass 1 (line-level): All 9 channels run on individual verse lines.
@@ -1954,6 +2251,11 @@ def run_fusion_search(source_units, target_units, matcher, scorer,
     Returns:
         List of result dicts sorted by fused_score descending.
     """
+    if source_language is None:
+        source_language = language
+    if target_language is None:
+        target_language = language
+
     # Update language in all configs
     configs = {}
     for name, cfg in CHANNEL_CONFIGS.items():
@@ -1970,6 +2272,7 @@ def run_fusion_search(source_units, target_units, matcher, scorer,
         matcher, scorer, source_id, target_id,
         source_path, target_path, "line",
         progress_callback,
+        source_language=source_language, target_language=target_language,
     )
 
     # Recover semantic scores for structural fingerprint pairs that were
@@ -1979,6 +2282,47 @@ def run_fusion_search(source_units, target_units, matcher, scorer,
         _recover_semantic_for_structural(
             line_channel_results, source_units, target_units,
             source_path, target_path, language)
+
+        # Gate: keep structural pairs that have semantic confirmation AND
+        # either (a) dictionary synonym confirmation or (b) high cosine.
+        from backend.synonym_dict import find_synonym_pairs_in_passages as _find_syn2
+        semantic_scores2 = {}
+        for r in line_channel_results.get("semantic", []):
+            rs = r.get("source", {}).get("ref", "")
+            rt = r.get("target", {}).get("ref", "")
+            score = r.get("score", r.get("overall_score", 0))
+            if score > semantic_scores2.get((rs, rt), 0):
+                semantic_scores2[(rs, rt)] = score
+
+        src_ref_to_idx2 = {u.get("ref", ""): i for i, u in enumerate(source_units)}
+        tgt_ref_to_idx2 = {u.get("ref", ""): i for i, u in enumerate(target_units)}
+
+        MIN_COSINE_NO_DICT2 = 0.70
+        before = len(line_channel_results["syntax_structural"])
+        kept2 = []
+        for r in line_channel_results["syntax_structural"]:
+            src_ref = r.get("source", {}).get("ref", "")
+            tgt_ref = r.get("target", {}).get("ref", "")
+            pair_key = (src_ref, tgt_ref)
+            if pair_key not in semantic_scores2:
+                continue
+            cosine = semantic_scores2[pair_key]
+            si = src_ref_to_idx2.get(src_ref)
+            ti = tgt_ref_to_idx2.get(tgt_ref)
+            has_dict = False
+            if si is not None and ti is not None:
+                sl = source_units[si].get("lemmas", [])
+                tl = target_units[ti].get("lemmas", [])
+                if sl and tl:
+                    has_dict = len(_find_syn2(sl, tl, language, include_lemma_matches=True)) > 0
+            if has_dict or cosine >= MIN_COSINE_NO_DICT2:
+                kept2.append(r)
+
+        line_channel_results["syntax_structural"] = kept2
+        after = len(kept2)
+        if before != after:
+            logger.info(f"[STRUCTURAL GATE] Kept {after}/{before} structural pairs "
+                        f"(dictionary or cosine >= {MIN_COSINE_NO_DICT2})")
 
     line_fused = fuse_results(line_channel_results, language=language)
 
@@ -1998,6 +2342,7 @@ def run_fusion_search(source_units, target_units, matcher, scorer,
         matcher, scorer, source_id, target_id,
         source_path, target_path, "window",
         progress_callback,
+        source_language=source_language, target_language=target_language,
     )
     window_fused = fuse_results(window_channel_results, language=language)
     window_fused = penalize_single_line_windows(window_fused)

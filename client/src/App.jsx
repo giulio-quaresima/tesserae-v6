@@ -6,7 +6,7 @@ import { Modal, LoadingSpinner } from './components/common';
 import { CorpusBrowser, RareWordsExplorer } from './components/corpus';
 import { Repository } from './components/repository';
 import { AdminPanel } from './components/admin';
-import { AboutPage, HelpPage, DownloadsPage, PrivacyPage } from './components/pages';
+import { AboutPage, HelpPage, DownloadsPage, PrivacyPage, ResearchPage } from './components/pages';
 import TextCredits from './components/about/TextCredits';
 import VisualizationsPage from './components/pages/VisualizationsPage';
 import { useCorpus, useSearch } from './hooks';
@@ -23,6 +23,7 @@ const pathToPageType = {
   '/about': 'about',
   '/help': 'help',
   '/privacy': 'privacy',
+  '/research': 'research',
   '/text-credits': 'text-credits',
   '/admin': 'admin'
 };
@@ -38,6 +39,7 @@ const pageTypeToPath = {
   'about': '/about',
   'help': '/help',
   'privacy': '/privacy',
+  'research': '/research',
   'text-credits': '/text-credits',
   'admin': '/admin'
 };
@@ -144,6 +146,8 @@ function App() {
     elapsedTime: searchElapsedTime,
     fusionProgress,
     hasSearched,
+    isQueued,
+    queuedMessage,
     search,
     searchRareWords,
     searchWordPairs,
@@ -328,6 +332,19 @@ function App() {
     }
   }, [sourceText, targetText, activeTab, settings, searchMode, search, searchRareWords, searchWordPairs]);
 
+  const handleRerunFresh = useCallback(async () => {
+    if (!sourceText || !targetText) return;
+    const params = {
+      source: sourceText,
+      target: targetText,
+      language: activeTab,
+      ...settings,
+      skip_cache: true,
+    };
+    if (searchMode === 'parallel') {
+      await search(params);
+    }
+  }, [sourceText, targetText, activeTab, settings, searchMode, search]);
 
   const handleRegister = useCallback((result) => {
     setRegisterPending(result);
@@ -633,6 +650,7 @@ function App() {
                     setDisplayLimit={setDisplayLimit}
                     onRegister={handleRegister}
                     onCorpusSearch={handleCorpusSearch}
+                    onRerunFresh={handleRerunFresh}
                     sortBy={sortBy}
                     setSortBy={setSortBy}
                     searchStats={searchStats}
@@ -643,6 +661,8 @@ function App() {
                     progressText={searchProgressText}
                     matchType={settings.match_type}
                     fusionProgress={fusionProgress}
+                    isQueued={isQueued}
+                    queuedMessage={queuedMessage}
                   />
                 )}
               </div>
@@ -725,6 +745,10 @@ function App() {
 
         {pageType === 'privacy' && (
           <PrivacyPage />
+        )}
+
+        {pageType === 'research' && (
+          <ResearchPage />
         )}
 
         {pageType === 'admin' && (

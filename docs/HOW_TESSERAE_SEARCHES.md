@@ -140,9 +140,13 @@ Two passages may echo each other not through shared vocabulary but through paral
 
 For example, Lucan 1.588 (listing methods of divination) and Vergil, *Aeneid* 3.361 (listing omens) share a distinctive genitive-noun chain structure. Neither lexical matching nor sound similarity detects this connection, but the syntax channel recognizes the parallel construction.
 
+A second path within the syntax channel — **structural fingerprint matching** — goes further: it matches lines with identical dependency head patterns even when they share no vocabulary at all. This catches the most challenging type of allusion: structural imitation with complete lexical substitution. For example, Vergil's *corrupitque lacus, infecit pabula tabo* ("it tainted the pools, infected the pastures with corruption") and Lucretius's *vastavitque vias, exhausit civibus urbem* ("it devastated the streets, drained the city of citizens") share zero words but have identical grammatical structure. The structural fingerprint detects this; a follow-up semantic similarity check then confirms the thematic connection, and fusion combines both signals.
+
 ### Rare Vocabulary
 
-Some allusions are signaled by the shared use of an uncommon word — a term that appears in fewer than 50 texts across the entire corpus. When two lines share such a rare lemma, the connection is unlikely to be coincidental. The word *quercus* ("oak"), for instance, is distinctive enough that finding it in both Lucan 1.136 and Vergil, *Aeneid* 9.681 is meaningful evidence of a deliberate echo.
+Some allusions are signaled by the shared use of an uncommon word — a term that appears in fewer than 100 texts across the entire corpus. When two lines share such a rare lemma, the connection is unlikely to be coincidental. The word *quercus* ("oak"), for instance, is distinctive enough that finding it in both Lucan 1.136 and Vergil, *Aeneid* 9.681 is meaningful evidence of a deliberate echo.
+
+Because proper nouns (personal names, place names) are often rare in the corpus but may not signal genuine allusion, the rare word search offers an option to exclude them. The system identifies proper nouns using both a capitalization-based heuristic and a curated gazetteer of over 1,500 Greek and Latin names compiled from Wikidata mythological entities, the Pleiades gazetteer of ancient places, and manual curation of major epic figures and Olympian deities.
 
 ---
 
@@ -186,11 +190,11 @@ The result is a single ranked list in which the most likely genuine parallels ri
 
 A persistent challenge for any line-based system is enjambment: a poet's sentence often spans two or more verse lines, and the allusive vocabulary may be split across the break. Vergil might place *arma* at the end of one line and *uirum* at the beginning of the next. A system that examines only individual lines would see two weak signals instead of one strong one.
 
-Tesserae addresses this with **two-line sliding windows**. Each consecutive pair of lines is merged into a single unit and searched through all nine channels, using the same scoring as single lines. The window spanning lines 5 and 6 combines the tokens and lemmas of both, so any allusive vocabulary split across the break is reunited.
+Tesserae addresses this with **two-line sliding windows**. Each consecutive pair of lines is merged into a single unit and searched through the lexical channels (lemma, single-lemma, rare word) and the dictionary channel, using the same scoring as single lines. The window spanning lines 5 and 6 combines the tokens and lemmas of both, so any allusive vocabulary split across the break is reunited. Sub-lexical and semantic channels are excluded from the window pass because they compare individual token pairs already exhaustively enumerated in the line pass — expanding the unit does not introduce new comparisons.
 
-The results from line-mode and window-mode are then merged carefully. Line-mode results appear first in the ranking, preserving the precision of the core search. Window-mode results that are genuinely new — that is, results not already covered by line-mode findings — are appended afterward. This ensures that the sliding window adds recall (finding more parallels) without diluting precision (the quality of the top-ranked results).
+The results from line-mode and window-mode are then merged carefully. Line-mode results take priority, and a window result is included only if it covers at least one source-target line pair not already present. This ensures that the sliding window adds recall (finding more parallels) without diluting precision (the quality of the top-ranked results).
 
-Across five evaluation benchmarks, the sliding window raises overall recall from 83% to 91%, recovering dozens of enjambed allusions that line-only search misses.
+Across five evaluation benchmarks, the sliding window raises overall recall from 85% to 93%, recovering dozens of enjambed allusions that line-only search misses.
 
 ---
 

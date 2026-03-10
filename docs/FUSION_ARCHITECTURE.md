@@ -2,13 +2,13 @@
 
 ## Overview
 
-Tesserae V6's fusion search combines nine independent matching channels into a single ranked result list using weighted score fusion. Each channel detects textual parallels through a different linguistic signal — from exact lexical overlap to phonetic similarity to distributional semantics — and the fusion layer combines these signals with empirically validated weights and a convergence bonus that rewards cross-channel agreement.
+Tesserae V6's fusion search combines ten independent matching channels into a single ranked result list using weighted score fusion. Each channel detects textual parallels through a different linguistic signal — from exact lexical overlap to phonetic similarity to distributional semantics — and the fusion layer combines these signals with empirically validated weights and a convergence bonus that rewards cross-channel agreement.
 
 The search uses a **two-pass line/window architecture** that runs the full channel battery on individual verse lines, then selectively re-runs a subset of channels on sliding 2-line windows to capture allusions that span line breaks (enjambment). The channel selection for the window pass follows from a formal classification of channels by their matching granularity.
 
 ## Channel Taxonomy
 
-The nine channels are classified into four types based on the **level of linguistic representation** at which they operate. This classification determines both their contribution to intertext detection and their behavior under textual unit variation (line vs. window).
+The ten channels are classified into four types based on the **level of linguistic representation** at which they operate. This classification determines both their contribution to intertext detection and their behavior under textual unit variation (line vs. window).
 
 ### Lexical channels
 
@@ -19,7 +19,7 @@ Match on the **identity** of word forms or dictionary headwords within a textual
 | **lemma** | Shared dictionary headwords | ≥ 2 shared lemmata after frequency-based stoplist filtering |
 | **lemma_min1** | Single shared headword | ≥ 1 shared lemma (high-recall, low-precision variant) |
 | **exact** | Identical surface tokens | ≥ 2 shared orthographic forms after stoplist filtering |
-| **rare_word** | Shared low-frequency lemmata | ≥ 2 shared lemmata with corpus frequency ≤ 50 |
+| **rare_word** | Shared low-frequency lemmata | ≥ 2 shared lemmata with corpus frequency ≤ 100 |
 
 **Key property**: Lexical channels require the matching tokens to **co-occur within a single textual unit**. A match between units (s_i, t_j) means that both units contain the relevant lemmata or forms. When an allusion is split across a line break (enjambment), the matching tokens are distributed between s_i and s_{i+1}, and neither line alone meets the co-occurrence threshold. Combining them into a 2-line window recovers the match.
 
@@ -51,9 +51,16 @@ Match on **syntactic patterns** derived from dependency parses.
 
 | Channel | Signal | Criterion |
 |---------|--------|-----------|
-| **syntax** | Dependency-tree pattern overlap | Shared UD dependency triples (currently pre-computed) |
+| **syntax** | Dependency-tree pattern overlap | Lines sharing at least one lemma are compared for UD dependency pattern similarity |
+| **syntax_structural** | Identical dependency head patterns | Lines with the same head-index sequence are matched directly, with no shared lemma required |
 
-**Key property**: Syntax matches are computed from pre-parsed treebanks and are currently available only at the line level.
+**Key property**: Syntax matches are computed from pre-parsed treebanks (LatinPipe) and are currently available only at the line level.
+
+The **syntax** channel uses lemma-based pruning: it only compares lines that share at least one lemma, then scores their dependency pattern similarity. This is efficient but misses structural imitation with complete lexical substitution.
+
+The **syntax_structural** channel addresses this gap with a structural fingerprint path. It indexes each line by its dependency head pattern (the sequence of head-token indices after filtering punctuation) and directly matches lines with identical patterns, regardless of vocabulary. A **fingerprint rarity filter** limits matches to patterns whose combined frequency in the source and target texts is ≤ 4, eliminating common clause structures (e.g., Verb-*que* + Object) that match hundreds of unrelated line pairs while preserving distinctive patterns like Vergil's tricolon *corrupitque lacus, infecit pabula tabo* (frequency 2). The channel is weighted at 0.5.
+
+**Semantic recovery**: After all line channels complete, the system looks up the actual SPhilBERTa cosine similarity for each structural fingerprint pair. Pairs that meet a minimum cosine threshold (0.55) but were filtered by the semantic channel's per-source-line cap are injected into the semantic channel results. This allows fusion to naturally combine structural and semantic evidence for pairs that share syntactic form and semantic content but no vocabulary — such as Vergil's *corrupitque lacus, infecit pabula tabo* and Lucretius's *vastavitque vias, exhausit civibus urbem*.
 
 ## Two-Pass Architecture
 
@@ -67,11 +74,11 @@ The standard solution is to search over sliding windows of *n* consecutive lines
 
 The channel taxonomy provides a principled basis for selective windowing:
 
-**Pass 1 — Line-level (all 9 channels)**: This is the primary search. All channels run on individual verse lines, providing complete coverage of every matching signal.
+**Pass 1 — Line-level (all 10 channels)**: This is the primary search. All channels run on individual verse lines, providing complete coverage of every matching signal.
 
-**Pass 2 — Window-level (lexical channels only)**: Only channels that require **token co-occurrence within a unit** benefit from expanded windows. These are the lexical channels: lemma, lemma_min1, exact, and rare_word.
+**Pass 2 — Window-level (lexical + dictionary channels)**: Only channels that require **token co-occurrence within a unit** benefit from expanded windows. These are the lexical channels (lemma, lemma_min1, exact, rare_word) plus dictionary.
 
-Sub-lexical and distributional channels are excluded from the window pass because they measure **pairwise relationships between individual tokens** that are already exhaustively enumerated in the line pass. Expanding the unit size does not introduce new comparisons.
+Sub-lexical and semantic channels are excluded from the window pass because they measure **pairwise relationships between individual tokens** that are already exhaustively enumerated in the line pass. Expanding the unit size does not introduce new comparisons.
 
 ### Empirical validation
 
@@ -119,6 +126,7 @@ Weights were determined by grid search across 35,000 configurations on five benc
 | exact | 1.0 | lexical |
 | dictionary | 0.5 | distributional |
 | syntax | 0.3 | structural |
+| syntax_structural | 0.5 | structural |
 | lemma_min1 | 0.3 | lexical |
 
 ### Convergence bonus
@@ -179,6 +187,42 @@ The default `max_results` of 5,000 is derived from recall@K analysis across five
 A score-based analysis reveals a natural structural break at fused_score ≈ 2.5–3.0, below which the result count jumps from ~7K to ~46K as single-channel noise dominates. For batch analysis or scholarly exhaustive search, a score-based threshold of ≥ 2.0 captures 38–56% of gold parallels while remaining computationally tractable.
 
 See `evaluation/scripts/compute_recall_at_k.py` and `research/studies/fusion_experiment_phase1/` for the underlying data.
+
+## Concurrency Control
+
+Fusion search is memory-intensive — a full 10-channel run on large text pairs (e.g., Aeneid × Metamorphoses) can consume several GB of RAM. To prevent out-of-memory crashes when multiple users search simultaneously, all heavy search endpoints are protected by a **file-based concurrency gate** (`backend/concurrency_gate.py`).
+
+### Mechanism
+
+The gate uses POSIX advisory file locks (`fcntl.flock`) to coordinate across Apache mod_wsgi worker processes, which share no Python state. Each active heavy search holds an exclusive lock on a unique file in `/tmp/tesserae_search_slots/`. Before starting, a new search:
+
+1. Counts how many lock files are currently held by live processes
+2. Checks available system RAM via `/proc/meminfo`
+3. If either limit is exceeded, yields `queued` SSE events to the frontend while polling every 2 seconds
+4. Starts the search once a slot opens (or errors after a 5-minute timeout)
+
+The gate is **crash-safe**: when a worker process dies (OOM kill, segfault, restart), the OS releases its flock automatically. Stale lock files from dead processes are detected and cleaned up on the next acquisition attempt.
+
+### Gated endpoints
+
+| Endpoint | Gate type |
+|----------|-----------|
+| `POST /api/search-fusion` | SSE generator — yields `queued` events while waiting |
+| `POST /api/search-stream` | SSE generator — yields `queued` events while waiting |
+| `POST /api/search` | Context manager — blocks until slot available, returns 503 on timeout |
+
+Cached results bypass the gate entirely (no compute needed).
+
+### Configuration
+
+| Environment Variable | Default | Description |
+|---------------------|---------|-------------|
+| `TESSERAE_MAX_HEAVY_SEARCHES` | 2 | Maximum concurrent heavy searches |
+| `TESSERAE_MEMORY_THRESHOLD_GB` | 8 | Minimum available RAM (GB) to allow a new search |
+
+### Frontend behavior
+
+When a search is queued, the frontend displays an amber banner: "Search queued — server is busy" with the specific reason (e.g., "Server is running 2 searches (max 2)" or "Server memory low"). The spinner continues, and the search starts automatically when a slot opens. Users can cancel queued searches at any time.
 
 ## References
 

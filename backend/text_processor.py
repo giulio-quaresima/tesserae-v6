@@ -32,6 +32,9 @@ import re
 import os
 import json
 import unicodedata
+from backend.logging_config import get_logger
+
+logger = get_logger('text_processor')
 
 
 # =============================================================================
@@ -71,11 +74,11 @@ def load_lemma_tables():
                 if lemma not in LATIN_REVERSE_LEMMA:
                     LATIN_REVERSE_LEMMA[lemma] = set()
                 LATIN_REVERSE_LEMMA[lemma].add(form)
-            print(f"Loaded {len(LATIN_LEMMA_TABLE)} Latin lemma mappings from UD treebanks")
+            logger.info(f"Loaded {len(LATIN_LEMMA_TABLE)} Latin lemma mappings from UD treebanks")
         except Exception as e:
-            print(f"Failed to load Latin lemma table: {e}")
+            logger.error(f"Failed to load Latin lemma table: {e}")
     else:
-        print(f"Latin lemma table not found at {latin_path}")
+        logger.warning(f"Latin lemma table not found at {latin_path}")
     
     if os.path.exists(greek_path):
         try:
@@ -85,11 +88,11 @@ def load_lemma_tables():
                 if lemma not in GREEK_REVERSE_LEMMA:
                     GREEK_REVERSE_LEMMA[lemma] = set()
                 GREEK_REVERSE_LEMMA[lemma].add(form)
-            print(f"Loaded {len(GREEK_LEMMA_TABLE)} Greek lemma mappings from UD treebanks")
+            logger.info(f"Loaded {len(GREEK_LEMMA_TABLE)} Greek lemma mappings from UD treebanks")
         except Exception as e:
-            print(f"Failed to load Greek lemma table: {e}")
+            logger.error(f"Failed to load Greek lemma table: {e}")
     else:
-        print(f"Greek lemma table not found at {greek_path}")
+        logger.warning(f"Greek lemma table not found at {greek_path}")
     
     _lemma_tables_loaded = True
 
@@ -144,33 +147,33 @@ def _init_nlp_models():
     try:
         from cltk.lemmatize.lat import LatinBackoffLemmatizer
         _cltk_latin_lemmatizer = LatinBackoffLemmatizer()
-        print("CLTK LatinBackoffLemmatizer loaded successfully")
+        logger.info("CLTK LatinBackoffLemmatizer loaded successfully")
     except Exception as e:
-        print(f"CLTK Latin not available ({e})")
+        logger.warning(f"CLTK Latin not available ({e})")
     
     # CLTK Latin POS
     try:
         from cltk.tag.pos import POSTag
         _cltk_latin_pos_tagger = POSTag('lat')
-        print("CLTK Latin POS tagger loaded successfully")
+        logger.info("CLTK Latin POS tagger loaded successfully")
     except Exception as e:
-        print(f"CLTK Latin POS tagger not available ({e})")
+        logger.warning(f"CLTK Latin POS tagger not available ({e})")
     
     # CLTK Greek
     try:
         from cltk.lemmatize.grc import GreekBackoffLemmatizer
         _cltk_greek_lemmatizer = GreekBackoffLemmatizer()
-        print("CLTK GreekBackoffLemmatizer loaded successfully")
+        logger.info("CLTK GreekBackoffLemmatizer loaded successfully")
     except Exception as e:
-        print(f"CLTK Greek not available ({e})")
+        logger.warning(f"CLTK Greek not available ({e})")
     
     # CLTK Greek POS
     try:
         from cltk.tag.pos import POSTag
         _cltk_greek_pos_tagger = POSTag('grc')
-        print("CLTK Greek POS tagger loaded successfully")
+        logger.info("CLTK Greek POS tagger loaded successfully")
     except Exception as e:
-        print(f"CLTK Greek POS tagger not available ({e})")
+        logger.warning(f"CLTK Greek POS tagger not available ({e})")
     
     # NLTK English
     try:
@@ -181,9 +184,9 @@ def _init_nlp_models():
         nltk.download('averaged_perceptron_tagger_eng', quiet=True)
         from nltk.stem import WordNetLemmatizer
         _nltk_english_lemmatizer = WordNetLemmatizer()
-        print("NLTK WordNetLemmatizer and POS tagger loaded successfully")
+        logger.info("NLTK WordNetLemmatizer and POS tagger loaded successfully")
     except Exception as e:
-        print(f"NLTK English not available ({e})")
+        logger.warning(f"NLTK English not available ({e})")
 
 class TextProcessor:
     def __init__(self):
@@ -677,7 +680,7 @@ class TextProcessor:
             pos_tags = ['UNK'] * len(tokens)
         except Exception as e:
             if not getattr(self, '_pos_error_logged', False):
-                print(f"POS tagging error for {language}: {e}")
+                logger.error(f"POS tagging error for {language}: {e}")
                 self._pos_error_logged = True
             pos_tags = ['UNK'] * len(tokens)
         

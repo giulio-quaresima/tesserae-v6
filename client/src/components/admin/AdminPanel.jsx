@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useState } from 'react';
 import { LoadingSpinner } from '../common';
 import StatsTab from './tabs/StatsTab';
 import FeedbackTab from './tabs/FeedbackTab';
@@ -318,9 +319,11 @@ export default function AdminPanel() {
 
           {activeTab === 'stats' && (
             <StatsTab corpusStats={corpusStats} />
+            <StatsTab corpusStats={corpusStats} />
           )}
 
           {activeTab === 'analytics' && (
+            <AnalyticsTab analytics={analytics} />
             <AnalyticsTab analytics={analytics} />
           )}
 

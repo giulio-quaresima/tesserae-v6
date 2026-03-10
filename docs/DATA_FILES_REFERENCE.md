@@ -30,6 +30,7 @@ python scripts/download_data.py --check
 | `data/lemma_tables/*.json` | ~40 MB | Lemma lookup tables (Latin, Greek) |
 | `data/pedecerto/` | ~5 MB | Metrical scansion XML data |
 | `cache/` | ~5 MB | Pre-computed rare words and bigrams |
+| `backend/proper_names/` | ~400 KB | Greek-Latin proper name gazetteer (persons, deities, places) |
 
 ### NOT in Git — Download Separately
 
@@ -133,6 +134,25 @@ Most of the time, nothing changes. The index files only need updating when you a
 | New embedding model | Embeddings (already in Git) | Very rarely |
 
 There is no automatic notification when indexes are updated. Inform collaborators when you push a new manifest ("Pull and re-run the download script").
+
+---
+
+## Proper Name Gazetteer
+
+`backend/proper_names/` contains a curated gazetteer of Greek and Latin proper names compiled from three sources:
+
+- **Wikidata** (~660 mythology figures): Greek-Latin name pairs queried from Wikidata's Ancient Greek and Latin labels for mythological characters
+- **Pleiades** (~840 places): Greek-Latin place name pairs from the [Pleiades gazetteer](https://pleiades.stoa.org/) of ancient world locations, filtered to classically attested places
+- **Manual curation** (~57 entries): Major epic heroes missing from Wikidata (Achilles, Hector, Odysseus), Olympian deities with Roman equivalents (Zeus/Jupiter, Athena/Minerva, etc.), patronymics (Pelides, Atrides), and key literary places (Troy, Carthage, Olympus)
+
+All Greek forms are normalized: polytonic diacritics stripped, lowercased, matching the lemmatization output used in searches.
+
+Two files serve complementary purposes:
+
+| File | Purpose |
+|------|---------|
+| `cross_lingual_pairs.json` | Greek→Latin name mappings for cross-lingual dictionary matching (1,532 Greek entries → 1,937 Latin forms) |
+| `proper_names.json` | Flat lookup lists of all Greek (1,532) and Latin (1,643) name forms for proper name identification and filtering |
 
 ---
 

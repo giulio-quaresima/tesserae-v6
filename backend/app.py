@@ -26,7 +26,7 @@ See docs/DEVELOPER.md for setup and architecture details.
 # IMPORTS
 # =============================================================================
 # Flask and web framework dependencies
-from flask import Flask, send_from_directory, jsonify, request, session
+from flask import Flask, send_from_directory, jsonify, request, session, make_response
 from flask_cors import CORS
 from flask_login import current_user
 from werkzeug.middleware.proxy_fix import ProxyFix
@@ -60,7 +60,7 @@ def natural_sort_key(s):
 from backend.text_processor import TextProcessor
 from backend.matcher import Matcher
 from backend.scorer import Scorer
-from backend.utils import get_text_metadata, build_text_hierarchy, clean_cts_reference
+from backend.utils import get_text_metadata, build_text_hierarchy, clean_cts_reference, safe_listdir
 from backend.cache import (
     get_cached_results, save_cached_results, 
     get_cache_stats, clear_cache
@@ -77,6 +77,22 @@ from backend.lemma_cache import (
     clear_lemma_cache
 )
 from backend.feature_extractor import feature_extractor
+
+
+def _normalize_sqlalchemy_uri(uri):
+    """Ensure SQLAlchemy uses psycopg driver for Postgres URLs."""
+    if not uri:
+        return uri
+    if uri.startswith("postgres://"):
+        uri = "postgresql://" + uri[len("postgres://"):]
+    if "://" not in uri:
+        return uri
+    scheme, rest = uri.split("://", 1)
+    if scheme == "postgresql":
+        return f"postgresql+psycopg://{rest}"
+    if scheme == "postgresql+psycopg2":
+        return f"postgresql+psycopg://{rest}"
+    return uri
 
 
 def _normalize_sqlalchemy_uri(uri):
@@ -112,12 +128,20 @@ DEPLOYMENT_ENV = os.environ.get("DEPLOYMENT_ENV", "dev")
 DIRECT_SERVER = os.environ.get("TESSERAE_DIRECT_SERVER", "") == "1"
 API_PREFIX = "/api" if DIRECT_SERVER else ""
 if DEPLOYMENT_ENV == 'marvin' and not DIRECT_SERVER:
-    print("WARNING: DEPLOYMENT_ENV=marvin but TESSERAE_DIRECT_SERVER not set.")
-    print("  If running Flask directly (not behind Apache), set TESSERAE_DIRECT_SERVER=1")
+    app_logger.warning("DEPLOYMENT_ENV=marvin but TESSERAE_DIRECT_SERVER not set.")
+    app_logger.warning("  If running Flask directly (not behind Apache), set TESSERAE_DIRECT_SERVER=1")
 
 # Create Flask app with static file serving
 app = Flask(__name__, static_folder=STATIC_FOLDER, static_url_path='')
 CORS(app, supports_credentials=True)  # Enable cross-origin requests
+
+
+def api_route(path, **kwargs):
+    """Decorator for API routes that auto-prepends API_PREFIX.
+    On Marvin (behind Apache), prefix is empty. On dev, prefix is /api."""
+    full_path = f"{API_PREFIX}{path}" if path != "/" else API_PREFIX or "/"
+    return app.route(full_path, **kwargs)
+
 
 
 def api_route(path, **kwargs):
@@ -158,8 +182,41 @@ if not SQLALCHEMY_DATABASE_URI:
 SQLALCHEMY_DATABASE_URI = _ensure_sqlite_path(SQLALCHEMY_DATABASE_URI)
 
 app.config["SQLALCHEMY_DATABASE_URI"] = SQLALCHEMY_DATABASE_URI
+app.json.ensure_ascii = False
+# Prefer explicit SQLALCHEMY_DATABASE_URI, then DATABASE_URL, then fall back to local sqlite
+PROJECT_ROOT = os.path.dirname(os.path.dirname(__file__))
+DEFAULT_SQLITE_PATH = os.path.join(PROJECT_ROOT, 'data', 'app.db')
+explicit_uri = os.environ.get("SQLALCHEMY_DATABASE_URI")
+raw_database_url = os.environ.get("DATABASE_URL")
+SQLALCHEMY_DATABASE_URI = explicit_uri or raw_database_url
+SQLALCHEMY_DATABASE_URI = _normalize_sqlalchemy_uri(SQLALCHEMY_DATABASE_URI)
+
+if not SQLALCHEMY_DATABASE_URI:
+    os.makedirs(os.path.dirname(DEFAULT_SQLITE_PATH), exist_ok=True)
+    SQLALCHEMY_DATABASE_URI = f"sqlite:///{DEFAULT_SQLITE_PATH}"
+    print(f"Warning: DATABASE_URL not set. Using local sqlite database at {DEFAULT_SQLITE_PATH}")
+
+app.config["SQLALCHEMY_DATABASE_URI"] = SQLALCHEMY_DATABASE_URI
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {'pool_pre_ping': True, "pool_recycle": 300}
+
+# =============================================================================
+# ENVIRONMENT-BASED ROUTE PREFIX
+# =============================================================================
+# On Marvin (Apache+WSGI), the /api prefix is handled by Apache's WSGIScriptAlias,
+# so Flask routes should NOT include /api. On Replit, Flask handles everything
+# directly, so routes need the /api prefix.
+# Set DEPLOYMENT_ENV=marvin in .env on Marvin server to use empty prefix.
+DEPLOYMENT_ENV = os.environ.get("DEPLOYMENT_ENV", "replit")
+API_PREFIX = "" if DEPLOYMENT_ENV == "marvin" else "/api"
+
+def api_route(path, **kwargs):
+    """Decorator factory for API routes that handles environment-based prefixes.
+    
+    Usage: @api_route('/health') instead of @api_route('/health')
+    """
+    full_path = f"{API_PREFIX}{path}" if path != "/" else API_PREFIX or "/"
+    return app.route(full_path, **kwargs)
 
 # =============================================================================
 # DATABASE INITIALIZATION
@@ -172,10 +229,10 @@ db.init_app(app)
 try:
     with app.app_context():
         db.create_all()
-    print("Database tables initialized successfully")
+    app_logger.info("Database tables initialized successfully")
 except Exception as e:
-    print(f"Warning: Could not initialize database tables: {e}")
-    print("Database will be initialized on first request")
+    app_logger.warning(f"Could not initialize database tables: {e}")
+    app_logger.warning("Database will be initialized on first request")
 
 # =============================================================================
 # AUTHENTICATION SETUP
@@ -304,39 +361,6 @@ def init_db():
                 )
             ''')
             cur.execute('''
-                ALTER TABLE text_requests ADD COLUMN IF NOT EXISTS text_date TEXT
-            ''')
-            cur.execute('''
-                ALTER TABLE text_requests ADD COLUMN IF NOT EXISTS approved_filename VARCHAR(255)
-            ''')
-            cur.execute('''
-                ALTER TABLE text_requests ADD COLUMN IF NOT EXISTS official_author VARCHAR(255)
-            ''')
-            cur.execute('''
-                ALTER TABLE text_requests ADD COLUMN IF NOT EXISTS official_work VARCHAR(255)
-            ''')
-            cur.execute('''
-                ALTER TABLE text_requests ADD COLUMN IF NOT EXISTS admin_updated_at TIMESTAMP
-            ''')
-            cur.execute('''
-                ALTER TABLE text_requests ADD COLUMN IF NOT EXISTS author_era VARCHAR(100)
-            ''')
-            cur.execute('''
-                ALTER TABLE text_requests ADD COLUMN IF NOT EXISTS author_year INTEGER
-            ''')
-            cur.execute('''
-                ALTER TABLE text_requests ADD COLUMN IF NOT EXISTS e_source VARCHAR(255)
-            ''')
-            cur.execute('''
-                ALTER TABLE text_requests ADD COLUMN IF NOT EXISTS e_source_url TEXT
-            ''')
-            cur.execute('''
-                ALTER TABLE text_requests ADD COLUMN IF NOT EXISTS print_source TEXT
-            ''')
-            cur.execute('''
-                ALTER TABLE text_requests ADD COLUMN IF NOT EXISTS added_by VARCHAR(255)
-            ''')
-            cur.execute('''
                 CREATE TABLE IF NOT EXISTS feedback (
                     id SERIAL PRIMARY KEY,
                     name VARCHAR(255),
@@ -352,17 +376,6 @@ def init_db():
                 CREATE TABLE IF NOT EXISTS settings (
                     key VARCHAR(255) PRIMARY KEY,
                     value TEXT
-                )
-            ''')
-            cur.execute('''
-                CREATE TABLE IF NOT EXISTS admin_audit_log (
-                    id SERIAL PRIMARY KEY,
-                    admin_username VARCHAR(255) NOT NULL,
-                    action VARCHAR(255) NOT NULL,
-                    target_type VARCHAR(255),
-                    target_id VARCHAR(255),
-                    details JSONB,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             ''')
             cur.execute('''
@@ -393,9 +406,6 @@ def init_db():
             ''')
             cur.execute('''
                 CREATE INDEX IF NOT EXISTS idx_search_logs_language ON search_logs(language)
-            ''')
-            cur.execute('''
-                ALTER TABLE users ADD COLUMN IF NOT EXISTS must_reset_password BOOLEAN DEFAULT FALSE
             ''')
         app_logger.info("Database initialized successfully")
     except Exception as e:
@@ -540,6 +550,19 @@ app.register_blueprint(hapax_bp, url_prefix=API_PREFIX or None)
 app.register_blueprint(batch_bp, url_prefix=batch_prefix)
 app.register_blueprint(api_docs_bp, url_prefix=API_PREFIX or None)
 app.register_blueprint(fusion_bp, url_prefix=API_PREFIX or None)
+# Register blueprints with environment-based URL prefix
+# On Marvin: no prefix (Apache handles /api)
+# On Replit: /api prefix added here
+# Note: admin_bp has its own /admin prefix, so we combine them
+admin_prefix = f"{API_PREFIX}/admin" if API_PREFIX else "/admin"
+app.register_blueprint(admin_bp, url_prefix=admin_prefix)
+app.register_blueprint(search_bp, url_prefix=API_PREFIX or None)
+app.register_blueprint(corpus_bp, url_prefix=API_PREFIX or None)
+app.register_blueprint(intertext_bp, url_prefix=API_PREFIX or None)
+app.register_blueprint(downloads_bp, url_prefix=API_PREFIX or None)
+app.register_blueprint(hapax_bp, url_prefix=API_PREFIX or None)
+app.register_blueprint(batch_bp, url_prefix=API_PREFIX or None)
+app.register_blueprint(api_docs_bp, url_prefix=API_PREFIX or None)
 
 app_logger.info(f"Blueprints registered (API_PREFIX='{API_PREFIX}', env={DEPLOYMENT_ENV})")
 
@@ -571,7 +594,11 @@ def add_header(response):
 @app.route('/')
 def index():
     static_folder = app.static_folder or '../frontend'
-    return send_from_directory(static_folder, 'index.html')
+    response = make_response(send_from_directory(static_folder, 'index.html'))
+    response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+    return response
 
 @app.route('/static/downloads/<path:filepath>')
 def serve_static_downloads(filepath):
@@ -585,6 +612,12 @@ def legacy_frontend():
     legacy_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'frontend')
     return send_from_directory(legacy_path, 'index.html')
 
+@app.route('/static/downloads/<path:filename>')
+def serve_downloads(filename):
+    """Serve downloadable files from static/downloads/"""
+    downloads_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'static', 'downloads')
+    return send_from_directory(downloads_path, filename)
+
 @app.errorhandler(404)
 def page_not_found(e):
     """Handle 404 errors by serving the SPA for client-side routing"""
@@ -592,7 +625,11 @@ def page_not_found(e):
     if request.path.startswith(api_path):
         return jsonify({'error': 'Not found'}), 404
     static_folder = app.static_folder or '../frontend'
-    return send_from_directory(static_folder, 'index.html')
+    response = make_response(send_from_directory(static_folder, 'index.html'))
+    response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+    return response
 
 
 # =============================================================================
@@ -600,18 +637,20 @@ def page_not_found(e):
 # =============================================================================
 
 @api_route('/auth/user')
+@api_route('/auth/user')
 def get_auth_user():
     """Get current logged-in user info"""
     user_info = get_current_user_info()
-    deployment_env = os.environ.get('DEPLOYMENT_ENV', 'local')
-    if deployment_env == 'replit' and os.environ.get('REPL_ID'):
-        auth_enabled = True
+    deployment_env = os.environ.get('DEPLOYMENT_ENV', 'replit')
+    if deployment_env == 'replit':
+        auth_enabled = bool(os.environ.get('REPL_ID'))
         auth_type = 'replit'
     else:
         auth_enabled = True
         auth_type = 'password'
     return jsonify({'user': user_info, 'auth_enabled': auth_enabled, 'auth_type': auth_type})
 
+@api_route('/auth/saved-searches')
 @api_route('/auth/saved-searches')
 def get_saved_searches():
     """Get saved searches for current user"""
@@ -638,6 +677,7 @@ def get_saved_searches():
         'target_unit_type': s.target_unit_type,
     } for s in searches])
 
+@api_route('/auth/saved-searches', methods=['POST'])
 @api_route('/auth/saved-searches', methods=['POST'])
 def save_search():
     """Save a search configuration for current user"""
@@ -668,6 +708,7 @@ def save_search():
     return jsonify({'success': True, 'id': search.id})
 
 @api_route('/auth/saved-searches/<int:search_id>', methods=['DELETE'])
+@api_route('/auth/saved-searches/<int:search_id>', methods=['DELETE'])
 def delete_saved_search(search_id):
     """Delete a saved search"""
     if not current_user.is_authenticated:
@@ -681,6 +722,7 @@ def delete_saved_search(search_id):
     return jsonify({'success': True})
 
 @api_route('/auth/profile', methods=['PUT'])
+@api_route('/auth/profile', methods=['PUT'])
 def update_profile():
     """Update user profile (institution)"""
     if not current_user.is_authenticated:
@@ -690,6 +732,7 @@ def update_profile():
     db.session.commit()
     return jsonify({'success': True, 'user': get_current_user_info()})
 
+@api_route('/auth/orcid/link', methods=['POST'])
 @api_route('/auth/orcid/link', methods=['POST'])
 def link_orcid():
     """Link an ORCID to user account (manual entry for now)"""
@@ -708,6 +751,7 @@ def link_orcid():
         return jsonify({'success': True, 'user': get_current_user_info()})
     return jsonify({'error': 'Failed to update ORCID'}), 500
 
+@api_route('/auth/orcid/unlink', methods=['POST'])
 @api_route('/auth/orcid/unlink', methods=['POST'])
 def unlink_orcid():
     """Remove ORCID from user account"""
@@ -729,11 +773,13 @@ def health():
 
 
 @api_route('/health')
+@api_route('/health')
 def api_health():
     """API health check endpoint"""
     return jsonify({"status": "ok", "message": "Tesserae V6 is running"})
 
 
+@api_route('/version')
 @api_route('/version')
 def api_version():
     """Get version and last updated info from git"""
@@ -769,6 +815,7 @@ def api_version():
 # =============================================================================
 
 @api_route('/check-meter')
+@api_route('/check-meter')
 def check_meter():
     """Check if source and target texts are suitable for metrical analysis (both poetry)"""
     source = request.args.get('source', '')
@@ -791,6 +838,7 @@ def check_meter():
     return jsonify({'available': True})
 
 @api_route('/texts')
+@api_route('/texts')
 def get_texts():
     language = request.args.get('language', 'la')
     lang_dir = os.path.join(TEXTS_DIR, language)
@@ -799,7 +847,7 @@ def get_texts():
         return jsonify([])
     
     texts = []
-    for filename in sorted(os.listdir(lang_dir)):
+    for filename in sorted(safe_listdir(lang_dir)):
         if filename.endswith('.tess'):
             metadata = get_text_metadata(os.path.join(lang_dir, filename))
             texts.append(metadata)
@@ -809,6 +857,7 @@ def get_texts():
     return jsonify(texts)
 
 @api_route('/authors')
+@api_route('/authors')
 def get_authors():
     language = request.args.get('language', 'la')
     lang_dir = os.path.join(TEXTS_DIR, language)
@@ -817,7 +866,7 @@ def get_authors():
         return jsonify([])
     
     authors = {}
-    for filename in os.listdir(lang_dir):
+    for filename in safe_listdir(lang_dir):
         if filename.endswith('.tess'):
             metadata = get_text_metadata(os.path.join(lang_dir, filename))
             author = metadata['author']
@@ -835,10 +884,12 @@ def get_authors():
     return jsonify(result)
 
 @api_route('/author-dates')
+@api_route('/author-dates')
 def get_public_author_dates():
     """Get author dates for timeline visualization (public endpoint)"""
     return jsonify(AUTHOR_DATES)
 
+@api_route('/texts/hierarchy')
 @api_route('/texts/hierarchy')
 def get_texts_hierarchy():
     """Get hierarchical text structure: Author -> Work -> Parts"""
@@ -849,7 +900,7 @@ def get_texts_hierarchy():
         return jsonify({'authors': []})
     
     texts = []
-    for filename in os.listdir(lang_dir):
+    for filename in safe_listdir(lang_dir):
         if filename.endswith('.tess'):
             metadata = get_text_metadata(os.path.join(lang_dir, filename))
             texts.append(metadata)
@@ -1084,6 +1135,7 @@ def _evaluate_line_candidate(unit, ref, filename, filtered_source_lemmas, query_
 # passages between source and target texts using various matching algorithms.
 
 @api_route('/search', methods=['POST'])
+@api_route('/search', methods=['POST'])
 def search():
     try:
         data = request.get_json()
@@ -1171,7 +1223,7 @@ def search():
         
         scored_results = scorer.score_matches(matches, source_units, target_units, settings, source_id, target_id)
         
-        scored_results.sort(key=lambda x: x['overall_score'], reverse=True)
+        scored_results.sort(key=lambda x: x.get('overall_score') or 0, reverse=True)
         
         metadata = {
             'source_lines': len(source_units),
@@ -1259,7 +1311,7 @@ def get_stats():
     for lang in ['la', 'grc', 'en']:
         lang_dir = os.path.join(TEXTS_DIR, lang)
         if os.path.exists(lang_dir):
-            count = len([f for f in os.listdir(lang_dir) if f.endswith('.tess')])
+            count = len([f for f in safe_listdir(lang_dir) if f.endswith('.tess')])
             stats['languages'][lang] = count
             stats['total_texts'] += count
     
@@ -1550,7 +1602,10 @@ def line_search():
                 stopwords.update(lemma for lemma, _ in sorted_lemmas[:stoplist_size])
             
             query_lemmas = set()
+            token_to_lemma_fallbacks = {}
             if search_type == 'lemma':
+                from backend.text_processor import get_reverse_lemma_table
+                reverse_table = get_reverse_lemma_table(language)
                 query_tokens = query.lower().split()
                 for token in query_tokens:
                     lemmas = text_processor.lemmatize_word(token, language)
@@ -1570,7 +1625,7 @@ def line_search():
             
             # FAST PATH: Use inverted index if available (O(1) lookup vs O(n) scan)
             if search_type == 'lemma' and is_index_available(language) and len(filtered_query_lemmas) >= 2:
-                candidates = find_co_occurring_lemmas(list(filtered_query_lemmas), language, min_matches=2)
+                candidates = find_co_occurring_lemmas(list(filtered_query_lemmas), language, min_matches=2, fallback_forms=token_to_lemma_fallbacks if token_to_lemma_fallbacks else None)
                 use_indexed_lines = has_lines_data(language)
                 
                 # Group candidates by text
@@ -1594,7 +1649,7 @@ def line_search():
                     author_key = filename.split('.')[0].lower()
                     author_info = lang_dates.get(author_key, {})
                     era = author_info.get('era', 'Unknown')
-                    year = author_info.get('year', 9999)
+                    year = author_info.get('year') or 9999
                     
                     # Get line data from index
                     refs_needed = [ref for ref, _, _ in matches]
@@ -1639,26 +1694,36 @@ def line_search():
                         
                         # Find matched words in text using pre-indexed lemmas
                         matched_words = []
-                        indexed_lemmas = set(line_info.get('lemmas', [])) if line_info else set()
+                        matched_indexed_lemmas = []
+                        indexed_lemmas_list = line_info.get('lemmas', []) if line_info else []
                         indexed_tokens = line_info.get('tokens', []) if line_info else []
                         
-                        # Use indexed data if available, otherwise fallback to quick token matching
-                        if indexed_lemmas:
-                            # Match query lemmas against indexed lemmas
-                            matching_query_lemmas = indexed_lemmas & filtered_query_lemmas
-                            if matching_query_lemmas:
-                                # Find the actual words that correspond to matching lemmas
-                                for i, lemma in enumerate(line_info.get('lemmas', [])):
-                                    if lemma in matching_query_lemmas and i < len(indexed_tokens):
-                                        matched_words.append(indexed_tokens[i])
-                        else:
-                            # Quick fallback: just check token overlap without full lemmatization
-                            text_tokens = set(re.sub(r'[^\w\s]', '', text.lower()).split())
-                            for token in text_tokens:
-                                if token in filtered_query_lemmas:
-                                    matched_words.append(token)
+                        all_fallback_forms = set()
+                        for ql in filtered_query_lemmas:
+                            all_fallback_forms.add(ql)
+                            if token_to_lemma_fallbacks and ql in token_to_lemma_fallbacks:
+                                all_fallback_forms.update(token_to_lemma_fallbacks[ql])
                         
-                        if len(set(matched_words)) < 2:
+                        if indexed_lemmas_list and indexed_tokens:
+                            for i, lemma in enumerate(indexed_lemmas_list):
+                                if lemma in all_fallback_forms and i < len(indexed_tokens):
+                                    matched_words.append(indexed_tokens[i])
+                                    matched_indexed_lemmas.append(lemma)
+                        else:
+                            text_tokens = re.sub(r'[^\w\s]', '', text.lower()).split()
+                            for token in text_tokens:
+                                norm_token = normalize_latin_lemma(token)
+                                if norm_token in all_fallback_forms:
+                                    matched_words.append(token)
+                                    matched_indexed_lemmas.append(norm_token)
+                        
+                        unique_matched_lemmas = set()
+                        for idx_lemma in matched_indexed_lemmas:
+                            for ql in filtered_query_lemmas:
+                                if idx_lemma == ql or (token_to_lemma_fallbacks and ql in token_to_lemma_fallbacks and idx_lemma in token_to_lemma_fallbacks[ql]):
+                                    unique_matched_lemmas.add(ql)
+                        
+                        if len(unique_matched_lemmas) < 2:
                             continue
                         
                         # Exclude source line if specified (normalize both sides for robust matching)
@@ -1697,7 +1762,7 @@ def line_search():
             
             else:
                 # SLOW PATH: Fallback to file scanning (for exact/regex search)
-                text_files = [f for f in os.listdir(lang_dir) if f.endswith('.tess')]
+                text_files = [f for f in safe_listdir(lang_dir) if f.endswith('.tess')]
                 
                 for filename in text_files:
                     filepath = os.path.join(lang_dir, filename)
@@ -1711,7 +1776,7 @@ def line_search():
                     author_key = filename.split('.')[0].lower()
                     author_info = lang_dates.get(author_key, {})
                     era = author_info.get('era', 'Unknown')
-                    year = author_info.get('year', 9999)
+                    year = author_info.get('year') or 9999
                     
                     with open(filepath, 'r', encoding='utf-8') as f:
                         for line in f:
@@ -1990,7 +2055,7 @@ def line_search_parallel():
                 all_results.extend(text_matches[:max_per_text])
         else:
             # FALLBACK: Scan all texts (original behavior)
-            text_files = [f for f in os.listdir(lang_dir) if f.endswith('.tess')]
+            text_files = [f for f in safe_listdir(lang_dir) if f.endswith('.tess')]
             if exclude_source and source_text_id:
                 text_files = [f for f in text_files if f != source_text_id]
             
@@ -2098,7 +2163,7 @@ def corpus_search():
             metadata = get_text_metadata(filepath)
             author_key = filename.split('.')[0].lower()
             author_info = lang_dates.get(author_key, {})
-            author_year = author_info.get('year')
+            author_year = author_info.get('year') or 9999
             author_era = author_info.get('era', 'Unknown')
             author_note = author_info.get('note', '')
             is_poetry = text_genre_cache.get(filename, False)

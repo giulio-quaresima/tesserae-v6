@@ -4,6 +4,7 @@ ROADMAP.md
 docs/WORK_SESSION_*.md
 docs/ARTICLE_METHODS_DRAFT.md
 docs/Tesserae_V6_Development_Workflow_Model.md
+research/writing/
 deployment/tesserae.service
 scripts/marvin_latinpipe/MARVIN_SETUP_GUIDE.md
 
@@ -66,24 +67,3 @@ research/references/
 
 # Private drafts and manuals (stay on Replit only)
 docs/ARTICLE_METHODS_DRAFT.md
-docs/PRIVATE_DEPLOYMENT_MANUAL.md
-
-# Search cache (regenerated at runtime)
-cache/
-
-# UD treebank source data (large, download separately)
-data/treebanks/
-
-# Evaluation benchmark data (large analysis/benchmark JSON files)
-evaluation/
-
-# Pre-computed embeddings (too large for Git)
-backend/embeddings/
-
-# Research directory (private plans, writing, evaluation output)
-research/
-docs/FUSION_ARCHITECTURE.md
-docs/HOW_TESSERAE_SEARCHES.md
-
-# Claude Code project instructions (private)
-CLAUDE.md

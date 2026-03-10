@@ -12,6 +12,10 @@ from collections import defaultdict, Counter
 import json
 import os
 
+from backend.logging_config import get_logger
+
+logger = get_logger('feature_extractor')
+
 DEFAULT_FEATURE_WEIGHTS = {
     'lemma': 1.0,
     'pos': 0.05,
@@ -38,7 +42,7 @@ def load_feature_weights():
                         weights[key] = DEFAULT_FEATURE_WEIGHTS[key]
                 return weights
     except Exception as e:
-        print(f"Error loading feature weights: {e}")
+        logger.error(f"Error loading feature weights: {e}")
     return DEFAULT_FEATURE_WEIGHTS.copy()
 
 def save_feature_weights(weights):
@@ -48,7 +52,7 @@ def save_feature_weights(weights):
             json.dump(weights, f, indent=2)
         return True
     except Exception as e:
-        print(f"Error saving feature weights: {e}")
+        logger.error(f"Error saving feature weights: {e}")
         return False
 
 class FeatureExtractor:

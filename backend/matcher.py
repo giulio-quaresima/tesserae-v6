@@ -32,10 +32,171 @@ def normalize_latin(text):
     # Classical Latin texts often use 'u' where modern editions use 'v'
     return text.lower().replace('v', 'u')
 
+
+# ── Greek-to-Latin transliteration ───────────────────────────────────────
+# Maps Greek characters to their Latin-alphabet equivalents for cross-lingual
+# phonetic comparison.  Accent-stripped (NFD + remove combining marks) before
+# mapping, so only base characters appear here.
+
+_GREEK_TO_LATIN = {
+    'α': 'a', 'β': 'b', 'γ': 'g', 'δ': 'd', 'ε': 'e',
+    'ζ': 'z', 'η': 'e', 'θ': 'th', 'ι': 'i', 'κ': 'c',
+    'λ': 'l', 'μ': 'm', 'ν': 'n', 'ξ': 'x', 'ο': 'o',
+    'π': 'p', 'ρ': 'r', 'σ': 's', 'ς': 's', 'τ': 't',
+    'υ': 'u', 'φ': 'ph', 'χ': 'ch', 'ψ': 'ps', 'ω': 'o',
+    # rough breathing mark (if surviving NFD) and digamma
+    'ϝ': 'v', 'ϛ': 'st',
+}
+
+
+def transliterate_greek_to_latin(token):
+    """Transliterate a Greek token to Latin characters for phonetic comparison.
+
+    Strips accents first, then maps each Greek character.  Non-Greek characters
+    (punctuation, already-Latin) pass through unchanged.
+    """
+    # Strip accents/diacritics
+    nfd = unicodedata.normalize('NFD', token.lower())
+    stripped = ''.join(c for c in nfd if unicodedata.category(c) != 'Mn')
+    # Replace final sigma
+    stripped = stripped.replace('ς', 'σ')
+    result = []
+    for ch in stripped:
+        result.append(_GREEK_TO_LATIN.get(ch, ch))
+    return ''.join(result)
+
+
+def find_crosslingual_phonetic_matches(source_units, target_units,
+                                        source_language, target_language,
+                                        min_similarity=0.70, min_token_len=3):
+    """Find cross-lingual token-level edit-distance matches via transliteration.
+
+    Transliterates Greek tokens to Latin characters, then compares each
+    transliterated token against target tokens using RapidFuzz.
+
+    Returns dict: {(src_idx, tgt_idx): [{'source_token', 'target_token',
+                    'source_original', 'target_original', 'similarity'}, ...]}
+    """
+    from rapidfuzz import fuzz
+
+    # Determine which side is Greek
+    if source_language == 'grc':
+        grc_units, lat_units = source_units, target_units
+        grc_is_source = True
+    elif target_language == 'grc':
+        grc_units, lat_units = target_units, source_units
+        grc_is_source = False
+    else:
+        return {}  # No Greek side — nothing to do
+
+    threshold = int(min_similarity * 100)
+
+    # Pre-transliterate Greek tokens and normalize Latin tokens
+    grc_translit = []  # [(unit_idx, [(original, transliterated), ...])]
+    for i, unit in enumerate(grc_units):
+        tokens = unit.get('tokens', [])
+        pairs = []
+        for tok in tokens:
+            if len(tok) < min_token_len:
+                continue
+            tr = transliterate_greek_to_latin(tok)
+            if len(tr) >= min_token_len:
+                pairs.append((tok, tr))
+        grc_translit.append((i, pairs))
+
+    lat_normalized = []  # [(unit_idx, [(original, normalized), ...])]
+    for i, unit in enumerate(lat_units):
+        tokens = unit.get('tokens', [])
+        pairs = []
+        for tok in tokens:
+            if len(tok) < min_token_len:
+                continue
+            # Normalize: lowercase, v→u for classical Latin
+            norm = tok.lower().replace('v', 'u')
+            pairs.append((tok, norm))
+        lat_normalized.append((i, pairs))
+
+    # Build trigram index on Latin tokens for pre-filtering
+    lat_trigram_index = {}  # trigram -> set of lat_unit indices
+    for lat_idx, lat_pairs in lat_normalized:
+        trigrams_seen = set()
+        for _, norm in lat_pairs:
+            for tri in _get_trigrams(norm):
+                trigrams_seen.add(tri)
+        for tri in trigrams_seen:
+            if tri not in lat_trigram_index:
+                lat_trigram_index[tri] = []
+            lat_trigram_index[tri].append(lat_idx)
+
+    # For each Greek line, find Latin candidates via shared trigrams, then
+    # run pairwise token edit-distance
+    results = {}  # (src_idx, tgt_idx) -> list of match dicts
+
+    for grc_idx, grc_pairs in grc_translit:
+        if not grc_pairs:
+            continue
+
+        # Candidate Latin lines sharing trigrams with this Greek line
+        candidate_counts = {}
+        for _, tr in grc_pairs:
+            for tri in _get_trigrams(tr):
+                for lat_idx in lat_trigram_index.get(tri, []):
+                    candidate_counts[lat_idx] = candidate_counts.get(lat_idx, 0) + 1
+
+        # Require at least 1 shared trigram (cross-lingual echoes can be a
+        # single token pair, e.g. μῆνιν/mene sharing only trigram "men")
+        candidates = [idx for idx, cnt in candidate_counts.items() if cnt >= 1]
+
+        for lat_idx in candidates:
+            _, lat_pairs = lat_normalized[lat_idx]
+            if not lat_pairs:
+                continue
+
+            token_matches = []
+            used_grc = set()
+            used_lat = set()
+
+            # Find best-matching token pairs
+            all_sims = []
+            for gi, (grc_orig, grc_tr) in enumerate(grc_pairs):
+                for li, (lat_orig, lat_norm) in enumerate(lat_pairs):
+                    sim = fuzz.ratio(grc_tr, lat_norm)
+                    if sim >= threshold:
+                        all_sims.append((sim, gi, li, grc_orig, grc_tr, lat_orig, lat_norm))
+
+            # Greedy best-first assignment (each token used once)
+            all_sims.sort(key=lambda x: x[0], reverse=True)
+            for sim, gi, li, grc_orig, grc_tr, lat_orig, lat_norm in all_sims:
+                if gi in used_grc or li in used_lat:
+                    continue
+                used_grc.add(gi)
+                used_lat.add(li)
+                token_matches.append({
+                    'source_original': grc_orig,
+                    'target_original': lat_orig,
+                    'source_token': grc_tr,
+                    'target_token': lat_norm,
+                    'similarity': sim / 100.0,
+                })
+
+            if token_matches:
+                # Map back to (src_idx, tgt_idx) in original orientation
+                if grc_is_source:
+                    pair_key = (grc_idx, lat_idx)
+                else:
+                    pair_key = (lat_idx, grc_idx)
+                results[pair_key] = token_matches
+
+    return results
+
 from collections import defaultdict, Counter
 import os
 from concurrent.futures import ProcessPoolExecutor
+from backend.logging_config import get_logger
 from backend.zipf import find_zipf_elbow
+from backend.worker_util import safe_worker_count
+
+logger = get_logger('matcher')
 
 
 def _get_trigrams(token):
@@ -501,7 +662,7 @@ class Matcher:
             tgt_trigram_cache.append((tgt_tokens, tgt_trigrams))
 
         num_source = len(source_units)
-        num_workers = min(8, os.cpu_count() or 1)
+        num_workers = safe_worker_count()
         use_parallel = num_source >= 200 and num_workers > 1
 
         if use_parallel:
@@ -555,8 +716,8 @@ class Matcher:
         num_source = len(source_units)
         num_target = len(target_units)
         
-        print(f"[EDIT_DISTANCE] source_units={num_source}, target_units={num_target}")
-        print(f"[EDIT_DISTANCE] stoplist_size={stoplist_size}")
+        logger.info(f"[EDIT_DISTANCE] source_units={num_source}, target_units={num_target}")
+        logger.info(f"[EDIT_DISTANCE] stoplist_size={stoplist_size}")
         
         # Build stoplist from token frequencies if stoplist_size > 0
         stop_words = set()
@@ -573,7 +734,7 @@ class Matcher:
             
             most_common = token_freq.most_common(stoplist_size)
             stop_words = set(word for word, count in most_common)
-            print(f"[EDIT_DISTANCE] Built stoplist with {len(stop_words)} words")
+            logger.info(f"[EDIT_DISTANCE] Built stoplist with {len(stop_words)} words")
         
         # Pre-process: extract tokens for each unit
         src_token_lists = []
@@ -597,12 +758,12 @@ class Matcher:
         # Convert to tuples for faster pickling
         trigram_to_targets = {k: tuple(v) for k, v in trigram_to_targets.items()}
 
-        print(f"[EDIT_DISTANCE] Built trigram index with {len(trigram_to_targets)} unique trigrams")
+        logger.info(f"[EDIT_DISTANCE] Built trigram index with {len(trigram_to_targets)} unique trigrams")
 
         start_time = time.time()
 
         # Decide whether to parallelize based on problem size
-        num_workers = min(8, os.cpu_count() or 1)
+        num_workers = safe_worker_count()
         use_parallel = num_source >= 200 and num_workers > 1
 
         if use_parallel:
@@ -612,7 +773,7 @@ class Matcher:
             chunks = [indexed_src[i:i + chunk_size]
                       for i in range(0, len(indexed_src), chunk_size)]
 
-            print(f"[EDIT_DISTANCE] Parallel: {len(chunks)} chunks across {num_workers} workers")
+            logger.info(f"[EDIT_DISTANCE] Parallel: {len(chunks)} chunks across {num_workers} workers")
 
             worker_args = [
                 (chunk, tgt_token_lists, trigram_to_targets,
@@ -638,7 +799,7 @@ class Matcher:
 
         elapsed = time.time() - start_time
         mode = "parallel" if use_parallel else "sequential"
-        print(f"[EDIT_DISTANCE] Complete ({mode}): {comparisons_made:,} comparisons in {elapsed:.1f}s (vs {num_source * num_target:,} full)")
+        logger.info(f"[EDIT_DISTANCE] Complete ({mode}): {comparisons_made:,} comparisons in {elapsed:.1f}s (vs {num_source * num_target:,} full)")
         
         matches.sort(key=lambda x: (x.get('num_matches', 0), x.get('edit_score', 0)), reverse=True)
         

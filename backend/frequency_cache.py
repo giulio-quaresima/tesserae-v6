@@ -4,6 +4,10 @@ import hashlib
 from collections import Counter
 from datetime import datetime
 
+from backend.logging_config import get_logger
+
+logger = get_logger('frequency_cache')
+
 CACHE_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'cache', 'frequencies')
 TEXTS_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'texts')
 
@@ -95,7 +99,7 @@ def calculate_corpus_frequencies(language, text_processor):
     all_files = [f for f in os.listdir(lang_dir) if f.endswith('.tess')]
     text_files = deduplicate_text_files(all_files)
     
-    print(f"Calculating corpus frequencies for {language}: {len(text_files)} texts (excluded {len(all_files) - len(text_files)} duplicate segments)...")
+    logger.info(f"Calculating corpus frequencies for {language}: {len(text_files)} texts (excluded {len(all_files) - len(text_files)} duplicate segments)...")
     
     for i, text_file in enumerate(text_files):
         text_path = os.path.join(lang_dir, text_file)
@@ -104,10 +108,10 @@ def calculate_corpus_frequencies(language, text_processor):
             for unit in units:
                 all_lemmas.extend(unit['lemmas'])
         except Exception as e:
-            print(f"  Error processing {text_file}: {e}")
+            logger.error(f"  Error processing {text_file}: {e}")
         
         if (i + 1) % 100 == 0:
-            print(f"  Processed {i + 1}/{len(text_files)} texts...")
+            logger.info(f"  Processed {i + 1}/{len(text_files)} texts...")
     
     freq = Counter(all_lemmas)
     frequencies = dict(freq.most_common())
@@ -115,7 +119,7 @@ def calculate_corpus_frequencies(language, text_processor):
     checksum = get_corpus_checksum(language)
     data = save_frequency_cache(language, frequencies, len(all_lemmas), checksum)
     
-    print(f"  Done: {len(frequencies)} unique lemmas, {len(all_lemmas)} total tokens")
+    logger.info(f"  Done: {len(frequencies)} unique lemmas, {len(all_lemmas)} total tokens")
     return data
 
 def get_corpus_frequencies(language, text_processor=None, force_recalculate=False):

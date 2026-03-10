@@ -22,6 +22,7 @@ import time
 from backend.logging_config import get_logger
 from backend.services import get_user_location, log_search
 from backend.cache import get_cached_results, save_cached_results
+from backend.concurrency_gate import SearchSlot
 
 logger = get_logger('fusion')
 
@@ -59,6 +60,7 @@ def search_fusion_stream():
     data = request.get_json()
 
     def generate():
+        slot = None
         try:
             from backend.fusion import iter_fusion_search
 
@@ -96,6 +98,7 @@ def search_fusion_stream():
                 return
 
             # Check cache (keyed on fusion-specific settings)
+            skip_cache = data.get('skip_cache', False)
             cache_settings = {
                 'match_type': 'fusion',
                 'mode': mode,
@@ -105,9 +108,8 @@ def search_fusion_stream():
                 'target_unit_type': target_unit_type,
                 'use_meter': use_meter,
             }
-            cached_results, cached_meta = get_cached_results(
-                source_id, target_id, language, cache_settings
-            )
+            cached_results, cached_meta = (None, None) if skip_cache else \
+                get_cached_results(source_id, target_id, language, cache_settings)
             if cached_results is not None:
                 yield send_event("progress", {
                     "step": "Loading cached fusion results", "detail": ""
@@ -115,6 +117,21 @@ def search_fusion_stream():
                 display = cached_results[:max_results] if max_results > 0 else cached_results
                 meta = cached_meta or {}
                 yield f"data: {json.dumps({'type': 'complete', 'results': display, 'total_matches': len(cached_results), 'source_lines': meta.get('source_lines', 0), 'target_lines': meta.get('target_lines', 0), 'elapsed_time': round(time.time() - start_time, 2), 'cached': True, 'fusion': True})}\n\n"
+                return
+
+            # Concurrency gate: wait for a slot before starting heavy work.
+            # Yields "queued" SSE events while waiting so the frontend can
+            # show the user a message instead of appearing frozen.
+            slot = SearchSlot()
+            try:
+                for queued_event in slot.acquire():
+                    yield send_event("queued", {
+                        "step": "Search queued — server is busy",
+                        "detail": queued_event.get("reason", ""),
+                        "wait_time": queued_event.get("wait_time", 0),
+                    })
+            except TimeoutError as e:
+                yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
                 return
 
             # Load text units
@@ -218,6 +235,9 @@ def search_fusion_stream():
         except Exception as e:
             logger.error(f"Fusion search error: {e}", exc_info=True)
             yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+        finally:
+            if slot is not None:
+                slot.release()
 
     return Response(generate(), mimetype='text/event-stream', headers={
         'Cache-Control': 'no-cache',

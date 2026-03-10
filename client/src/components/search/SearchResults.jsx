@@ -15,6 +15,7 @@ const SearchResults = ({
   setDisplayLimit,
   onRegister,
   onCorpusSearch,
+  onRerunFresh,
   sortBy,
   setSortBy,
   searchStats,
@@ -24,7 +25,9 @@ const SearchResults = ({
   elapsedTime = 0,
   progressText = '',
   matchType = 'lemma',
-  fusionProgress = null
+  fusionProgress = null,
+  isQueued = false,
+  queuedMessage = ''
 }) => {
   const [expandedResults, setExpandedResults] = useState({});
   const [showDistributionChart, setShowDistributionChart] = useState(false);
@@ -63,18 +66,42 @@ const SearchResults = ({
     }));
   };
 
+  const highlightMatchedWords = useCallback((text, matchedWords, side) => {
+    if (!text || !matchedWords || matchedWords.length === 0) return text;
+    const words = new Set();
+    matchedWords.forEach(m => {
+      const w = side === 'source' ? m.source_word : m.target_word;
+      if (w) words.add(w.toLowerCase());
+    });
+    if (words.size === 0) return text;
+    return text.replace(/\S+/g, token => {
+      const stripped = token.toLowerCase().replace(/^[.,;:!?'"()\u2014\u2013-]+/, '').replace(/[.,;:!?'"()\u2014\u2013-]+$/, '');
+      if (stripped && words.has(stripped)) {
+        const start = token.toLowerCase().indexOf(stripped);
+        return token.slice(0, start) + '**' + token.slice(start, start + stripped.length) + '**' + token.slice(start + stripped.length);
+      }
+      return token;
+    });
+  }, []);
+
   const exportCSV = useCallback(() => {
     if (!results || results.length === 0) return;
 
-    const headers = ['Source Locus', 'Source Text', 'Target Locus', 'Target Text', 'Score', 'Matched Words'];
-    const rows = results.map(r => [
-      r.source_locus || r.source?.ref || '',
-      (r.source_text || r.source_snippet || r.source?.text || '').replace(/<[^>]*>/g, '').replace(/"/g, '""'),
-      r.target_locus || r.target?.ref || '',
-      (r.target_text || r.target_snippet || r.target?.text || '').replace(/<[^>]*>/g, '').replace(/"/g, '""'),
-      (r.score ?? r.overall_score)?.toFixed(3) || '',
-      (r.matched_words || []).map(w => typeof w === 'object' ? (w.lemma || w.word || '') : w).join('; ')
-    ]);
+    const headers = ['Source Locus', 'Source Text', 'Target Locus', 'Target Text', 'Score', 'Matched Words', 'Channels'];
+    const rows = results.map(r => {
+      const mw = r.matched_words || [];
+      const sourceText = (r.source_text || r.source_snippet || r.source?.text || '').replace(/<[^>]*>/g, '').replace(/"/g, '""');
+      const targetText = (r.target_text || r.target_snippet || r.target?.text || '').replace(/<[^>]*>/g, '').replace(/"/g, '""');
+      return [
+        r.source_locus || r.source?.ref || '',
+        highlightMatchedWords(sourceText, mw, 'source'),
+        r.target_locus || r.target?.ref || '',
+        highlightMatchedWords(targetText, mw, 'target'),
+        (r.score ?? r.overall_score)?.toFixed(3) || '',
+        mw.map(w => typeof w === 'object' ? (w.lemma || w.word || '') : w).join('; '),
+        (r.channels || []).join('; ')
+      ];
+    });
 
     const csv = [headers.join(','), ...rows.map(r => r.map(c => `"${c}"`).join(','))].join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
@@ -340,7 +367,14 @@ const SearchResults = ({
       const isSlowSearch = matchType === 'sound' || matchType === 'edit_distance' || matchType === 'fusion';
       return (
         <div className="flex flex-col items-center justify-center py-12">
-          {isSlowSearch && (
+          {isQueued && (
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4 text-center max-w-md">
+              <div className="text-amber-800 font-medium mb-1">Search queued</div>
+              <div className="text-amber-600 text-sm">{queuedMessage}</div>
+              <div className="text-amber-500 text-xs mt-2">Your search will start automatically when a slot opens.</div>
+            </div>
+          )}
+          {isSlowSearch && !isQueued && (
             <div className="text-sm text-gray-600 mb-4 text-center">
               {matchType === 'fusion'
                 ? 'Fusion search runs all 9 channels \u2014 results will appear as channels complete.'
@@ -349,7 +383,7 @@ const SearchResults = ({
           )}
           <LoadingSpinner
             size="lg"
-            text={progressText || "Searching for parallels..."}
+            text={isQueued ? 'Waiting for server...' : (progressText || "Searching for parallels...")}
             elapsedTime={elapsedTime}
           />
         </div>
@@ -443,6 +477,15 @@ const SearchResults = ({
             >
               Export CSV
             </button>
+            {onRerunFresh && !loading && (
+              <button
+                onClick={onRerunFresh}
+                className="text-xs bg-gray-100 text-gray-600 px-3 py-1.5 rounded hover:bg-gray-200 whitespace-nowrap"
+                title="Clear cached results and run the search again"
+              >
+                Refresh results
+              </button>
+            )}
           </div>
           <div className="flex items-center gap-2">
             <span className="text-sm text-gray-600">Sort:</span>

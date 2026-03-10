@@ -24,8 +24,11 @@ Reference:
 """
 from collections import Counter
 import math
+from backend.logging_config import get_logger
 from backend.feature_extractor import feature_extractor
 from backend.bigram_frequency import calculate_bigram_boost, is_bigram_cache_available
+
+logger = get_logger('scorer')
 
 class Scorer:
     def __init__(self):
@@ -461,7 +464,7 @@ class Scorer:
                 })
                 content_match_count += 1
         except Exception as e:
-            print(f"Warning: Could not find synonyms: {e}")
+            logger.warning(f"Could not find synonyms: {e}")
         
         min_content_matches = settings.get('min_semantic_matches', 2)
         semantic_only_threshold = settings.get('semantic_only_threshold', 0.92)
@@ -555,7 +558,7 @@ class Scorer:
                     'display': f"{m['greek_lemma']} → {m['latin_lemma']}"
                 })
         except Exception as e:
-            print(f"Warning: Could not find Greek-Latin matches: {e}")
+            logger.warning(f"Could not find Greek-Latin matches: {e}")
         
         if not matched_words:
             matched_words = [{

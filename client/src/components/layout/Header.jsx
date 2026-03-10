@@ -4,8 +4,12 @@ import { fetchAuthStatus } from '../../utils/api';
 const API_BASE = '/api';
 
 const Header = ({ user, setUser, onLogoClick }) => {
+const API_BASE = '/api';
+
+const Header = ({ user, setUser, onLogoClick }) => {
   const [showDropdown, setShowDropdown] = useState(false);
   const [showOrcidModal, setShowOrcidModal] = useState(false);
+  const [showLoginModal, setShowLoginModal] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [orcidInput, setOrcidInput] = useState('');
   const [orcidNameInput, setOrcidNameInput] = useState('');
@@ -37,10 +41,19 @@ const Header = ({ user, setUser, onLogoClick }) => {
         if (data.auth_type) {
           setAuthType(data.auth_type);
         }
+        if (data.auth_enabled !== undefined) {
+          setAuthEnabled(data.auth_enabled);
+        }
+        if (data.auth_type) {
+          setAuthType(data.auth_type);
+        }
         if (data.authenticated) {
           setUser(data.user);
         }
       })
+      .catch(() => {
+        setAuthEnabled(false);
+      });
       .catch(() => {
         setAuthEnabled(false);
       });
@@ -222,7 +235,12 @@ const Header = ({ user, setUser, onLogoClick }) => {
             onClick={onLogoClick}
             className="flex items-center gap-2 sm:gap-4 cursor-pointer hover:opacity-90 transition-opacity"
           >
+          <button 
+            onClick={onLogoClick}
+            className="flex items-center gap-2 sm:gap-4 cursor-pointer hover:opacity-90 transition-opacity"
+          >
             <img src="/tesserae-icon.jpg" alt="Tesserae" className="h-10 w-10 sm:h-14 sm:w-14 rounded-full" />
+            <div className="text-left">
             <div className="text-left">
               <h1 className="tesserae-title text-2xl sm:text-4xl font-semibold text-white tracking-wide">
                 TESSERAE
@@ -231,6 +249,7 @@ const Header = ({ user, setUser, onLogoClick }) => {
                 Intertextual and Literary Discovery
               </p>
             </div>
+          </button>
           </button>
           <div className="flex items-center gap-2">
             {user ? (
@@ -293,6 +312,7 @@ const Header = ({ user, setUser, onLogoClick }) => {
                               href={`https://orcid.org/${user.orcid}`}
                               target="_blank"
                               rel="noopener noreferrer"
+                              className="text-amber-600 hover:underline text-xs"
                               className="text-amber-600 hover:underline text-xs"
                             >
                               {user.orcid}
@@ -385,6 +405,7 @@ const Header = ({ user, setUser, onLogoClick }) => {
                 <button
                   onClick={linkOrcid}
                   disabled={orcidLinking}
+                  className="flex-1 px-4 py-2 bg-amber-600 text-white rounded hover:bg-amber-700 disabled:opacity-50 text-sm"
                   className="flex-1 px-4 py-2 bg-amber-600 text-white rounded hover:bg-amber-700 disabled:opacity-50 text-sm"
                 >
                   {orcidLinking ? 'Linking...' : 'Link ORCID'}

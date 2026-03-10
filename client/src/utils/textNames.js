@@ -35,6 +35,7 @@ const ABBREVIATION_MAP = {
   'aen': { work: 'Aeneid' },
   'ecl': { work: 'Eclogues' },
   'georg': { work: 'Georgics' },
+  'g': { work: 'Georgics' },
   'luc': { author: 'Lucan', work: 'Bellum Civile' },
   'ov': { author: 'Ovid' },
   'ovid': { author: 'Ovid' },

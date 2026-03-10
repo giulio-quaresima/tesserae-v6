@@ -5,6 +5,7 @@ const mainTabs = [
   // DISABLED FOR PRODUCTION - Uncomment to restore Visualizations
   // { code: 'visualizations', label: 'Visualize' },
   { code: 'downloads', label: 'Downloads' },
+  { code: 'research', label: 'Research' },
   { code: 'about', label: 'About' },
   { code: 'help', label: 'Help & Support' },
   { code: 'admin', label: 'Admin' }
@@ -13,8 +14,8 @@ const mainTabs = [
 const languageTabs = [
   { code: 'la', label: 'Latin' },
   { code: 'grc', label: 'Greek' },
-  { code: 'cross', label: 'Greek↔Latin' },
-  { code: 'en', label: 'English' }
+  { code: 'en', label: 'English' },
+  { code: 'cross', label: 'Cross-Language' }
 ];
 
 const Navigation = ({ 

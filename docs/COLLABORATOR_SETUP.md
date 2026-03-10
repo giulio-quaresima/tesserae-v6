@@ -27,18 +27,16 @@ The repository includes text files, embeddings, and lemma tables, but the search
 
 ```bash
 # Required — search indexes
-scp <ubit>@tesserae.caset.buffalo.edu:/var/www/tesseraev6_flask/data/inverted_index/la_index.db data/inverted_index/
-scp <ubit>@tesserae.caset.buffalo.edu:/var/www/tesseraev6_flask/data/inverted_index/grc_index.db data/inverted_index/
-scp <ubit>@tesserae.caset.buffalo.edu:/var/www/tesseraev6_flask/data/inverted_index/en_index.db data/inverted_index/
+scp tesserae.caset.buffalo.edu:/var/www/tesseraev6_flask/data/inverted_index/la_index.db data/inverted_index/
+scp tesserae.caset.buffalo.edu:/var/www/tesseraev6_flask/data/inverted_index/grc_index.db data/inverted_index/
+scp tesserae.caset.buffalo.edu:/var/www/tesseraev6_flask/data/inverted_index/en_index.db data/inverted_index/
 
 # Optional — Latin syntax parses (1.6 GB, needed for syntax-based scoring)
-scp <ubit>@tesserae.caset.buffalo.edu:/var/www/tesseraev6_flask/data/inverted_index/syntax_latin.db data/inverted_index/
+scp tesserae.caset.buffalo.edu:/var/www/tesseraev6_flask/data/inverted_index/syntax_latin.db data/inverted_index/
 
 # Optional — extended Latin lemma table (15 MB)
-scp <ubit>@tesserae.caset.buffalo.edu:/var/www/tesseraev6_flask/data/lemma_tables/latin_lemmas_extended.db data/lemma_tables/
+scp tesserae.caset.buffalo.edu:/var/www/tesseraev6_flask/data/lemma_tables/latin_lemmas_extended.db data/lemma_tables/
 ```
-
-Currently the `latin_lemmas_extended.db` is not available.
 
 If you are already on Marvin, you can use `cp` instead of `scp`:
 
