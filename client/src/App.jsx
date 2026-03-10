@@ -338,8 +338,8 @@ function App() {
       source: sourceText,
       target: targetText,
       language: activeTab,
+      ...settings,
       skip_cache: true,
-      ...settings
     };
     if (searchMode === 'parallel') {
       await search(params);
