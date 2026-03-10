@@ -96,8 +96,8 @@ DEPLOYMENT_ENV = os.environ.get("DEPLOYMENT_ENV", "dev")
 DIRECT_SERVER = os.environ.get("TESSERAE_DIRECT_SERVER", "") == "1"
 API_PREFIX = "/api" if DIRECT_SERVER else ""
 if DEPLOYMENT_ENV == 'marvin' and not DIRECT_SERVER:
-    print("WARNING: DEPLOYMENT_ENV=marvin but TESSERAE_DIRECT_SERVER not set.")
-    print("  If running Flask directly (not behind Apache), set TESSERAE_DIRECT_SERVER=1")
+    app_logger.warning("DEPLOYMENT_ENV=marvin but TESSERAE_DIRECT_SERVER not set.")
+    app_logger.warning("  If running Flask directly (not behind Apache), set TESSERAE_DIRECT_SERVER=1")
 
 # Create Flask app with static file serving
 app = Flask(__name__, static_folder=STATIC_FOLDER, static_url_path='')
@@ -130,10 +130,10 @@ db.init_app(app)
 try:
     with app.app_context():
         db.create_all()
-    print("Database tables initialized successfully")
+    app_logger.info("Database tables initialized successfully")
 except Exception as e:
-    print(f"Warning: Could not initialize database tables: {e}")
-    print("Database will be initialized on first request")
+    app_logger.warning(f"Could not initialize database tables: {e}")
+    app_logger.warning("Database will be initialized on first request")
 
 # =============================================================================
 # AUTHENTICATION SETUP

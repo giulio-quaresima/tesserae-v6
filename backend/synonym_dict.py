@@ -12,6 +12,10 @@ import json
 import os
 import unicodedata
 
+from backend.logging_config import get_logger
+
+logger = get_logger('synonym_dict')
+
 _LATIN_LOOKUP = None
 _GREEK_LOOKUP = None
 _GREEK_LATIN_DICT = None
@@ -330,7 +334,7 @@ if os.path.exists(_V6_ADDITIONS_PATH):
             else:
                 CURATED_GREEK_LATIN[_greek_norm] = _latin_words
             _v6_count += 1
-    print(f"Loaded {_v6_count} V6 Greek-Latin additions into CURATED_GREEK_LATIN (total: {len(CURATED_GREEK_LATIN)} entries)")
+    logger.info(f"Loaded {_v6_count} V6 Greek-Latin additions into CURATED_GREEK_LATIN (total: {len(CURATED_GREEK_LATIN)} entries)")
 
 # Load Perseus Dynamic Lexicon additions (3,001 novel Greek-Latin pairs)
 _PERSEUS_ADDITIONS_PATH = os.path.join(_DATA_DIR, 'v6_additions', 'perseus_greek_latin_v6_additions.csv')
@@ -354,7 +358,7 @@ if os.path.exists(_PERSEUS_ADDITIONS_PATH):
             else:
                 CURATED_GREEK_LATIN[_greek_norm] = _latin_words
             _perseus_count += 1
-    print(f"Loaded {_perseus_count} Perseus Greek-Latin additions into CURATED_GREEK_LATIN (total: {len(CURATED_GREEK_LATIN)} entries)")
+    logger.info(f"Loaded {_perseus_count} Perseus Greek-Latin additions into CURATED_GREEK_LATIN (total: {len(CURATED_GREEK_LATIN)} entries)")
 
 CURATED_LATIN = {
     "bellum": ["bellum", "proelium", "pugna", "certamen", "acies"],
@@ -550,7 +554,7 @@ def get_latin_lookup():
                     merged_syns |= _LATIN_LOOKUP[v]
                 for v in variants:
                     _LATIN_LOOKUP[v] = merged_syns
-        print(f"Loaded {len(_LATIN_LOOKUP)} Latin synonym entries (V3 + curated, u/v merged)")
+        logger.info(f"Loaded {len(_LATIN_LOOKUP)} Latin synonym entries (V3 + curated, u/v merged)")
     return _LATIN_LOOKUP
 
 def get_greek_lookup():
@@ -570,7 +574,7 @@ def get_greek_lookup():
                 _GREEK_LOOKUP[norm_key] = _GREEK_LOOKUP[norm_key].union(norm_syns)
             else:
                 _GREEK_LOOKUP[norm_key] = norm_syns
-        print(f"Loaded {len(_GREEK_LOOKUP)} Greek synonym entries (V3 + curated, diacritic-normalized)")
+        logger.info(f"Loaded {len(_GREEK_LOOKUP)} Greek synonym entries (V3 + curated, diacritic-normalized)")
     return _GREEK_LOOKUP
 
 def find_synonyms(lemma: str, language: str) -> set:
@@ -670,9 +674,9 @@ def get_greek_latin_dict():
                             _GREEK_LATIN_DICT_NORMALIZED[greek_norm].update(latin_words)
                         else:
                             _GREEK_LATIN_DICT_NORMALIZED[greek_norm] = set(latin_words)
-            print(f"Loaded {len(_GREEK_LATIN_DICT)} Greek-Latin dictionary entries from V3")
+            logger.info(f"Loaded {len(_GREEK_LATIN_DICT)} Greek-Latin dictionary entries from V3")
         else:
-            print(f"Greek-Latin dictionary not found at {filepath}")
+            logger.warning(f"Greek-Latin dictionary not found at {filepath}")
     return _GREEK_LATIN_DICT, _GREEK_LATIN_DICT_NORMALIZED
 
 
@@ -711,16 +715,16 @@ def get_latin_english_dict():
                                 'perseus_lexicon', 'extracted', 'perseus_latin_english_dict.csv')
         if os.path.exists(filepath):
             _LATIN_ENGLISH_DICT = _load_english_dict(filepath)
-            print(f"Loaded {len(_LATIN_ENGLISH_DICT)} Latin-English dictionary entries (Perseus)")
+            logger.info(f"Loaded {len(_LATIN_ENGLISH_DICT)} Latin-English dictionary entries (Perseus)")
         else:
-            print(f"Latin-English dictionary not found at {filepath}")
+            logger.warning(f"Latin-English dictionary not found at {filepath}")
         # V6 curated additions (optional)
         additions_path = os.path.join(_DATA_DIR, 'v6_additions', 'latin_english_v6_additions.csv')
         if os.path.exists(additions_path):
             additions = _load_english_dict(additions_path)
             for k, v in additions.items():
                 _LATIN_ENGLISH_DICT.setdefault(k, set()).update(v)
-            print(f"  + {len(additions)} curated Latin-English additions")
+            logger.info(f"  + {len(additions)} curated Latin-English additions")
     return _LATIN_ENGLISH_DICT
 
 
@@ -740,9 +744,9 @@ def get_greek_english_dict():
             for greek_key, english_set in raw.items():
                 norm = _normalize_greek(greek_key).replace('ς', 'σ')
                 _GREEK_ENGLISH_DICT.setdefault(norm, set()).update(english_set)
-            print(f"Loaded {len(_GREEK_ENGLISH_DICT)} Greek-English dictionary entries (Perseus)")
+            logger.info(f"Loaded {len(_GREEK_ENGLISH_DICT)} Greek-English dictionary entries (Perseus)")
         else:
-            print(f"Greek-English dictionary not found at {filepath}")
+            logger.warning(f"Greek-English dictionary not found at {filepath}")
         # V6 curated additions (optional)
         additions_path = os.path.join(_DATA_DIR, 'v6_additions', 'greek_english_v6_additions.csv')
         if os.path.exists(additions_path):
@@ -750,7 +754,7 @@ def get_greek_english_dict():
             for greek_key, english_set in raw_add.items():
                 norm = _normalize_greek(greek_key).replace('ς', 'σ')
                 _GREEK_ENGLISH_DICT.setdefault(norm, set()).update(english_set)
-            print(f"  + {len(raw_add)} curated Greek-English additions")
+            logger.info(f"  + {len(raw_add)} curated Greek-English additions")
     return _GREEK_ENGLISH_DICT
 
 
@@ -868,9 +872,9 @@ def _get_gazetteer_dict():
                 data = json.load(f)
             for greek_key, entry in data.items():
                 _GAZETTEER_DICT[greek_key] = set(entry['latin'])
-            print(f"Loaded {len(_GAZETTEER_DICT)} proper name gazetteer entries (Wikidata + Pleiades + manual)")
+            logger.info(f"Loaded {len(_GAZETTEER_DICT)} proper name gazetteer entries (Wikidata + Pleiades + manual)")
         else:
-            print(f"Proper name gazetteer not found at {filepath}")
+            logger.warning(f"Proper name gazetteer not found at {filepath}")
     return _GAZETTEER_DICT
 
 

@@ -2,13 +2,13 @@
 
 ## Overview
 
-Tesserae V6's fusion search combines nine independent matching channels into a single ranked result list using weighted score fusion. Each channel detects textual parallels through a different linguistic signal — from exact lexical overlap to phonetic similarity to distributional semantics — and the fusion layer combines these signals with empirically validated weights and a convergence bonus that rewards cross-channel agreement.
+Tesserae V6's fusion search combines ten independent matching channels into a single ranked result list using weighted score fusion. Each channel detects textual parallels through a different linguistic signal — from exact lexical overlap to phonetic similarity to distributional semantics — and the fusion layer combines these signals with empirically validated weights and a convergence bonus that rewards cross-channel agreement.
 
 The search uses a **two-pass line/window architecture** that runs the full channel battery on individual verse lines, then selectively re-runs a subset of channels on sliding 2-line windows to capture allusions that span line breaks (enjambment). The channel selection for the window pass follows from a formal classification of channels by their matching granularity.
 
 ## Channel Taxonomy
 
-The nine channels are classified into four types based on the **level of linguistic representation** at which they operate. This classification determines both their contribution to intertext detection and their behavior under textual unit variation (line vs. window).
+The ten channels are classified into four types based on the **level of linguistic representation** at which they operate. This classification determines both their contribution to intertext detection and their behavior under textual unit variation (line vs. window).
 
 ### Lexical channels
 
@@ -74,7 +74,7 @@ The standard solution is to search over sliding windows of *n* consecutive lines
 
 The channel taxonomy provides a principled basis for selective windowing:
 
-**Pass 1 — Line-level (all 9 channels)**: This is the primary search. All channels run on individual verse lines, providing complete coverage of every matching signal.
+**Pass 1 — Line-level (all 10 channels)**: This is the primary search. All channels run on individual verse lines, providing complete coverage of every matching signal.
 
 **Pass 2 — Window-level (lexical + dictionary channels)**: Only channels that require **token co-occurrence within a unit** benefit from expanded windows. These are the lexical channels (lemma, lemma_min1, exact, rare_word) plus dictionary.
 
@@ -190,7 +190,7 @@ See `evaluation/scripts/compute_recall_at_k.py` and `research/studies/fusion_exp
 
 ## Concurrency Control
 
-Fusion search is memory-intensive — a full 9-channel run on large text pairs (e.g., Aeneid × Metamorphoses) can consume several GB of RAM. To prevent out-of-memory crashes when multiple users search simultaneously, all heavy search endpoints are protected by a **file-based concurrency gate** (`backend/concurrency_gate.py`).
+Fusion search is memory-intensive — a full 10-channel run on large text pairs (e.g., Aeneid × Metamorphoses) can consume several GB of RAM. To prevent out-of-memory crashes when multiple users search simultaneously, all heavy search endpoints are protected by a **file-based concurrency gate** (`backend/concurrency_gate.py`).
 
 ### Mechanism
 

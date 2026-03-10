@@ -34,6 +34,9 @@ from collections import defaultdict
 from typing import List, Dict, Tuple, Optional
 import json
 
+from backend.logging_config import get_logger
+logger = get_logger('semantic_similarity')
+
 LATIN_GREEK_MODEL = "bowphs/SPhilBerta"
 ENGLISH_MODEL = "all-MiniLM-L6-v2"
 CACHE_DIR = os.path.join(os.path.dirname(__file__), 'semantic_cache')
@@ -65,12 +68,12 @@ def get_model(language: str = 'la'):
     if model_name not in _models:
         try:
             from sentence_transformers import SentenceTransformer
-            print(f"Loading semantic model for {language}: {model_name}...")
+            logger.info(f"Loading semantic model for {language}: {model_name}...")
             _models[model_name] = SentenceTransformer(model_name)
-            print(f"Semantic model {model_name} loaded successfully")
+            logger.info(f"Semantic model {model_name} loaded successfully")
         except Exception as e:
-            print(f"Error loading semantic model {model_name}: {e}")
-            print(f"Semantic matching will be unavailable for {language}")
+            logger.error(f"Error loading semantic model {model_name}: {e}")
+            logger.warning(f"Semantic matching will be unavailable for {language}")
             return None
     return _models[model_name]
 
@@ -94,7 +97,7 @@ def encode_texts(texts: List[str], show_progress: bool = False, language: str = 
         embeddings = model.encode(texts, show_progress_bar=show_progress)
         return embeddings
     except Exception as e:
-        print(f"Error encoding texts: {e}")
+        logger.error(f"Error encoding texts: {e}")
         return None
 
 def compute_similarity(embedding1: np.ndarray, embedding2: np.ndarray) -> float:
@@ -176,14 +179,14 @@ def find_semantic_matches(source_units: List[Dict], target_units: List[Dict],
                     target_embeddings = target_all[:len(target_units)]
                 
                 used_precomputed = True
-                print(f"Using pre-computed embeddings: {len(source_embeddings)} source, {len(target_embeddings)} target")
+                logger.info(f"Using pre-computed embeddings: {len(source_embeddings)} source, {len(target_embeddings)} target")
         except Exception as e:
-            print(f"Failed to load pre-computed embeddings: {e}")
-    
+            logger.warning(f"Failed to load pre-computed embeddings: {e}")
+
     if source_embeddings is None or target_embeddings is None:
         model = get_model(language)
         if model is None:
-            print(f"Semantic model not available for {language}, returning empty results")
+            logger.warning(f"Semantic model not available for {language}, returning empty results")
             return [], 0
         
         source_texts = [u.get('text', '') for u in source_units]
@@ -191,34 +194,34 @@ def find_semantic_matches(source_units: List[Dict], target_units: List[Dict],
         
         total_comparisons = len(source_texts) * len(target_texts)
         if total_comparisons > 10000000:
-            print(f"WARNING: {total_comparisons:,} comparisons - this may take a long time.")
-            print(f"Consider pre-computing embeddings for faster search.")
-        
-        print(f"Computing embeddings for {len(source_texts)} source and {len(target_texts)} target units...")
+            logger.warning(f"{total_comparisons:,} comparisons - this may take a long time.")
+            logger.warning(f"Consider pre-computing embeddings for faster search.")
+
+        logger.info(f"Computing embeddings for {len(source_texts)} source and {len(target_texts)} target units...")
         
         try:
             source_embeddings = encode_texts(source_texts, show_progress=False, language=language)
             target_embeddings = encode_texts(target_texts, show_progress=False, language=language)
             if source_embeddings is None or target_embeddings is None:
-                print(f"Failed to encode texts for {language}")
+                logger.error(f"Failed to encode texts for {language}")
                 return [], 0
         except Exception as e:
-            print(f"Error computing embeddings: {e}")
+            logger.error(f"Error computing embeddings: {e}")
             return [], 0
     
-    print(f"Computing similarity matrix ({len(source_embeddings)} x {len(target_embeddings)})...")
-    
+    logger.info(f"Computing similarity matrix ({len(source_embeddings)} x {len(target_embeddings)})...")
+
     similarity_matrix = np.dot(source_embeddings, target_embeddings.T)
     source_norms = np.linalg.norm(source_embeddings, axis=1, keepdims=True)
     target_norms = np.linalg.norm(target_embeddings, axis=1, keepdims=True)
     similarity_matrix = similarity_matrix / (source_norms @ target_norms.T + 1e-8)
-    
+
     matches = []
-    
+
     for src_idx in range(len(source_embeddings)):
         row = similarity_matrix[src_idx]
         top_indices = np.argsort(row)[::-1][:top_n_per_source * 2]
-        
+
         count = 0
         for tgt_idx in top_indices:
             sim = float(row[tgt_idx])
@@ -233,14 +236,14 @@ def find_semantic_matches(source_units: List[Dict], target_units: List[Dict],
                 count += 1
                 if count >= top_n_per_source:
                     break
-    
+
     matches.sort(key=lambda x: x.get('semantic_score', 0), reverse=True)
-    
+
     if max_results > 0:
         matches = matches[:max_results]
-    
+
     mode = "pre-computed" if used_precomputed else "real-time"
-    print(f"Found {len(matches)} semantic matches ({mode})")
+    logger.info(f"Found {len(matches)} semantic matches ({mode})")
     return matches, 0
 
 
@@ -276,7 +279,7 @@ def find_dictionary_matches(source_units: List[Dict], target_units: List[Dict],
     include_lemma_matches = settings.get('include_lemma_matches', False)
 
     if language == 'en':
-        print("Dictionary matching not available for English (no synonym data in V3)")
+        logger.warning("Dictionary matching not available for English (no synonym data in V3)")
         return [], 0
 
     stopwords = DEFAULT_LATIN_STOP_WORDS if language == 'la' else DEFAULT_GREEK_STOP_WORDS
@@ -338,7 +341,7 @@ def find_dictionary_matches(source_units: List[Dict], target_units: List[Dict],
         matches = matches[:max_results]
 
     mode = "include_lemma" if include_lemma_matches else "synonym_only"
-    print(f"Found {len(matches)} dictionary matches (min_matches={min_matches}, {mode})")
+    logger.info(f"Found {len(matches)} dictionary matches (min_matches={min_matches}, {mode})")
     return matches, len(stopwords)
 
 
@@ -377,11 +380,11 @@ def find_crosslingual_matches(source_units: List[Dict], target_units: List[Dict]
     target_indices = settings.get('target_line_indices')
     
     if source_language not in ('la', 'grc', 'en') or target_language not in ('la', 'grc', 'en'):
-        print(f"Cross-lingual matching only supports Latin (la), Greek (grc), and English (en)")
+        logger.warning(f"Cross-lingual matching only supports Latin (la), Greek (grc), and English (en)")
         return [], 0
     
     if source_language == target_language:
-        print(f"For same-language matching, use find_semantic_matches instead")
+        logger.warning(f"For same-language matching, use find_semantic_matches instead")
         return find_semantic_matches(source_units, target_units, 
                                      {**settings, 'language': source_language})
     
@@ -408,14 +411,14 @@ def find_crosslingual_matches(source_units: List[Dict], target_units: List[Dict]
                     target_embeddings = target_all[:len(target_units)]
                 
                 used_precomputed = True
-                print(f"Using pre-computed embeddings: {len(source_embeddings)} {source_language}, {len(target_embeddings)} {target_language}")
+                logger.info(f"Using pre-computed embeddings: {len(source_embeddings)} {source_language}, {len(target_embeddings)} {target_language}")
         except Exception as e:
-            print(f"Failed to load pre-computed embeddings: {e}")
-    
+            logger.warning(f"Failed to load pre-computed embeddings: {e}")
+
     if source_embeddings is None or target_embeddings is None:
         model = get_model('la')
         if model is None:
-            print("SPhilBERTa model not available for cross-lingual matching")
+            logger.warning("SPhilBERTa model not available for cross-lingual matching")
             return [], 0
         
         source_texts = [u.get('text', '') for u in source_units]
@@ -423,33 +426,33 @@ def find_crosslingual_matches(source_units: List[Dict], target_units: List[Dict]
         
         total_comparisons = len(source_texts) * len(target_texts)
         if total_comparisons > 10000000:
-            print(f"WARNING: {total_comparisons:,} comparisons - consider pre-computing embeddings")
-        
-        print(f"Computing cross-lingual embeddings: {len(source_texts)} {source_language} -> {len(target_texts)} {target_language}")
+            logger.warning(f"{total_comparisons:,} comparisons - consider pre-computing embeddings")
+
+        logger.info(f"Computing cross-lingual embeddings: {len(source_texts)} {source_language} -> {len(target_texts)} {target_language}")
         
         try:
             source_embeddings = model.encode(source_texts, show_progress_bar=False)
             target_embeddings = model.encode(target_texts, show_progress_bar=False)
             if source_embeddings is None or target_embeddings is None:
-                print("Failed to encode texts for cross-lingual matching")
+                logger.error("Failed to encode texts for cross-lingual matching")
                 return [], 0
         except Exception as e:
-            print(f"Error computing cross-lingual embeddings: {e}")
+            logger.error(f"Error computing cross-lingual embeddings: {e}")
             return [], 0
     
-    print(f"Computing similarity matrix ({len(source_embeddings)} x {len(target_embeddings)})...")
-    
+    logger.info(f"Computing similarity matrix ({len(source_embeddings)} x {len(target_embeddings)})...")
+
     similarity_matrix = np.dot(source_embeddings, target_embeddings.T)
     source_norms = np.linalg.norm(source_embeddings, axis=1, keepdims=True)
     target_norms = np.linalg.norm(target_embeddings, axis=1, keepdims=True)
     similarity_matrix = similarity_matrix / (source_norms @ target_norms.T + 1e-8)
-    
+
     matches = []
-    
+
     for src_idx in range(len(source_embeddings)):
         row = similarity_matrix[src_idx]
         top_indices = np.argsort(row)[::-1][:top_n_per_source * 2]
-        
+
         count = 0
         for tgt_idx in top_indices:
             sim = float(row[tgt_idx])
@@ -466,14 +469,14 @@ def find_crosslingual_matches(source_units: List[Dict], target_units: List[Dict]
                 count += 1
                 if count >= top_n_per_source:
                     break
-    
+
     matches.sort(key=lambda x: x.get('semantic_score', 0), reverse=True)
-    
+
     if max_results > 0:
         matches = matches[:max_results]
-    
+
     mode = "pre-computed" if used_precomputed else "real-time"
-    print(f"Found {len(matches)} cross-lingual semantic matches ({source_language} -> {target_language}, {mode})")
+    logger.info(f"Found {len(matches)} cross-lingual semantic matches ({source_language} -> {target_language}, {mode})")
     return matches, 0
 
 
@@ -507,7 +510,7 @@ def find_dictionary_crosslingual_matches(source_units: List[Dict], target_units:
     max_results = settings.get('max_results', 500)
     
     if source_language not in ('la', 'grc', 'en') or target_language not in ('la', 'grc', 'en'):
-        print(f"Dictionary matching only supports Latin (la), Greek (grc), and English (en)")
+        logger.warning(f"Dictionary matching only supports Latin (la), Greek (grc), and English (en)")
         return [], 0
     
     # Get frequency data for IDF calculation
@@ -612,7 +615,7 @@ def find_dictionary_crosslingual_matches(source_units: List[Dict], target_units:
     
     # Debug: Show top 5 matches with their IDF scores
     if matches:
-        print(f"Top matches (showing first 5) - unique Greek/Latin words:")
+        logger.debug(f"Top matches (showing first 5) - unique Greek/Latin words:")
         for m in matches[:5]:
             lemmas = m.get('matched_lemmas', [])
             score = m.get('overall_score', 0)
@@ -620,12 +623,12 @@ def find_dictionary_crosslingual_matches(source_units: List[Dict], target_units:
             dist = m.get('distance', 0)
             u_grc = m.get('unique_greek', 0)
             u_lat = m.get('unique_latin', 0)
-            print(f"  {lemmas} | grc={u_grc} lat={u_lat} avg_idf={avg_idf:.2f} score={score:.3f}")
+            logger.debug(f"  {lemmas} | grc={u_grc} lat={u_lat} avg_idf={avg_idf:.2f} score={score:.3f}")
     
     if max_results > 0:
         matches = matches[:max_results]
     
-    print(f"Found {len(matches)} dictionary cross-lingual matches ({source_language} -> {target_language})")
+    logger.info(f"Found {len(matches)} dictionary cross-lingual matches ({source_language} -> {target_language})")
     return matches, 0
 
 
@@ -650,7 +653,7 @@ def calculate_semantic_boost(source_text: str, target_text: str, language: str =
         embeddings = model.encode([source_text, target_text])
         return compute_similarity(embeddings[0], embeddings[1])
     except Exception as e:
-        print(f"Error computing semantic boost: {e}")
+        logger.error(f"Error computing semantic boost: {e}")
         return 0.0
 
 def is_available(language: str = 'la') -> bool:
@@ -705,7 +708,7 @@ def get_lemma_embedding(lemma: str, language: str = 'la') -> Optional[np.ndarray
         _lemma_embeddings_cache[cache_key] = embedding.tolist()
         return np.array(embedding)
     except Exception as e:
-        print(f"Error encoding lemma '{lemma}': {e}")
+        logger.error(f"Error encoding lemma '{lemma}': {e}")
         return None
 
 def get_lemma_embeddings_batch(lemmas: List[str], language: str = 'la') -> Dict[str, np.ndarray]:
@@ -741,7 +744,7 @@ def get_lemma_embeddings_batch(lemmas: List[str], language: str = 'la') -> Dict[
                     _lemma_embeddings_cache[cache_key] = emb.tolist()
                     result[lemma] = emb
             except Exception as e:
-                print(f"Error encoding lemmas batch: {e}")
+                logger.error(f"Error encoding lemmas batch: {e}")
     
     return result
 

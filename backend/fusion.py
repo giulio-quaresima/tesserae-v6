@@ -67,7 +67,10 @@ from collections import Counter, defaultdict
 
 import numpy as np
 
+from backend.logging_config import get_logger
 from backend.matcher import DEFAULT_LATIN_STOP_WORDS, DEFAULT_GREEK_STOP_WORDS, DEFAULT_ENGLISH_STOP_WORDS
+
+logger = get_logger('fusion')
 
 # Stoplist lookup by language code
 _STOPLISTS = {
@@ -471,13 +474,15 @@ _SYNTAX_GREEK_DB_PATH = os.path.join(
 )
 
 _SYNTAX_PARSE_CACHE = {}
+_SYNTAX_CACHE_MAX = 50  # LRU-style cap: evict oldest when exceeded
 
 
 def _load_syntax_for_text(db_path, text_filename):
     """Load syntax parses from syntax_latin.db for a text.
 
     Results are cached at module level so repeated searches on the same
-    text avoid re-reading the database.
+    text avoid re-reading the database.  Cache is bounded to
+    _SYNTAX_CACHE_MAX entries to prevent unbounded memory growth.
 
     Returns dict: ref → {"lemmas": [...], "upos": [...], "heads": [...],
                           "deprels": [...], "feats": [...], "tokens": [...]}
@@ -529,6 +534,10 @@ def _load_syntax_for_text(db_path, text_filename):
         }
 
     conn.close()
+    # Evict oldest entries if cache exceeds limit
+    if len(_SYNTAX_PARSE_CACHE) >= _SYNTAX_CACHE_MAX:
+        oldest = next(iter(_SYNTAX_PARSE_CACHE))
+        del _SYNTAX_PARSE_CACHE[oldest]
     _SYNTAX_PARSE_CACHE[text_filename] = parses
     return parses
 
@@ -723,7 +732,7 @@ def find_syntax_matches(source_units, target_units, source_id, target_id,
     target_parses = _load_syntax_for_text(target_db, target_id)
 
     if not source_parses or not target_parses:
-        print(f"[SYNTAX] No syntax data for {source_id} or {target_id}")
+        logger.info(f"[SYNTAX] No syntax data for {source_id} or {target_id}")
         return []
 
     # Build ref → unit lookup for both texts
@@ -799,8 +808,8 @@ def find_syntax_matches(source_units, target_units, source_id, target_id,
             candidate_pairs[i:i + chunk_size]
             for i in range(0, num_candidates, chunk_size)
         ]
-        print(f"[SYNTAX] Parallel: {num_candidates:,} candidates, "
-              f"{num_workers} workers, {chunk_size:,} per chunk")
+        logger.info(f"[SYNTAX] Parallel: {num_candidates:,} candidates, "
+                    f"{num_workers} workers, {chunk_size:,} per chunk")
         with multiprocessing.Pool(num_workers) as pool:
             chunk_results = pool.map(
                 _score_syntax_chunk,
@@ -880,9 +889,9 @@ def find_syntax_matches(source_units, target_units, source_id, target_id,
             )
 
     num_fp_candidates = len(fingerprint_pairs)
-    print(f"[SYNTAX] Fingerprint: {len(target_fingerprint_index):,} unique patterns, "
-          f"{num_fp_candidates:,} novel candidate pairs "
-          f"(skipped {skipped_common:,} from common patterns)")
+    logger.info(f"[SYNTAX] Fingerprint: {len(target_fingerprint_index):,} unique patterns, "
+                f"{num_fp_candidates:,} novel candidate pairs "
+                f"(skipped {skipped_common:,} from common patterns)")
 
     # Score fingerprint candidates
     if num_fp_candidates > 50000:
@@ -913,9 +922,9 @@ def find_syntax_matches(source_units, target_units, source_id, target_id,
         scored_pairs.sort(key=lambda x: x[2], reverse=True)
         scored_pairs = scored_pairs[:max_results]
 
-    print(f"[SYNTAX] {len(source_parses)} source, {len(target_parses)} target parses; "
-          f"{num_candidates:,} lemma-gated + {num_fp_candidates:,} fingerprint comparisons; "
-          f"{len(scored_pairs)} lemma + {len(fingerprint_scored)} fingerprint matches (score >= {min_score})")
+    logger.info(f"[SYNTAX] {len(source_parses)} source, {len(target_parses)} target parses; "
+                f"{num_candidates:,} lemma-gated + {num_fp_candidates:,} fingerprint comparisons; "
+                f"{len(scored_pairs)} lemma + {len(fingerprint_scored)} fingerprint matches (score >= {min_score})")
 
     # Build result dicts — separate lists for lemma-gated and fingerprint
     def _build_results(pair_list):
@@ -1031,7 +1040,7 @@ def run_channel(channel_name, config, source_units, target_units,
             m['_quick_score'] = _quick_idf(m)
         matches.sort(key=lambda m: m['_quick_score'], reverse=True)
         kept = max_results * 4  # 4x buffer for distance-factor reranking
-        print(f"[{channel_name.upper()}] IDF pre-filter: {len(matches):,} → {kept:,} matches")
+        logger.info(f"[{channel_name.upper()}] IDF pre-filter: {len(matches):,} → {kept:,} matches")
         matches = matches[:kept]
 
     scored = scorer.score_matches(
@@ -1241,7 +1250,7 @@ def _recover_semantic_for_structural(line_channel_results, source_units,
         if source_emb is None or target_emb is None:
             return
     except Exception as e:
-        print(f"[SEMANTIC RECOVERY] Failed to load embeddings: {e}")
+        logger.error(f"[SEMANTIC RECOVERY] Failed to load embeddings: {e}")
         return
 
     # Two-tier semantic threshold for structural pairs:
@@ -1321,10 +1330,10 @@ def _recover_semantic_for_structural(line_channel_results, source_units,
         if "semantic" not in line_channel_results:
             line_channel_results["semantic"] = []
         line_channel_results["semantic"].extend(recovered)
-        print(f"[SEMANTIC RECOVERY] Recovered {len(recovered)} semantic scores "
-              f"for {len(pairs_to_check)} structural pairs "
-              f"({dict_confirmed} dictionary-confirmed, "
-              f"skipped {len(pairs_to_check) - len(recovered)} below threshold)")
+        logger.info(f"[SEMANTIC RECOVERY] Recovered {len(recovered)} semantic scores "
+                    f"for {len(pairs_to_check)} structural pairs "
+                    f"({dict_confirmed} dictionary-confirmed, "
+                    f"skipped {len(pairs_to_check) - len(recovered)} below threshold)")
 
 
 def fuse_results(channel_results, weights=None, convergence_bonus=None,
@@ -1410,8 +1419,8 @@ def fuse_results(channel_results, weights=None, convergence_bonus=None,
                 pair_scores[key]["best_score"] = raw_score
 
     _t1 = _time.time()
-    print(f"[FUSION] Accumulated {len(pair_scores):,} unique pairs from "
-          f"{sum(len(r) for r in channel_results.values()):,} channel results in {_t1-_t0:.1f}s")
+    logger.info(f"[FUSION] Accumulated {len(pair_scores):,} unique pairs from "
+                f"{sum(len(r) for r in channel_results.values()):,} channel results in {_t1-_t0:.1f}s")
 
     # --- Pre-fusion cap: limit pairs entering rarity scoring ---
     # Rarity scoring is O(n) with expensive per-pair IDF lookups. For
@@ -1430,7 +1439,7 @@ def fuse_results(channel_results, weights=None, convergence_bonus=None,
                           key=lambda k: pair_scores[k]["score"],
                           reverse=True)[:PRE_FUSION_CAP]
         pair_scores = {k: pair_scores[k] for k in top_keys}
-        print(f"[FUSION] Pre-fusion cap: kept top {PRE_FUSION_CAP:,} of {total_pairs:,} pairs by raw score")
+        logger.info(f"[FUSION] Pre-fusion cap: kept top {PRE_FUSION_CAP:,} of {total_pairs:,} pairs by raw score")
 
     # ===================================================================
     # RARITY SCORING: Three-layer system applied to every fused pair
@@ -1662,7 +1671,7 @@ def fuse_results(channel_results, weights=None, convergence_bonus=None,
         info["score"] = base_score * (multiplier ** _penalty_power) + conv_score * conv_mult
 
     _t2 = _time.time()
-    print(f"[FUSION] Rarity scoring complete for {len(pair_scores):,} pairs in {_t2-_t1:.1f}s")
+    logger.info(f"[FUSION] Rarity scoring complete for {len(pair_scores):,} pairs in {_t2-_t1:.1f}s")
 
     # Sort by fused score and build output
     sorted_pairs = sorted(pair_scores.items(), key=lambda x: x[1]["score"], reverse=True)
@@ -2154,8 +2163,8 @@ def iter_fusion_search(source_units, target_units, matcher, scorer,
         line_channel_results["syntax_structural"] = kept
         after = len(kept)
         if before != after:
-            print(f"[STRUCTURAL GATE] Kept {after}/{before} structural pairs "
-                  f"(dictionary or cosine >= {MIN_COSINE_NO_DICT})")
+            logger.info(f"[STRUCTURAL GATE] Kept {after}/{before} structural pairs "
+                        f"(dictionary or cosine >= {MIN_COSINE_NO_DICT})")
 
     line_fused = fuse_results(line_channel_results, language=language)
 
@@ -2312,8 +2321,8 @@ def run_fusion_search(source_units, target_units, matcher, scorer,
         line_channel_results["syntax_structural"] = kept2
         after = len(kept2)
         if before != after:
-            print(f"[STRUCTURAL GATE] Kept {after}/{before} structural pairs "
-                  f"(dictionary or cosine >= {MIN_COSINE_NO_DICT2})")
+            logger.info(f"[STRUCTURAL GATE] Kept {after}/{before} structural pairs "
+                        f"(dictionary or cosine >= {MIN_COSINE_NO_DICT2})")
 
     line_fused = fuse_results(line_channel_results, language=language)
 

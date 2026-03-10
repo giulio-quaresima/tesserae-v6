@@ -424,7 +424,7 @@ def _find_english_dictionary_matches(source_units, target_units, source_language
                         existing['target_indices'].append(ti)
         pair_matches[key] = deduped
 
-    print(f"English dictionary found {len(pair_matches)} pairs ({source_language}->{target_language})")
+    logger.info(f"English dictionary found {len(pair_matches)} pairs ({source_language}->{target_language})")
     return pair_matches
 
 
@@ -585,11 +585,11 @@ def _handle_crosslingual_fusion(params, source_units, target_units, settings):
         sem_by_pair[key] = m.get('semantic_score', 0.0)
 
     # --- Channel 2: Dictionary (dispatched by language pair) ---
-    print("Running fast dictionary matching...")
+    logger.info("Running fast dictionary matching...")
     dict_by_pair = _find_dictionary_matches_fast(
         source_units, target_units,
         source_language, target_language)
-    print(f"Dictionary found {len(dict_by_pair)} pairs with matches")
+    logger.info(f"Dictionary found {len(dict_by_pair)} pairs with matches")
 
     # --- Semantic recovery for dictionary-only pairs ---
     # Dictionary pairs not found by the semantic channel (filtered by top-N cap)
@@ -622,9 +622,9 @@ def _handle_crosslingual_fusion(params, source_units, target_units, settings):
                         if cosine > 0.4:
                             sem_by_pair[key] = cosine
                             recovered += 1
-                print(f"Semantic recovery: {recovered}/{len(recovery_keys)} dictionary-only pairs got cosine scores")
+                logger.info(f"Semantic recovery: {recovered}/{len(recovery_keys)} dictionary-only pairs got cosine scores")
         except Exception as e:
-            print(f"Semantic recovery failed: {e}")
+            logger.error(f"Semantic recovery failed: {e}")
 
     # --- Local IDF from source+target texts (avoids slow corpus freq lookup) ---
     import unicodedata
@@ -693,11 +693,11 @@ def _handle_crosslingual_fusion(params, source_units, target_units, settings):
                                 if score > syntax_by_pair.get(pair_key, 0):
                                     syntax_by_pair[pair_key] = score
                 total_syntax = sum(len(v) for v in syntax_results.values() if v)
-                print(f"Syntax found {total_syntax} matches ({len(syntax_by_pair)} unique pairs)")
+                logger.info(f"Syntax found {total_syntax} matches ({len(syntax_by_pair)} unique pairs)")
             else:
-                print("Syntax returned no results")
+                logger.info("Syntax returned no results")
         except Exception as e:
-            print(f"Syntax channel failed (may not have syntax DB): {e}")
+            logger.error(f"Syntax channel failed (may not have syntax DB): {e}")
 
     # --- Channel 4: Cross-lingual phonetic (transliteration + edit distance) ---
     # Only for Greek-Latin pairs: transliterate Greek → Latin alphabet, then
@@ -710,9 +710,9 @@ def _handle_crosslingual_fusion(params, source_units, target_units, settings):
                 source_units, target_units,
                 source_language, target_language,
                 min_similarity=0.60, min_token_len=3)
-            print(f"Phonetic found {len(phonetic_by_pair)} pairs with transliteration matches")
+            logger.info(f"Phonetic found {len(phonetic_by_pair)} pairs with transliteration matches")
         except Exception as e:
-            print(f"Phonetic channel failed: {e}")
+            logger.error(f"Phonetic channel failed: {e}")
 
     # --- Merge ---
     # Phonetic alone is too noisy (thousands of false positives from short-word
@@ -954,7 +954,7 @@ def _handle_crosslingual_fusion(params, source_units, target_units, settings):
     if max_results > 0:
         fused = fused[:max_results]
 
-    print(f"Cross-lingual fusion: {len(fused)} results "
+    logger.info(f"Cross-lingual fusion: {len(fused)} results "
           f"({len(sem_by_pair)} semantic, {len(dict_by_pair)} dictionary, "
           f"{len(syntax_by_pair)} syntax, {len(phonetic_by_pair)} phonetic, "
           f"{len(set(sem_by_pair) & set(dict_by_pair))} sem+dict overlap)")

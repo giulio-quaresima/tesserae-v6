@@ -23,6 +23,10 @@ import sqlite3
 import json
 from functools import lru_cache
 
+from backend.logging_config import get_logger
+
+logger = get_logger('inverted_index')
+
 INDEX_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data', 'inverted_index')
 
 _connections = {}
@@ -37,7 +41,7 @@ def get_connection(language):
                 conn.row_factory = sqlite3.Row
                 _connections[language] = conn
             except Exception as e:
-                print(f"Failed to open {language} index: {e}")
+                logger.error(f"Failed to open {language} index: {e}")
                 return None
         else:
             return None
@@ -111,7 +115,7 @@ def lookup_lemmas(lemmas, language, fallback_forms=None):
             results[key]['lemmas'].add(canonical)
             results[key]['positions'][canonical] = json.loads(positions_json)
     except Exception as e:
-        print(f"Index lookup error: {e}")
+        logger.error(f"Index lookup error: {e}")
     
     return results
 
@@ -367,6 +371,6 @@ if __name__ == '__main__':
     for lang in ['la', 'grc']:
         if is_index_available(lang):
             stats = get_index_stats(lang)
-            print(f"{lang.upper()}: {stats}")
+            logger.info(f"{lang.upper()}: {stats}")
         else:
-            print(f"{lang.upper()}: No index available")
+            logger.info(f"{lang.upper()}: No index available")

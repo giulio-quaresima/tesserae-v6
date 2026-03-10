@@ -192,8 +192,11 @@ def find_crosslingual_phonetic_matches(source_units, target_units,
 from collections import defaultdict, Counter
 import os
 from concurrent.futures import ProcessPoolExecutor
+from backend.logging_config import get_logger
 from backend.zipf import find_zipf_elbow
 from backend.worker_util import safe_worker_count
+
+logger = get_logger('matcher')
 
 
 def _get_trigrams(token):
@@ -713,8 +716,8 @@ class Matcher:
         num_source = len(source_units)
         num_target = len(target_units)
         
-        print(f"[EDIT_DISTANCE] source_units={num_source}, target_units={num_target}")
-        print(f"[EDIT_DISTANCE] stoplist_size={stoplist_size}")
+        logger.info(f"[EDIT_DISTANCE] source_units={num_source}, target_units={num_target}")
+        logger.info(f"[EDIT_DISTANCE] stoplist_size={stoplist_size}")
         
         # Build stoplist from token frequencies if stoplist_size > 0
         stop_words = set()
@@ -731,7 +734,7 @@ class Matcher:
             
             most_common = token_freq.most_common(stoplist_size)
             stop_words = set(word for word, count in most_common)
-            print(f"[EDIT_DISTANCE] Built stoplist with {len(stop_words)} words")
+            logger.info(f"[EDIT_DISTANCE] Built stoplist with {len(stop_words)} words")
         
         # Pre-process: extract tokens for each unit
         src_token_lists = []
@@ -755,7 +758,7 @@ class Matcher:
         # Convert to tuples for faster pickling
         trigram_to_targets = {k: tuple(v) for k, v in trigram_to_targets.items()}
 
-        print(f"[EDIT_DISTANCE] Built trigram index with {len(trigram_to_targets)} unique trigrams")
+        logger.info(f"[EDIT_DISTANCE] Built trigram index with {len(trigram_to_targets)} unique trigrams")
 
         start_time = time.time()
 
@@ -770,7 +773,7 @@ class Matcher:
             chunks = [indexed_src[i:i + chunk_size]
                       for i in range(0, len(indexed_src), chunk_size)]
 
-            print(f"[EDIT_DISTANCE] Parallel: {len(chunks)} chunks across {num_workers} workers")
+            logger.info(f"[EDIT_DISTANCE] Parallel: {len(chunks)} chunks across {num_workers} workers")
 
             worker_args = [
                 (chunk, tgt_token_lists, trigram_to_targets,
@@ -796,7 +799,7 @@ class Matcher:
 
         elapsed = time.time() - start_time
         mode = "parallel" if use_parallel else "sequential"
-        print(f"[EDIT_DISTANCE] Complete ({mode}): {comparisons_made:,} comparisons in {elapsed:.1f}s (vs {num_source * num_target:,} full)")
+        logger.info(f"[EDIT_DISTANCE] Complete ({mode}): {comparisons_made:,} comparisons in {elapsed:.1f}s (vs {num_source * num_target:,} full)")
         
         matches.sort(key=lambda x: (x.get('num_matches', 0), x.get('edit_score', 0)), reverse=True)
         

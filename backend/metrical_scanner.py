@@ -17,6 +17,10 @@ import json
 import os
 import re
 
+from backend.logging_config import get_logger
+
+logger = get_logger('metrical_scanner')
+
 # CLTK is optional - only used as fallback when MQDQ scansions are not available
 _CLTK_AVAILABLE = False
 HexameterScanner = None
@@ -46,7 +50,7 @@ def get_mqdq_scansions():
                 with open(scansion_path, 'r', encoding='utf-8') as f:
                     _mqdq_scansions = json.load(f)
             except Exception as e:
-                print(f"Error loading MQDQ scansions: {e}")
+                logger.error(f"Error loading MQDQ scansions: {e}")
                 _mqdq_scansions = {}
         else:
             _mqdq_scansions = {}
@@ -587,7 +591,7 @@ def scan_latin_verse(text, meter_type='hexameter'):
                 'meter': meter_type
             }
     except Exception as e:
-        print(f"Error scanning verse ({meter_type}): {e}")
+        logger.error(f"Error scanning verse ({meter_type}): {e}")
     
     return None
 
