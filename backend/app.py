@@ -541,6 +541,11 @@ admin_prefix = f"{API_PREFIX}/admin" if API_PREFIX else "/admin"
 intertext_prefix = f"{API_PREFIX}/intertexts" if API_PREFIX else None  # None = use blueprint's own /intertexts
 batch_prefix = f"{API_PREFIX}/batch" if API_PREFIX else None  # None = use blueprint's own /batch
 
+# Register blueprints with environment-based URL prefix
+# On Marvin: no prefix (Apache handles /api)
+# On Replit: /api prefix added here
+# Note: admin_bp has its own /admin prefix, so we combine them
+admin_prefix = f"{API_PREFIX}/admin" if API_PREFIX else "/admin"
 app.register_blueprint(admin_bp, url_prefix=admin_prefix)
 app.register_blueprint(search_bp, url_prefix=API_PREFIX or None)
 app.register_blueprint(corpus_bp, url_prefix=API_PREFIX or None)
@@ -550,19 +555,6 @@ app.register_blueprint(hapax_bp, url_prefix=API_PREFIX or None)
 app.register_blueprint(batch_bp, url_prefix=batch_prefix)
 app.register_blueprint(api_docs_bp, url_prefix=API_PREFIX or None)
 app.register_blueprint(fusion_bp, url_prefix=API_PREFIX or None)
-# Register blueprints with environment-based URL prefix
-# On Marvin: no prefix (Apache handles /api)
-# On Replit: /api prefix added here
-# Note: admin_bp has its own /admin prefix, so we combine them
-admin_prefix = f"{API_PREFIX}/admin" if API_PREFIX else "/admin"
-app.register_blueprint(admin_bp, url_prefix=admin_prefix)
-app.register_blueprint(search_bp, url_prefix=API_PREFIX or None)
-app.register_blueprint(corpus_bp, url_prefix=API_PREFIX or None)
-app.register_blueprint(intertext_bp, url_prefix=API_PREFIX or None)
-app.register_blueprint(downloads_bp, url_prefix=API_PREFIX or None)
-app.register_blueprint(hapax_bp, url_prefix=API_PREFIX or None)
-app.register_blueprint(batch_bp, url_prefix=API_PREFIX or None)
-app.register_blueprint(api_docs_bp, url_prefix=API_PREFIX or None)
 
 app_logger.info(f"Blueprints registered (API_PREFIX='{API_PREFIX}', env={DEPLOYMENT_ENV})")
 

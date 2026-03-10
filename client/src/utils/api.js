@@ -147,60 +147,6 @@ export const searchFusionStream = async (params, onProgress, signal, onIntermedi
   return finalResult || { results: [], total_matches: 0 };
 };
 
-export const searchFusionStream = async (params, onProgress, signal, onIntermediate) => {
-  const response = await fetch(`${API_BASE}/search-fusion`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(params),
-    signal
-  });
-
-  if (!response.ok) {
-    throw new Error(`Fusion search failed: ${response.status}`);
-  }
-
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = '';
-  let finalResult = null;
-
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split('\n');
-    buffer = lines.pop() || '';
-
-    for (const line of lines) {
-      if (line.startsWith('data: ')) {
-        try {
-          const data = JSON.parse(line.slice(6));
-          if (data.type === 'progress') {
-            if (onProgress) {
-              onProgress(data.step, data.detail, data.elapsed);
-            }
-          } else if (data.type === 'intermediate') {
-            if (onIntermediate) {
-              onIntermediate(data);
-            }
-          } else if (data.type === 'complete') {
-            finalResult = data;
-          } else if (data.type === 'error') {
-            throw new Error(data.message);
-          }
-        } catch (e) {
-          if (e.message && !e.message.includes('JSON')) {
-            throw e;
-          }
-        }
-      }
-    }
-  }
-
-  return finalResult || { results: [], total_matches: 0 };
-};
-
 export const searchSemanticCross = async (params, signal) => {
   const response = await fetch(`${API_BASE}/search`, {
     method: 'POST',
