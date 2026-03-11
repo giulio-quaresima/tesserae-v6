@@ -323,7 +323,7 @@ export default function CrossLingualSearch() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h2 className="text-xl font-semibold text-gray-900">
             Cross-Lingual Search
@@ -337,7 +337,7 @@ export default function CrossLingualSearch() {
             <button
               key={p.key}
               onClick={() => handleLangPairChange(p.key)}
-              className={`text-xs px-3 py-1.5 rounded border transition-colors ${
+              className={`text-xs px-2 sm:px-3 py-1.5 rounded border transition-colors ${
                 langPair === p.key
                   ? 'bg-gray-800 text-white border-gray-800'
                   : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
@@ -461,18 +461,18 @@ export default function CrossLingualSearch() {
         </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <span className="text-sm text-gray-500">
+      <div className="bg-white rounded-lg shadow p-4 space-y-3 sm:space-y-0 sm:flex sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+        <div className="space-y-2 sm:space-y-0 sm:flex sm:items-center sm:gap-4">
+          <span className="text-sm text-gray-500 block">
             Combines AI semantic matching (SPhilBERTa) with cross-lingual dictionary lookup.
             Pairs detected by both channels are boosted.
           </span>
-          <div className="flex items-center gap-2 ml-4">
-            <label className="text-sm text-gray-600 whitespace-nowrap">Min Dictionary Matches:</label>
+          <div className="flex items-center gap-2">
+            <label className="text-sm text-gray-600 whitespace-nowrap">Min Matches:</label>
             <select
               value={minMatches}
               onChange={(e) => setMinMatches(parseInt(e.target.value))}
-              className="px-2 py-1 border rounded text-sm"
+              className="px-2 py-1.5 border rounded text-sm"
             >
               <option value={1}>Any (include semantic-only)</option>
               <option value={2}>2+ words (default)</option>
@@ -485,14 +485,14 @@ export default function CrossLingualSearch() {
           <button
             onClick={handleSearch}
             disabled={searchLoading || !sourceSection || !targetSection}
-            className="px-4 py-1.5 text-sm bg-red-700 text-white rounded hover:bg-red-800 disabled:opacity-50"
+            className="px-4 py-2 text-sm bg-red-700 text-white rounded hover:bg-red-800 disabled:opacity-50"
           >
             {searchLoading ? 'Searching...' : 'Search'}
           </button>
           {searchLoading && (
             <button
               onClick={cancelSearch}
-              className="px-3 py-1.5 text-sm bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
+              className="px-3 py-2 text-sm bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
             >
               Cancel
             </button>
