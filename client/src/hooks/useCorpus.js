@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { fetchCorpus, fetchAuthors, fetchTexts } from '../utils/api';
 
 export const useCorpus = (language) => {
@@ -7,26 +7,24 @@ export const useCorpus = (language) => {
   const [hierarchy, setHierarchy] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const retryCountRef = useRef(0);
 
-  useEffect(() => {
-    if (!language) return;
-    
+  const loadCorpus = useCallback((lang) => {
+    if (!lang) return;
+
     setLoading(true);
     setError(null);
-    setCorpus([]);
-    setAuthors([]);
-    setHierarchy([]);
-    
+
     Promise.all([
-      fetchCorpus(language),
-      fetchAuthors(language)
+      fetchCorpus(lang),
+      fetchAuthors(lang)
     ])
       .then(([corpusData, authorsData]) => {
         const texts = Array.isArray(corpusData) ? corpusData : (corpusData.texts || []);
         setCorpus(texts);
-        
+
         const authorsArray = Array.isArray(authorsData) ? authorsData : (authorsData.authors || []);
-        
+
         const formattedAuthors = authorsArray.map(a => ({
           author: a.name || a.author,
           author_key: a.works?.[0]?.author_key || a.name?.toLowerCase().replace(/\s+/g, '_') || '',
@@ -35,10 +33,10 @@ export const useCorpus = (language) => {
           works: a.works || []
         }));
         setAuthors(formattedAuthors);
-        
+
         const hierarchyData = authorsArray.map(a => {
           const authorKey = a.works?.[0]?.author_key || a.name?.toLowerCase().replace(/\s+/g, '_') || '';
-          
+
           const worksMap = {};
           (a.works || []).forEach(w => {
             const workKey = w.work_key || w.work?.toLowerCase().replace(/\s+/g, '_') || '';
@@ -54,7 +52,7 @@ export const useCorpus = (language) => {
               label: w.is_part ? (w.part || w.title) : w.title
             });
           });
-          
+
           return {
             author: a.name || a.author,
             author_key: authorKey,
@@ -62,14 +60,27 @@ export const useCorpus = (language) => {
           };
         });
         setHierarchy(hierarchyData);
-        
+
+        retryCountRef.current = 0;
         setLoading(false);
       })
       .catch(err => {
-        setError(err.message);
+        setError(err.message || 'Failed to load corpus data');
         setLoading(false);
       });
-  }, [language]);
+  }, []);
+
+  useEffect(() => {
+    setCorpus([]);
+    setAuthors([]);
+    setHierarchy([]);
+    loadCorpus(language);
+  }, [language, loadCorpus]);
+
+  const retry = useCallback(() => {
+    retryCountRef.current += 1;
+    loadCorpus(language);
+  }, [language, loadCorpus]);
 
   const getTextsForAuthor = useCallback(async (authorKey) => {
     return fetchTexts(authorKey);
@@ -81,6 +92,7 @@ export const useCorpus = (language) => {
     hierarchy,
     loading,
     error,
+    retry,
     getTextsForAuthor
   };
 };

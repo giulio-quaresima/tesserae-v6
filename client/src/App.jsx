@@ -136,7 +136,7 @@ function App() {
   const [corpusSearchElapsed, setCorpusSearchElapsed] = useState(0);
   const [showCorpusSearch, setShowCorpusSearch] = useState(false);
   
-  const { corpus, authors, hierarchy, loading: corpusLoading, getTextsForAuthor } = useCorpus(activeTab);
+  const { corpus, authors, hierarchy, loading: corpusLoading, error: corpusError, retry: retryCorpus, getTextsForAuthor } = useCorpus(activeTab);
   const {
     results,
     loading: searchLoading,
@@ -550,6 +550,16 @@ function App() {
                 <LineSearch key={activeTab} language={activeTab} />
               ) : searchMode === 'string' ? (
                 <WildcardSearch language={activeTab} />
+              ) : corpusError ? (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-center">
+                  <p className="text-red-700 mb-2">Failed to load corpus data: {corpusError}</p>
+                  <button
+                    onClick={retryCorpus}
+                    className="px-4 py-2 bg-red-700 text-white rounded hover:bg-red-800 text-sm"
+                  >
+                    Retry
+                  </button>
+                </div>
               ) : corpusLoading ? (
                 <LoadingSpinner text="Loading corpus..." />
               ) : (
