@@ -41,6 +41,16 @@
       "rebuild_instructions": "Run build_latinpipe_syntax.py on Marvin with local LatinPipe model (~1-2 hours)"
     },
     {
+      "filename": "syntax_greek.db.tar.gz",
+      "extract_to": "data/inverted_index/syntax_greek.db",
+      "description": "Greek syntax parses (650 texts, UD annotations for syntax channel)",
+      "size_bytes": 1013972992,
+      "size_human": "967 MB",
+      "sha256": "bd4fd42da7f35719b76b091e95f2fef52f9290dc6a30e667a7547f9348c050ec",
+      "required": true,
+      "rebuild_instructions": "Run: python scripts/build_greek_syntax_db.py"
+    },
+    {
       "filename": "latin_lemmas_extended.db.tar.gz",
       "extract_to": "data/lemma_tables/latin_lemmas_extended.db",
       "description": "Extended Latin lemma lookup table",
@@ -52,7 +62,7 @@
     }
   ],
   "notes": {
-    "total_size": "~5.3 GB (uncompressed)",
+    "total_size": "~6.3 GB (uncompressed)",
     "hosting": "Files are hosted on the Tesserae server (tesserae.caset.buffalo.edu) and served via Apache.",
     "checksums": "SHA256 checksums are populated by running scripts/package_data.sh on Marvin.",
     "already_on_github": [

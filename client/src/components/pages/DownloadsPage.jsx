@@ -105,113 +105,140 @@ const DownloadsPage = () => {
           <div>
             <h4 className="font-medium text-gray-800 mb-2">Latin to Latin</h4>
             <div className="space-y-2 text-sm">
-              <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
-                <div>
-                  <span className="font-medium">Lucan BC1 vs Vergil Aeneid - Benchmark 1</span>
-                  <span className="text-gray-500 ml-2">(hand-ranked)</span>
-                </div>
-                <a href="/static/downloads/benchmarks/Lucan.BC1-Verg.Aeneid.benchmark1.xlsx" 
+              <div className="p-2 bg-gray-50 rounded">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="font-medium">Lucan BC 1 vs Vergil Aeneid - Benchmark 1</span>
+                    <span className="text-gray-500 ml-2">(hand-ranked)</span>
+                  </div>
+                  <a href="/static/downloads/benchmarks/Lucan.BC1-Verg.Aeneid.benchmark1.xlsx"
+                     target="_blank" rel="noopener noreferrer"
                    className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs">
-                  XLSX
-                </a>
+                    XLSX
+                  </a>
+                </div>
               </div>
-              <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
-                <div>
-                  <span className="font-medium">Lucan BC1 vs Vergil Aeneid - Benchmark 2</span>
-                  <span className="text-gray-500 ml-2">(hand-ranked)</span>
-                </div>
-                <a href="/static/downloads/benchmarks/Lucan.BC1-Verg.Aeneid.benchmark2.xlsx" 
+              <div className="p-2 bg-gray-50 rounded">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="font-medium">Lucan BC 1 vs Vergil Aeneid - Benchmark 2</span>
+                    <span className="text-gray-500 ml-2">(hand-ranked)</span>
+                  </div>
+                  <a href="/static/downloads/benchmarks/Lucan.BC1-Verg.Aeneid.benchmark2.xlsx"
+                     target="_blank" rel="noopener noreferrer"
                    className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs">
-                  XLSX
-                </a>
+                    XLSX
+                  </a>
+                </div>
               </div>
-              <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
-                <div>
-                  <span className="font-medium">Lucan BC1 vs Vergil Aeneid - Tesserae Results</span>
-                  <span className="text-gray-500 ml-2">(scored, XLSX)</span>
-                </div>
-                <a href="/static/downloads/benchmarks/Lucan.BC1-Verg.Aeneid.tess_.results2.xlsx" 
+              <div className="p-2 bg-gray-50 rounded">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="font-medium">Lucan BC 1 vs Vergil Aeneid - Gold Pairs</span>
+                    <span className="text-gray-500 ml-2">(213 parallels)</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <a href="/static/downloads/benchmarks/lucan_vergil_benchmark.csv"
+                       target="_blank" rel="noopener noreferrer"
                    className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs">
-                  XLSX
-                </a>
+                      CSV
+                    </a>
+                    <a href="/static/downloads/benchmarks/lucan_vergil_benchmark.json"
+                       target="_blank" rel="noopener noreferrer"
+                   className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs">
+                      JSON
+                    </a>
+                  </div>
+                </div>
               </div>
-              <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
-                <div>
-                  <span className="font-medium">Lucan BC1 vs Vergil Aeneid - Tesserae Results</span>
-                  <span className="text-gray-500 ml-2">(scored, TXT)</span>
-                </div>
-                <a href="/static/downloads/benchmarks/bench41.txt" 
+              <div className="p-2 bg-gray-50 rounded">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="font-medium">Lucan BC 1 vs Vergil Aeneid - Tesserae V3 Scored Results</span>
+                    <span className="text-gray-500 ml-2">(3,410 pairs)</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <a href="/static/downloads/benchmarks/lucan_vergil_scored.csv"
+                       target="_blank" rel="noopener noreferrer"
                    className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs">
-                  TXT
-                </a>
+                      CSV
+                    </a>
+                    <a href="/static/downloads/benchmarks/Lucan.BC1-Verg.Aeneid.tess_.results2.xlsx"
+                       target="_blank" rel="noopener noreferrer"
+                   className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs">
+                      XLSX
+                    </a>
+                  </div>
+                </div>
               </div>
-              <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
-                <div>
-                  <span className="font-medium">Lucan BC1 vs Vergil Aeneid - Parsed JSON</span>
-                  <span className="text-gray-500 ml-2">(3,410 parallels, machine-readable)</span>
-                </div>
-                <a href="/static/downloads/benchmarks/lucan_vergil_benchmark.json" 
+              <div className="p-2 bg-gray-50 rounded">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="font-medium">Lucan BC 1 vs Vergil Aeneid - 2010 Benchmark</span>
+                    <span className="text-gray-500 ml-2">(formatted with match-words)</span>
+                  </div>
+                  <a href="/static/downloads/benchmarks/Tesserae-2010-Benchmark1.xlsx"
+                     target="_blank" rel="noopener noreferrer"
                    className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs">
-                  JSON
-                </a>
+                    XLSX
+                  </a>
+                </div>
               </div>
-              <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
-                <div>
-                  <span className="font-medium">Lucan BC1 vs Vergil Aeneid - 2010 Benchmark</span>
-                  <span className="text-gray-500 ml-2">(formatted with match-words)</span>
-                </div>
-                <a href="/static/downloads/benchmarks/Tesserae-2010-Benchmark1.xlsx" 
+              <div className="p-2 bg-gray-50 rounded">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="font-medium">Lucan BC II-IX vs Vergil Aeneid</span>
+                    <span className="text-gray-500 ml-2">(raw)</span>
+                  </div>
+                  <a href="/static/downloads/benchmarks/Lucan.BC_.rest-Verg.Aeneid.benchmark.xlsx"
+                     target="_blank" rel="noopener noreferrer"
                    className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs">
-                  XLSX
-                </a>
+                    XLSX
+                  </a>
+                </div>
               </div>
-              <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
-                <div>
-                  <span className="font-medium">Lucan BC II-IX vs Vergil Aeneid</span>
-                  <span className="text-gray-500 ml-2">(raw)</span>
-                </div>
-                <a href="/static/downloads/benchmarks/Lucan.BC_.rest-Verg.Aeneid.benchmark.xlsx" 
+              <div className="p-2 bg-gray-50 rounded">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="font-medium">Statius Achilleid vs Various</span>
+                    <span className="text-gray-500 ml-2">(Geneva Seminar)</span>
+                  </div>
+                  <a href="/static/downloads/benchmarks/Stat.Achilleid1.benchmark.xlsx"
+                     target="_blank" rel="noopener noreferrer"
                    className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs">
-                  XLSX
-                </a>
-              </div>
-              <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
-                <div>
-                  <span className="font-medium">Statius Achilleid vs Various</span>
-                  <span className="text-gray-500 ml-2">(Geneva Seminar)</span>
+                    XLSX
+                  </a>
                 </div>
-                <a href="/static/downloads/benchmarks/Stat.Achilleid1.benchmark.xlsx" 
-                   className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs">
-                  XLSX
-                </a>
               </div>
               <div className="p-2 bg-gray-50 rounded">
                 <div className="flex items-center justify-between">
                   <div>
                     <span className="font-medium">Valerius Flaccus Argonautica 1 vs Latin Epic</span>
-                    <span className="text-gray-500 ml-2">(945 intertexts)</span>
+                    <span className="text-gray-500 ml-2">(521 gold pairs)</span>
                   </div>
                   <div className="flex gap-2">
-                    <a href="/static/downloads/benchmarks/vf_intertext_dataset_2.0.tab" 
-                       className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs">
-                      TAB
+                    <a href="/static/downloads/benchmarks/vf_benchmark.csv"
+                       target="_blank" rel="noopener noreferrer"
+                   className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs">
+                      CSV
                     </a>
-                    <a href="/static/downloads/benchmarks/vf_benchmark.json" 
-                       className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs">
+                    <a href="/static/downloads/benchmarks/vf_benchmark.json"
+                       target="_blank" rel="noopener noreferrer"
+                   className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs">
                       JSON
                     </a>
                   </div>
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
-                  Dexter et al. (2023). References to Vergil's Aeneid, Ovid's Metamorphoses, Lucan's Bellum Civile, 
-                  and Statius' Thebaid from Kleywegt, Spaltenstein, and Zissos commentaries.
-                  {' '}<a href="https://openhumanitiesdata.metajnl.com/articles/10.5334/johd.153" 
+                  Dexter et al. (2023). References to Vergil, Ovid, Lucan, and Statius from Kleywegt,
+                  Spaltenstein, and Zissos commentaries.
+                  {' '}<a href="https://openhumanitiesdata.metajnl.com/articles/10.5334/johd.153"
                      target="_blank" rel="noopener noreferrer"
                      className="text-red-600 hover:underline">Article</a>
                   {' | '}
-                  <a href="https://doi.org/10.7910/DVN/S6RD4M" 
+                  <a href="https://doi.org/10.7910/DVN/S6RD4M"
                      target="_blank" rel="noopener noreferrer"
-                     className="text-red-600 hover:underline">Dataset</a>
+                     className="text-red-600 hover:underline">Full Dataset</a>
                 </p>
               </div>
             </div>
@@ -225,7 +252,8 @@ const DownloadsPage = () => {
                   <span className="font-medium">Apollonius Argonautica vs Homer</span>
                   <span className="text-gray-500 ml-2">(Hunter commentary, hand-ranked)</span>
                 </div>
-                <a href="/static/downloads/benchmarks/Ap.Argonautica-Homer.benchmark.xlsx" 
+                <a href="/static/downloads/benchmarks/Ap.Argonautica-Homer.benchmark.xlsx"
+                   target="_blank" rel="noopener noreferrer"
                    className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs">
                   XLSX
                 </a>
@@ -235,7 +263,8 @@ const DownloadsPage = () => {
                   <span className="font-medium">Apollonius Argonautica III vs Homer</span>
                   <span className="text-gray-500 ml-2">(complete)</span>
                 </div>
-                <a href="/static/downloads/benchmarks/Ap.Argonautica3-Homer.benchmark.xlsx" 
+                <a href="/static/downloads/benchmarks/Ap.Argonautica3-Homer.benchmark.xlsx"
+                   target="_blank" rel="noopener noreferrer"
                    className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs">
                   XLSX
                 </a>
@@ -251,37 +280,39 @@ const DownloadsPage = () => {
                   <span className="font-medium">Vergil Aeneid I vs Homer Iliad</span>
                   <span className="text-gray-500 ml-2">(Knauer 1964, hand-ranked)</span>
                 </div>
-                <a href="/static/downloads/benchmarks/Verg.Aeneid1-Iliad.benchmark.xlsx" 
+                <a href="/static/downloads/benchmarks/Verg.Aeneid1-Iliad.benchmark.xlsx"
+                   target="_blank" rel="noopener noreferrer"
                    className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs">
                   XLSX
                 </a>
               </div>
-              <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
-                <div>
-                  <span className="font-medium">Vergil Aeneid I vs Homer Iliad - Raw 1</span>
-                  <span className="text-gray-500 ml-2">(raw data)</span>
-                </div>
-                <a href="/static/downloads/benchmarks/Verg.Aeneid1-Iliad.benchmark.raw_.1.txt" 
+              <div className="p-2 bg-gray-50 rounded">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="font-medium">Vergil Aeneid I vs Homer Iliad - Raw Data</span>
+                    <span className="text-gray-500 ml-2">(with Greek text)</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <a href="/static/downloads/benchmarks/knauer_aeneid1_iliad_raw1.csv"
+                       target="_blank" rel="noopener noreferrer"
                    className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs">
-                  TXT
-                </a>
-              </div>
-              <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
-                <div>
-                  <span className="font-medium">Vergil Aeneid I vs Homer Iliad - Raw 2</span>
-                  <span className="text-gray-500 ml-2">(raw data)</span>
-                </div>
-                <a href="/static/downloads/benchmarks/Verg.Aeneid1-Iliad.benchmark.raw_.2.txt" 
+                      CSV 1
+                    </a>
+                    <a href="/static/downloads/benchmarks/knauer_aeneid1_iliad_raw2.csv"
+                       target="_blank" rel="noopener noreferrer"
                    className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs">
-                  TXT
-                </a>
+                      CSV 2
+                    </a>
+                  </div>
+                </div>
               </div>
               <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
                 <div>
                   <span className="font-medium">Vergil Aeneid I vs Homer Odyssey</span>
                   <span className="text-gray-500 ml-2">(Knauer 1964)</span>
                 </div>
-                <a href="/static/downloads/benchmarks/Verg.Aeneid1-Odyssey.benchmark.xlsx" 
+                <a href="/static/downloads/benchmarks/Verg.Aeneid1-Odyssey.benchmark.xlsx"
+                   target="_blank" rel="noopener noreferrer"
                    className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs">
                   XLSX
                 </a>
@@ -291,7 +322,8 @@ const DownloadsPage = () => {
                   <span className="font-medium">Vergil Aeneid vs Apollonius Argonautica</span>
                   <span className="text-gray-500 ml-2">(Neils 2001)</span>
                 </div>
-                <a href="/static/downloads/benchmarks/Verg.Aeneid-Ap.Argonautica.benchmark.Neils2001.pdf" 
+                <a href="/static/downloads/benchmarks/Verg.Aeneid-Ap.Argonautica.benchmark.Neils2001.pdf"
+                   target="_blank" rel="noopener noreferrer"
                    className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs">
                   PDF
                 </a>
@@ -301,7 +333,8 @@ const DownloadsPage = () => {
                   <span className="font-medium">Vergil Georgics IV vs Various</span>
                   <span className="text-gray-500 ml-2">(partially ranked)</span>
                 </div>
-                <a href="/static/downloads/benchmarks/Verg.Georgics4.benchmark.xlsx" 
+                <a href="/static/downloads/benchmarks/Verg.Georgics4.benchmark.xlsx"
+                   target="_blank" rel="noopener noreferrer"
                    className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs">
                   XLSX
                 </a>
@@ -319,19 +352,252 @@ const DownloadsPage = () => {
       </div>
 
       <div className="bg-white rounded-lg shadow p-6">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">V6 Evaluation Results</h3>
+        <p className="text-sm text-gray-600 mb-4">
+          Ranked fusion search results used in the V6 evaluation article. Each CSV contains all scored pairs
+          with rank, references, text, fused score, channel details, and matched words. Gold-standard pairs
+          are annotated where applicable. Companion data for Coffee et al. (forthcoming).
+        </p>
+
+        <div className="space-y-4">
+          <div>
+            <h4 className="font-medium text-gray-800 mb-2">Latin Benchmarks</h4>
+            <p className="text-xs text-gray-500 mb-2">
+              Full ranked output with gold annotations. Recall: 792/862 (91.9%) across 5 benchmarks.
+            </p>
+            <div className="space-y-2 text-sm">
+              <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                <div>
+                  <span className="font-medium">Lucan BC 1 vs Vergil Aeneid</span>
+                  <span className="text-gray-500 ml-2">(189/213, 88.7%)</span>
+                </div>
+                <a href="/static/downloads/evaluation/lucan_vergil_ranked.csv.gz"
+                   target="_blank" rel="noopener noreferrer"
+                   className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs">
+                  CSV.GZ
+                </a>
+              </div>
+              <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                <div>
+                  <span className="font-medium">VF Argonautica 1 vs Vergil Aeneid</span>
+                  <span className="text-gray-500 ml-2">(479/521, 91.9%)</span>
+                </div>
+                <a href="/static/downloads/evaluation/vf_vergil_ranked.csv.gz"
+                   target="_blank" rel="noopener noreferrer"
+                   className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs">
+                  CSV.GZ
+                </a>
+              </div>
+              <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                <div>
+                  <span className="font-medium">Achilleid vs Vergil Aeneid</span>
+                  <span className="text-gray-500 ml-2">(50/53, 94.3%)</span>
+                </div>
+                <a href="/static/downloads/evaluation/achilleid_vergil_ranked.csv.gz"
+                   target="_blank" rel="noopener noreferrer"
+                   className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs">
+                  CSV.GZ
+                </a>
+              </div>
+              <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                <div>
+                  <span className="font-medium">Achilleid vs Ovid Metamorphoses</span>
+                  <span className="text-gray-500 ml-2">(21/23, 91.3%)</span>
+                </div>
+                <a href="/static/downloads/evaluation/achilleid_ovid_ranked.csv.gz"
+                   target="_blank" rel="noopener noreferrer"
+                   className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs">
+                  CSV.GZ
+                </a>
+              </div>
+              <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                <div>
+                  <span className="font-medium">Achilleid vs Statius Thebaid</span>
+                  <span className="text-gray-500 ml-2">(50/52, 96.2%)</span>
+                </div>
+                <a href="/static/downloads/evaluation/achilleid_thebaid_ranked.csv.gz"
+                   target="_blank" rel="noopener noreferrer"
+                   className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs">
+                  CSV.GZ
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <h4 className="font-medium text-gray-800 mb-2">Greek Benchmark</h4>
+            <div className="space-y-2 text-sm">
+              <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                <div>
+                  <span className="font-medium">Apollonius Argonautica 3 vs Homer</span>
+                  <span className="text-gray-500 ml-2">(Hunter type 4+5, per-book methodology)</span>
+                </div>
+                <a href="/static/downloads/evaluation/apollonius_homer_ranked.csv.gz"
+                   target="_blank" rel="noopener noreferrer"
+                   className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs">
+                  CSV.GZ
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <h4 className="font-medium text-gray-800 mb-2">Cross-Lingual Benchmark</h4>
+            <div className="space-y-2 text-sm">
+              <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                <div>
+                  <span className="font-medium">Knauer Aeneid 1 vs Iliad — Gold Summary</span>
+                  <span className="text-gray-500 ml-2">(412 pairs, per-target-line ranks)</span>
+                </div>
+                <a href="/static/downloads/evaluation/knauer_gold_summary.csv"
+                   target="_blank" rel="noopener noreferrer"
+                   className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs">
+                  CSV
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <h4 className="font-medium text-gray-800 mb-2">Case Studies</h4>
+            <p className="text-xs text-gray-500 mb-2">
+              Ranked results for text pairs cited in the article with specific rank claims.
+            </p>
+            <div className="space-y-2 text-sm">
+              <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                <div>
+                  <span className="font-medium">Aeneid 7 vs Punica 2</span>
+                  <span className="text-gray-500 ml-2">(Acheronta movebo)</span>
+                </div>
+                <a href="/static/downloads/evaluation/aen7_punica2_ranked.csv.gz"
+                   target="_blank" rel="noopener noreferrer"
+                   className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs">
+                  CSV.GZ
+                </a>
+              </div>
+              <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                <div>
+                  <span className="font-medium">Aeneid 1 vs Bellum Civile 1</span>
+                  <span className="text-gray-500 ml-2">(pectore curas)</span>
+                </div>
+                <a href="/static/downloads/evaluation/aen1_bc1_ranked.csv.gz"
+                   target="_blank" rel="noopener noreferrer"
+                   className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs">
+                  CSV.GZ
+                </a>
+              </div>
+              <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                <div>
+                  <span className="font-medium">Aeneid 5 vs Thebaid 6</span>
+                  <span className="text-gray-500 ml-2">(obstipuere animi)</span>
+                </div>
+                <a href="/static/downloads/evaluation/aen5_theb6_ranked.csv.gz"
+                   target="_blank" rel="noopener noreferrer"
+                   className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs">
+                  CSV.GZ
+                </a>
+              </div>
+              <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                <div>
+                  <span className="font-medium">Georgics 3 vs DRN 6</span>
+                  <span className="text-gray-500 ml-2">(Thomas plague / tricolon)</span>
+                </div>
+                <a href="/static/downloads/evaluation/georg3_drn6_ranked.csv.gz"
+                   target="_blank" rel="noopener noreferrer"
+                   className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs">
+                  CSV.GZ
+                </a>
+              </div>
+              <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                <div>
+                  <span className="font-medium">Georgics vs DRN — Full Works</span>
+                  <span className="text-gray-500 ml-2">(Thomas tricolon full-works rank)</span>
+                </div>
+                <a href="/static/downloads/evaluation/georg_drn_full_ranked.csv.gz"
+                   target="_blank" rel="noopener noreferrer"
+                   className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs">
+                  CSV.GZ
+                </a>
+              </div>
+              <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                <div>
+                  <span className="font-medium">Hinds Incipits — Summary</span>
+                  <span className="text-gray-500 ml-2">(6 cross-lingual pairs, semantic + fusion ranks)</span>
+                </div>
+                <a href="/static/downloads/evaluation/hinds_incipits_ranks.csv"
+                   target="_blank" rel="noopener noreferrer"
+                   className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs">
+                  CSV
+                </a>
+              </div>
+              <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                <div>
+                  <span className="font-medium">Odyssey 11 vs Aeneid 6</span>
+                  <span className="text-gray-500 ml-2">(shade embrace, cross-lingual)</span>
+                </div>
+                <a href="/static/downloads/evaluation/od11_aen6_crosslingual_ranked.csv.gz"
+                   target="_blank" rel="noopener noreferrer"
+                   className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs">
+                  CSV.GZ
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <h4 className="font-medium text-gray-800 mb-2">Recall Summary</h4>
+            <div className="space-y-2 text-sm">
+              <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                <div>
+                  <span className="font-medium">All Benchmarks — Recall Summary</span>
+                  <span className="text-gray-500 ml-2">(aggregated results)</span>
+                </div>
+                <a href="/static/downloads/evaluation/recall_summary.csv"
+                   target="_blank" rel="noopener noreferrer"
+                   className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs">
+                  CSV
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-4 pt-4 border-t border-gray-200">
+          <p className="text-xs text-gray-500">
+            <strong>Columns:</strong> rank, source_ref, target_ref, source_text, target_text, fused_score,
+            channels, channel_count, matched_words, is_gold, gold_index. Cross-lingual CSVs include cosine,
+            dict_count, dict_words, phonetic_count. Compressed with gzip.
+          </p>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-lg shadow p-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Developer Data Files</h3>
         <p className="text-sm text-gray-600 mb-4">
-          Pre-built search indexes required to run Tesserae V6 locally. These SQLite databases are too large
-          for GitHub and are hosted separately. If you're setting up a development environment, use the
-          automated download script instead of downloading manually.
+          To run Tesserae V6 locally, you need the Git repository plus pre-built search indexes
+          (too large for GitHub). The repository itself is ~4 GB because it includes the corpus texts
+          (~308 MB) and pre-computed semantic embeddings (~3.5 GB). The search indexes add another ~6.3 GB.
         </p>
 
         <div className="bg-gray-50 rounded p-4 mb-4">
           <p className="text-sm font-mono text-gray-700 mb-1">
-            <span className="text-gray-500"># After cloning the repository:</span>
+            <span className="text-gray-500"># 1. Clone the repository (~4 GB, includes texts + embeddings):</span>
           </p>
-          <p className="text-sm font-mono text-gray-800">python scripts/download_data.py</p>
+          <p className="text-sm font-mono text-gray-800 mb-3">git clone https://github.com/tesserae/tesserae-v6.git</p>
+          <p className="text-sm font-mono text-gray-700 mb-1">
+            <span className="text-gray-500"># 2. Download search indexes (~1.3 GB compressed, ~6.3 GB uncompressed):</span>
+          </p>
+          <p className="text-sm font-mono text-gray-800 mb-3">python scripts/download_data.py</p>
+          <p className="text-sm font-mono text-gray-700 mb-1">
+            <span className="text-gray-500"># 3. Check that all files are present:</span>
+          </p>
+          <p className="text-sm font-mono text-gray-800">python scripts/download_data.py --check</p>
         </div>
+
+        <p className="text-sm text-gray-600 mb-4">
+          The download script fetches all required files automatically. You can also download individual
+          files manually using the links below.
+        </p>
 
         <div className="space-y-3">
           <div className="flex items-center justify-between p-3 bg-gray-50 rounded">
@@ -341,6 +607,7 @@ const DownloadsPage = () => {
             </div>
             <a
               href="https://tesserae.caset.buffalo.edu/tesserae-data/la_index.db.tar.gz"
+              target="_blank" rel="noopener noreferrer"
               className="px-4 py-2 bg-red-700 text-white rounded hover:bg-red-800 text-sm"
             >
               Download
@@ -353,6 +620,7 @@ const DownloadsPage = () => {
             </div>
             <a
               href="https://tesserae.caset.buffalo.edu/tesserae-data/grc_index.db.tar.gz"
+              target="_blank" rel="noopener noreferrer"
               className="px-4 py-2 bg-red-700 text-white rounded hover:bg-red-800 text-sm"
             >
               Download
@@ -365,6 +633,7 @@ const DownloadsPage = () => {
             </div>
             <a
               href="https://tesserae.caset.buffalo.edu/tesserae-data/en_index.db.tar.gz"
+              target="_blank" rel="noopener noreferrer"
               className="px-4 py-2 bg-red-700 text-white rounded hover:bg-red-800 text-sm"
             >
               Download
@@ -377,6 +646,20 @@ const DownloadsPage = () => {
             </div>
             <a
               href="https://tesserae.caset.buffalo.edu/tesserae-data/syntax_latin.db.tar.gz"
+              target="_blank" rel="noopener noreferrer"
+              className="px-4 py-2 bg-red-700 text-white rounded hover:bg-red-800 text-sm"
+            >
+              Download
+            </a>
+          </div>
+          <div className="flex items-center justify-between p-3 bg-gray-50 rounded">
+            <div>
+              <span className="font-medium">Greek Syntax Parses</span>
+              <span className="text-sm text-gray-500 ml-2">(650 texts, UD annotations, 967 MB)</span>
+            </div>
+            <a
+              href="https://tesserae.caset.buffalo.edu/tesserae-data/syntax_greek.db.tar.gz"
+              target="_blank" rel="noopener noreferrer"
               className="px-4 py-2 bg-red-700 text-white rounded hover:bg-red-800 text-sm"
             >
               Download
@@ -385,7 +668,8 @@ const DownloadsPage = () => {
         </div>
 
         <p className="text-xs text-gray-500 mt-4">
-          Total download: ~5.3 GB uncompressed. See the{' '}
+          Total: ~10 GB (repository + indexes). The download script reads DATA_MANIFEST.json and
+          skips files already present. See the{' '}
           <a
             href="https://github.com/tesserae/tesserae-v6/blob/main/docs/DATA_FILES_REFERENCE.md"
             target="_blank"
