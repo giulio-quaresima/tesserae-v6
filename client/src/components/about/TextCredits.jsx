@@ -89,22 +89,22 @@ export default function TextCredits() {
       </div>
 
       <div className="overflow-x-auto border border-gray-200 rounded-lg">
-        <table className="w-full text-sm">
+        <table className="w-full text-sm min-w-[600px]">
           <thead>
             <tr className="bg-gray-50 border-b border-gray-200">
-              <th className="text-left px-4 py-3 font-semibold text-gray-700">Author</th>
-              <th className="text-left px-4 py-3 font-semibold text-gray-700">Work</th>
-              <th className="text-left px-4 py-3 font-semibold text-gray-700">e-Source</th>
-              <th className="text-left px-4 py-3 font-semibold text-gray-700">Print Source</th>
-              <th className="text-left px-4 py-3 font-semibold text-gray-700">Added by</th>
+              <th className="text-left px-2 sm:px-4 py-2 sm:py-3 font-semibold text-gray-700">Author</th>
+              <th className="text-left px-2 sm:px-4 py-2 sm:py-3 font-semibold text-gray-700">Work</th>
+              <th className="text-left px-2 sm:px-4 py-2 sm:py-3 font-semibold text-gray-700">e-Source</th>
+              <th className="text-left px-2 sm:px-4 py-2 sm:py-3 font-semibold text-gray-700">Print Source</th>
+              <th className="text-left px-2 sm:px-4 py-2 sm:py-3 font-semibold text-gray-700">Added by</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
             {filteredData.map((entry, idx) => (
               <tr key={idx} className="hover:bg-gray-50">
-                <td className="px-4 py-2 text-gray-900 font-medium whitespace-nowrap">{entry.author}</td>
-                <td className="px-4 py-2 text-gray-700">{entry.work}</td>
-                <td className="px-4 py-2 whitespace-nowrap">
+                <td className="px-2 sm:px-4 py-2 text-gray-900 font-medium whitespace-nowrap">{entry.author}</td>
+                <td className="px-2 sm:px-4 py-2 text-gray-700">{entry.work}</td>
+                <td className="px-2 sm:px-4 py-2 whitespace-nowrap">
                   {entry.e_source_url ? (
                     <a
                       href={entry.e_source_url}
@@ -118,8 +118,8 @@ export default function TextCredits() {
                     <span className="text-gray-700">{entry.e_source}</span>
                   )}
                 </td>
-                <td className="px-4 py-2 text-gray-600 text-xs">{entry.print_source}</td>
-                <td className="px-4 py-2 text-gray-600 whitespace-nowrap">{entry.added_by}</td>
+                <td className="px-2 sm:px-4 py-2 text-gray-600 text-xs">{entry.print_source}</td>
+                <td className="px-2 sm:px-4 py-2 text-gray-600 whitespace-nowrap">{entry.added_by}</td>
               </tr>
             ))}
             {filteredData.length === 0 && (

@@ -95,7 +95,7 @@ export default function MetadataTab({ authHeaders }) {
           placeholder="Filter by author, title, or filename..."
           value={corpusTextsFilter}
           onChange={e => setCorpusTextsFilter(e.target.value)}
-          className="flex-1 min-w-[200px] px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+          className="flex-1 min-w-[120px] sm:min-w-[200px] px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
         />
         <select
           value={corpusTextsLang}
@@ -220,8 +220,8 @@ export default function MetadataTab({ authHeaders }) {
         <div className="text-center py-8"><LoadingSpinner /></div>
       ) : (
         <div className="border border-gray-200 rounded-lg overflow-hidden">
-          <div className="max-h-[600px] overflow-y-auto">
-            <table className="w-full divide-y divide-gray-200 text-sm table-fixed">
+          <div className="max-h-[600px] overflow-y-auto overflow-x-auto">
+            <table className="w-full divide-y divide-gray-200 text-sm table-fixed min-w-[640px]">
               <thead className="bg-gray-50 sticky top-0">
                 <tr>
                   <th className="w-[14%] px-2 py-2 text-left font-semibold text-gray-700">Author</th>

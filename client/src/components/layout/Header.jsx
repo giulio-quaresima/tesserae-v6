@@ -259,7 +259,7 @@ const Header = ({ user, setUser, onLogoClick }) => {
                 </button>
                 
                 {showDropdown && (
-                  <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-lg border z-50">
+                  <div className="absolute right-0 mt-2 w-56 sm:w-64 bg-white rounded-lg shadow-lg border z-50">
                     <div className="p-3 border-b">
                       <p className="font-medium text-gray-900">{user.name || user.orcid_name || `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'Account'}</p>
                       <p className="text-xs text-gray-500">{user.email || 'Signed in with Replit'}</p>

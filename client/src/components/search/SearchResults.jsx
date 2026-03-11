@@ -467,20 +467,20 @@ const SearchResults = ({
           <div className="flex items-center gap-2">
             <button
               onClick={() => setShowDistributionChart(!showDistributionChart)}
-              className={`text-xs px-3 py-1.5 rounded whitespace-nowrap ${showDistributionChart ? 'bg-amber-600 text-white' : 'bg-amber-100 text-amber-700 hover:bg-amber-200'}`}
+              className={`text-xs px-3 py-2 rounded whitespace-nowrap ${showDistributionChart ? 'bg-amber-600 text-white' : 'bg-amber-100 text-amber-700 hover:bg-amber-200'}`}
             >
               {showDistributionChart ? 'Hide Chart' : 'Distribution'}
             </button>
             <button
               onClick={exportCSV}
-              className="text-xs bg-amber-600 text-white px-3 py-1.5 rounded hover:bg-amber-700 whitespace-nowrap"
+              className="text-xs bg-amber-600 text-white px-3 py-2 rounded hover:bg-amber-700 whitespace-nowrap"
             >
               Export CSV
             </button>
             {onRerunFresh && !loading && (
               <button
                 onClick={onRerunFresh}
-                className="text-xs bg-gray-100 text-gray-600 px-3 py-1.5 rounded hover:bg-gray-200 whitespace-nowrap"
+                className="text-xs bg-gray-100 text-gray-600 px-3 py-2 rounded hover:bg-gray-200 whitespace-nowrap"
                 title="Clear cached results and run the search again"
               >
                 Refresh results
@@ -488,11 +488,11 @@ const SearchResults = ({
             )}
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-600">Sort:</span>
+            <span className="text-xs sm:text-sm text-gray-600">Sort:</span>
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
-              className="border rounded px-2 py-1 text-sm"
+              className="border rounded px-2 py-1.5 text-xs sm:text-sm"
             >
               <option value="score">Score</option>
               <option value="source_locus">Source Location</option>
@@ -528,7 +528,7 @@ const SearchResults = ({
               Export PNG
             </button>
           </div>
-          <div style={{ height: '200px' }}>
+          <div className="h-[150px] sm:h-[200px]">
             <Bar ref={chartRef} data={getDistributionData() || { labels: [], datasets: [] }} options={chartOptions} />
           </div>
           {chartFilter && (
@@ -552,7 +552,7 @@ const SearchResults = ({
         {displayedResults.map((r, i) => (
           <div
             key={i}
-            className="bg-white border rounded-lg p-4 hover:shadow-md transition-shadow"
+            className="bg-white border rounded-lg p-3 sm:p-4 hover:shadow-md transition-shadow"
           >
             <div className="flex gap-3">
               <span className="text-xs text-gray-400 min-w-[2.5rem] text-right shrink-0 leading-none" style={{paddingTop: '1px'}}>

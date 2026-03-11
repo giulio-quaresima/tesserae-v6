@@ -535,9 +535,9 @@ export default function HelpPage() {
                   literal text. A regular expression (or "regex") is a sequence of characters that defines a search pattern.
                   This is a powerful tool for finding words with variant spellings, partial forms, or structural patterns.
                 </p>
-                <div className="bg-gray-50 p-4 rounded-lg text-sm space-y-2">
+                <div className="bg-gray-50 p-3 sm:p-4 rounded-lg text-sm space-y-2 overflow-x-auto">
                   <p className="font-medium text-gray-800">Common patterns:</p>
-                  <table className="w-full text-left">
+                  <table className="w-full text-left text-xs sm:text-sm">
                     <tbody className="divide-y divide-gray-200">
                       <tr><td className="py-1 pr-4 font-mono text-red-700 whitespace-nowrap">arm.</td><td className="py-1 text-gray-600">Matches "arma", "arms", "army" — the dot matches any single character</td></tr>
                       <tr><td className="py-1 pr-4 font-mono text-red-700 whitespace-nowrap">amor|bellum</td><td className="py-1 text-gray-600">Matches lines containing "amor" OR "bellum"</td></tr>
