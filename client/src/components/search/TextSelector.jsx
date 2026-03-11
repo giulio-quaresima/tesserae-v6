@@ -54,7 +54,7 @@ const TextSelector = ({
           <select
             value={selectedText}
             onChange={(e) => setSelectedText(e.target.value)}
-            className="w-full border rounded px-2 py-2 text-sm"
+            className="w-full border rounded px-2 py-2 text-base sm:text-sm"
           >
             <option value="">Select a work...</option>
             {authorHierarchy.works.map(work => (
@@ -88,7 +88,7 @@ const TextSelector = ({
           <select
             value={selectedText}
             onChange={(e) => setSelectedText(e.target.value)}
-            className="w-full border rounded px-2 py-2 text-sm"
+            className="w-full border rounded px-2 py-2 text-base sm:text-sm"
           >
             <option value="">Select a text...</option>
             {texts.map(text => (

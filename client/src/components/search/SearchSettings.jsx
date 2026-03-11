@@ -39,7 +39,7 @@ const SearchSettings = ({ settings, setSettings, showAdvanced, setShowAdvanced, 
           <select
             value={settings.match_type}
             onChange={(e) => handleChange('match_type', e.target.value)}
-            className="w-full border rounded px-2 py-2 text-sm"
+            className="w-full border rounded px-2 py-2 text-base sm:text-sm"
           >
             <option value="fusion">Fusion — All Channels (best recall)</option>
             <option value="lemma">Dictionary Form (Lemma)</option>
@@ -76,7 +76,7 @@ const SearchSettings = ({ settings, setSettings, showAdvanced, setShowAdvanced, 
                 handleChange('min_matches', 2);
               }
             }}
-            className="w-full border rounded px-2 py-2 text-sm"
+            className="w-full border rounded px-2 py-2 text-base sm:text-sm"
           />
         </div>
         )}
@@ -92,7 +92,7 @@ const SearchSettings = ({ settings, setSettings, showAdvanced, setShowAdvanced, 
             <select
               value={settings.stoplist_basis}
               onChange={(e) => handleChange('stoplist_basis', e.target.value)}
-              className="w-full border rounded px-2 py-2 text-sm"
+              className="w-full border rounded px-2 py-2 text-base sm:text-sm"
             >
               <option value="source_target">Source + Target</option>
               <option value="source">Source Only</option>
@@ -130,7 +130,7 @@ const SearchSettings = ({ settings, setSettings, showAdvanced, setShowAdvanced, 
                 }
               }}
               placeholder="Default"
-              className="w-full border rounded px-2 py-2 text-sm"
+              className="w-full border rounded px-2 py-2 text-base sm:text-sm"
             />
             <p className="text-xs text-gray-400 mt-1">Default = curated list + high-frequency words</p>
           </div>
@@ -143,7 +143,7 @@ const SearchSettings = ({ settings, setSettings, showAdvanced, setShowAdvanced, 
             <select
               value={settings.source_unit_type}
               onChange={(e) => handleChange('source_unit_type', e.target.value)}
-              className="w-full border rounded px-2 py-2 text-sm"
+              className="w-full border rounded px-2 py-2 text-base sm:text-sm"
             >
               <option value="line">Line</option>
               <option value="phrase">Phrase</option>
@@ -157,7 +157,7 @@ const SearchSettings = ({ settings, setSettings, showAdvanced, setShowAdvanced, 
             <select
               value={settings.target_unit_type}
               onChange={(e) => handleChange('target_unit_type', e.target.value)}
-              className="w-full border rounded px-2 py-2 text-sm"
+              className="w-full border rounded px-2 py-2 text-base sm:text-sm"
             >
               <option value="line">Line</option>
               <option value="phrase">Phrase</option>
@@ -181,7 +181,7 @@ const SearchSettings = ({ settings, setSettings, showAdvanced, setShowAdvanced, 
               onBlur={() => {
                 if (settings.max_distance === '' || settings.max_distance < 1) handleChange('max_distance', 999);
               }}
-              className="w-full border rounded px-2 py-2 text-sm"
+              className="w-full border rounded px-2 py-2 text-base sm:text-sm"
             />
           </div>
           )}
@@ -195,7 +195,7 @@ const SearchSettings = ({ settings, setSettings, showAdvanced, setShowAdvanced, 
               min="0"
               value={settings.max_results}
               onChange={(e) => handleChange('max_results', parseInt(e.target.value) || 0)}
-              className="w-full border rounded px-2 py-2 text-sm"
+              className="w-full border rounded px-2 py-2 text-base sm:text-sm"
             />
           </div>
 
@@ -208,7 +208,7 @@ const SearchSettings = ({ settings, setSettings, showAdvanced, setShowAdvanced, 
               type="text"
               value={settings.custom_stopwords}
               onChange={(e) => handleChange('custom_stopwords', e.target.value)}
-              className="w-full border rounded px-2 py-2 text-sm"
+              className="w-full border rounded px-2 py-2 text-base sm:text-sm"
             />
             <p className="text-xs text-gray-400 mt-1">Use dictionary forms (lemmata): {stopwordExamples[language] || stopwordExamples.la}</p>
           </div>

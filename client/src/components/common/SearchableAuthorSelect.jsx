@@ -28,8 +28,12 @@ const SearchableAuthorSelect = ({
   );
   const selectedAuthor = safeAuthors.find(a => a.author_key === value);
 
+  const mobileSelectRef = useRef(null);
+
   useEffect(() => {
     const handleClickOutside = (e) => {
+      // Don't interfere with mobile native select
+      if (mobileSelectRef.current && mobileSelectRef.current.contains(e.target)) return;
       if (containerRef.current && !containerRef.current.contains(e.target)) {
         setShowDropdown(false);
         setIsEditing(false);
@@ -53,9 +57,10 @@ const SearchableAuthorSelect = ({
     <>
       {/* Mobile: native select (hidden on sm+ screens) */}
       <select
+        ref={mobileSelectRef}
         value={value}
         onChange={e => onChange(e.target.value)}
-        className="sm:hidden w-full border rounded px-2 py-2 text-sm"
+        className="sm:hidden w-full border rounded px-3 py-2.5 text-base bg-white"
       >
         <option value="">Select author...</option>
         {safeAuthors.map(a => (
