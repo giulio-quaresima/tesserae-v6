@@ -528,7 +528,7 @@ const SearchResults = ({
               Export PNG
             </button>
           </div>
-          <div style={{ height: '200px' }}>
+          <div className="h-[150px] sm:h-[200px]">
             <Bar ref={chartRef} data={getDistributionData() || { labels: [], datasets: [] }} options={chartOptions} />
           </div>
           {chartFilter && (

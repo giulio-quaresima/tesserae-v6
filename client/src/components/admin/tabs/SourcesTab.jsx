@@ -171,8 +171,8 @@ export default function SourcesTab({ authHeaders }) {
       {sourcesLoading ? (
         <div className="text-center py-8"><LoadingSpinner /></div>
       ) : (
-        <div className="border border-gray-200 rounded-lg overflow-hidden">
-          <table className="w-full divide-y divide-gray-200 text-sm table-fixed">
+        <div className="border border-gray-200 rounded-lg overflow-hidden overflow-x-auto">
+          <table className="w-full divide-y divide-gray-200 text-sm table-fixed min-w-[640px]">
             <thead className="bg-gray-50">
               <tr>
                 <th className="w-[14%] px-2 py-2 text-left font-semibold text-gray-700">Author</th>

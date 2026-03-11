@@ -52,7 +52,7 @@ const DownloadsPage = () => {
           </p>
           <div className="space-y-3">
             {languages.map(lang => (
-              <div key={lang.code} className="flex items-center justify-between p-3 bg-gray-50 rounded">
+              <div key={lang.code} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-gray-50 rounded">
                 <div>
                   <span className="font-medium">{lang.name}</span>
                   <span className="text-sm text-gray-500 ml-2">({lang.texts} texts)</span>
@@ -76,7 +76,7 @@ const DownloadsPage = () => {
           </p>
           <div className="space-y-3">
             {languages.filter(l => l.embeddings).map(lang => (
-              <div key={lang.code} className="flex items-center justify-between p-3 bg-gray-50 rounded">
+              <div key={lang.code} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-gray-50 rounded">
                 <div>
                   <span className="font-medium">{lang.name}</span>
                   <span className="text-sm text-gray-500 ml-2">(embeddings)</span>
@@ -106,33 +106,33 @@ const DownloadsPage = () => {
             <h4 className="font-medium text-gray-800 mb-2">Latin to Latin</h4>
             <div className="space-y-2 text-sm">
               <div className="p-2 bg-gray-50 rounded">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div>
                     <span className="font-medium">Lucan BC 1 vs Vergil Aeneid - Benchmark 1</span>
                     <span className="text-gray-500 ml-2">(hand-ranked)</span>
                   </div>
                   <a href="/static/downloads/benchmarks/Lucan.BC1-Verg.Aeneid.benchmark1.xlsx"
                      target="_blank" rel="noopener noreferrer"
-                   className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs">
+                   className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs self-start sm:self-auto whitespace-nowrap">
                     XLSX
                   </a>
                 </div>
               </div>
               <div className="p-2 bg-gray-50 rounded">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div>
                     <span className="font-medium">Lucan BC 1 vs Vergil Aeneid - Benchmark 2</span>
                     <span className="text-gray-500 ml-2">(hand-ranked)</span>
                   </div>
                   <a href="/static/downloads/benchmarks/Lucan.BC1-Verg.Aeneid.benchmark2.xlsx"
                      target="_blank" rel="noopener noreferrer"
-                   className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs">
+                   className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs self-start sm:self-auto whitespace-nowrap">
                     XLSX
                   </a>
                 </div>
               </div>
               <div className="p-2 bg-gray-50 rounded">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div>
                     <span className="font-medium">Lucan BC 1 vs Vergil Aeneid - Gold Pairs</span>
                     <span className="text-gray-500 ml-2">(213 parallels)</span>
@@ -140,19 +140,19 @@ const DownloadsPage = () => {
                   <div className="flex gap-2">
                     <a href="/static/downloads/benchmarks/lucan_vergil_benchmark.csv"
                        target="_blank" rel="noopener noreferrer"
-                   className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs">
+                   className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs self-start sm:self-auto whitespace-nowrap">
                       CSV
                     </a>
                     <a href="/static/downloads/benchmarks/lucan_vergil_benchmark.json"
                        target="_blank" rel="noopener noreferrer"
-                   className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs">
+                   className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs self-start sm:self-auto whitespace-nowrap">
                       JSON
                     </a>
                   </div>
                 </div>
               </div>
               <div className="p-2 bg-gray-50 rounded">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div>
                     <span className="font-medium">Lucan BC 1 vs Vergil Aeneid - Tesserae V3 Scored Results</span>
                     <span className="text-gray-500 ml-2">(3,410 pairs)</span>
@@ -160,58 +160,58 @@ const DownloadsPage = () => {
                   <div className="flex gap-2">
                     <a href="/static/downloads/benchmarks/lucan_vergil_scored.csv"
                        target="_blank" rel="noopener noreferrer"
-                   className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs">
+                   className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs self-start sm:self-auto whitespace-nowrap">
                       CSV
                     </a>
                     <a href="/static/downloads/benchmarks/Lucan.BC1-Verg.Aeneid.tess_.results2.xlsx"
                        target="_blank" rel="noopener noreferrer"
-                   className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs">
+                   className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs self-start sm:self-auto whitespace-nowrap">
                       XLSX
                     </a>
                   </div>
                 </div>
               </div>
               <div className="p-2 bg-gray-50 rounded">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div>
                     <span className="font-medium">Lucan BC 1 vs Vergil Aeneid - 2010 Benchmark</span>
                     <span className="text-gray-500 ml-2">(formatted with match-words)</span>
                   </div>
                   <a href="/static/downloads/benchmarks/Tesserae-2010-Benchmark1.xlsx"
                      target="_blank" rel="noopener noreferrer"
-                   className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs">
+                   className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs self-start sm:self-auto whitespace-nowrap">
                     XLSX
                   </a>
                 </div>
               </div>
               <div className="p-2 bg-gray-50 rounded">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div>
                     <span className="font-medium">Lucan BC II-IX vs Vergil Aeneid</span>
                     <span className="text-gray-500 ml-2">(raw)</span>
                   </div>
                   <a href="/static/downloads/benchmarks/Lucan.BC_.rest-Verg.Aeneid.benchmark.xlsx"
                      target="_blank" rel="noopener noreferrer"
-                   className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs">
+                   className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs self-start sm:self-auto whitespace-nowrap">
                     XLSX
                   </a>
                 </div>
               </div>
               <div className="p-2 bg-gray-50 rounded">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div>
                     <span className="font-medium">Statius Achilleid vs Various</span>
                     <span className="text-gray-500 ml-2">(Geneva Seminar)</span>
                   </div>
                   <a href="/static/downloads/benchmarks/Stat.Achilleid1.benchmark.xlsx"
                      target="_blank" rel="noopener noreferrer"
-                   className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs">
+                   className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs self-start sm:self-auto whitespace-nowrap">
                     XLSX
                   </a>
                 </div>
               </div>
               <div className="p-2 bg-gray-50 rounded">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div>
                     <span className="font-medium">Valerius Flaccus Argonautica 1 vs Latin Epic</span>
                     <span className="text-gray-500 ml-2">(521 gold pairs)</span>
@@ -219,12 +219,12 @@ const DownloadsPage = () => {
                   <div className="flex gap-2">
                     <a href="/static/downloads/benchmarks/vf_benchmark.csv"
                        target="_blank" rel="noopener noreferrer"
-                   className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs">
+                   className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs self-start sm:self-auto whitespace-nowrap">
                       CSV
                     </a>
                     <a href="/static/downloads/benchmarks/vf_benchmark.json"
                        target="_blank" rel="noopener noreferrer"
-                   className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs">
+                   className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs self-start sm:self-auto whitespace-nowrap">
                       JSON
                     </a>
                   </div>
@@ -247,25 +247,25 @@ const DownloadsPage = () => {
           <div>
             <h4 className="font-medium text-gray-800 mb-2">Greek to Greek</h4>
             <div className="space-y-2 text-sm">
-              <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2 bg-gray-50 rounded">
                 <div>
                   <span className="font-medium">Apollonius Argonautica vs Homer</span>
                   <span className="text-gray-500 ml-2">(Hunter commentary, hand-ranked)</span>
                 </div>
                 <a href="/static/downloads/benchmarks/Ap.Argonautica-Homer.benchmark.xlsx"
                    target="_blank" rel="noopener noreferrer"
-                   className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs">
+                   className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs self-start sm:self-auto whitespace-nowrap">
                   XLSX
                 </a>
               </div>
-              <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2 bg-gray-50 rounded">
                 <div>
                   <span className="font-medium">Apollonius Argonautica III vs Homer</span>
                   <span className="text-gray-500 ml-2">(complete)</span>
                 </div>
                 <a href="/static/downloads/benchmarks/Ap.Argonautica3-Homer.benchmark.xlsx"
                    target="_blank" rel="noopener noreferrer"
-                   className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs">
+                   className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs self-start sm:self-auto whitespace-nowrap">
                   XLSX
                 </a>
               </div>
@@ -275,19 +275,19 @@ const DownloadsPage = () => {
           <div>
             <h4 className="font-medium text-gray-800 mb-2">Greek to Latin (Cross-lingual)</h4>
             <div className="space-y-2 text-sm">
-              <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2 bg-gray-50 rounded">
                 <div>
                   <span className="font-medium">Vergil Aeneid I vs Homer Iliad</span>
                   <span className="text-gray-500 ml-2">(Knauer 1964, hand-ranked)</span>
                 </div>
                 <a href="/static/downloads/benchmarks/Verg.Aeneid1-Iliad.benchmark.xlsx"
                    target="_blank" rel="noopener noreferrer"
-                   className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs">
+                   className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs self-start sm:self-auto whitespace-nowrap">
                   XLSX
                 </a>
               </div>
               <div className="p-2 bg-gray-50 rounded">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div>
                     <span className="font-medium">Vergil Aeneid I vs Homer Iliad - Raw Data</span>
                     <span className="text-gray-500 ml-2">(with Greek text)</span>
@@ -295,47 +295,47 @@ const DownloadsPage = () => {
                   <div className="flex gap-2">
                     <a href="/static/downloads/benchmarks/knauer_aeneid1_iliad_raw1.csv"
                        target="_blank" rel="noopener noreferrer"
-                   className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs">
+                   className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs self-start sm:self-auto whitespace-nowrap">
                       CSV 1
                     </a>
                     <a href="/static/downloads/benchmarks/knauer_aeneid1_iliad_raw2.csv"
                        target="_blank" rel="noopener noreferrer"
-                   className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs">
+                   className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs self-start sm:self-auto whitespace-nowrap">
                       CSV 2
                     </a>
                   </div>
                 </div>
               </div>
-              <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2 bg-gray-50 rounded">
                 <div>
                   <span className="font-medium">Vergil Aeneid I vs Homer Odyssey</span>
                   <span className="text-gray-500 ml-2">(Knauer 1964)</span>
                 </div>
                 <a href="/static/downloads/benchmarks/Verg.Aeneid1-Odyssey.benchmark.xlsx"
                    target="_blank" rel="noopener noreferrer"
-                   className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs">
+                   className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs self-start sm:self-auto whitespace-nowrap">
                   XLSX
                 </a>
               </div>
-              <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2 bg-gray-50 rounded">
                 <div>
                   <span className="font-medium">Vergil Aeneid vs Apollonius Argonautica</span>
                   <span className="text-gray-500 ml-2">(Neils 2001)</span>
                 </div>
                 <a href="/static/downloads/benchmarks/Verg.Aeneid-Ap.Argonautica.benchmark.Neils2001.pdf"
                    target="_blank" rel="noopener noreferrer"
-                   className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs">
+                   className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs self-start sm:self-auto whitespace-nowrap">
                   PDF
                 </a>
               </div>
-              <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2 bg-gray-50 rounded">
                 <div>
                   <span className="font-medium">Vergil Georgics IV vs Various</span>
                   <span className="text-gray-500 ml-2">(partially ranked)</span>
                 </div>
                 <a href="/static/downloads/benchmarks/Verg.Georgics4.benchmark.xlsx"
                    target="_blank" rel="noopener noreferrer"
-                   className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs">
+                   className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs self-start sm:self-auto whitespace-nowrap">
                   XLSX
                 </a>
               </div>
@@ -366,58 +366,58 @@ const DownloadsPage = () => {
               Full ranked output with gold annotations. Recall: 792/862 (91.9%) across 5 benchmarks.
             </p>
             <div className="space-y-2 text-sm">
-              <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2 bg-gray-50 rounded">
                 <div>
                   <span className="font-medium">Lucan BC 1 vs Vergil Aeneid</span>
                   <span className="text-gray-500 ml-2">(189/213, 88.7%)</span>
                 </div>
                 <a href="/static/downloads/evaluation/lucan_vergil_ranked.csv.gz"
                    target="_blank" rel="noopener noreferrer"
-                   className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs">
+                   className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs self-start sm:self-auto whitespace-nowrap">
                   CSV.GZ
                 </a>
               </div>
-              <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2 bg-gray-50 rounded">
                 <div>
                   <span className="font-medium">VF Argonautica 1 vs Vergil Aeneid</span>
                   <span className="text-gray-500 ml-2">(479/521, 91.9%)</span>
                 </div>
                 <a href="/static/downloads/evaluation/vf_vergil_ranked.csv.gz"
                    target="_blank" rel="noopener noreferrer"
-                   className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs">
+                   className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs self-start sm:self-auto whitespace-nowrap">
                   CSV.GZ
                 </a>
               </div>
-              <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2 bg-gray-50 rounded">
                 <div>
                   <span className="font-medium">Achilleid vs Vergil Aeneid</span>
                   <span className="text-gray-500 ml-2">(50/53, 94.3%)</span>
                 </div>
                 <a href="/static/downloads/evaluation/achilleid_vergil_ranked.csv.gz"
                    target="_blank" rel="noopener noreferrer"
-                   className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs">
+                   className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs self-start sm:self-auto whitespace-nowrap">
                   CSV.GZ
                 </a>
               </div>
-              <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2 bg-gray-50 rounded">
                 <div>
                   <span className="font-medium">Achilleid vs Ovid Metamorphoses</span>
                   <span className="text-gray-500 ml-2">(21/23, 91.3%)</span>
                 </div>
                 <a href="/static/downloads/evaluation/achilleid_ovid_ranked.csv.gz"
                    target="_blank" rel="noopener noreferrer"
-                   className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs">
+                   className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs self-start sm:self-auto whitespace-nowrap">
                   CSV.GZ
                 </a>
               </div>
-              <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2 bg-gray-50 rounded">
                 <div>
                   <span className="font-medium">Achilleid vs Statius Thebaid</span>
                   <span className="text-gray-500 ml-2">(50/52, 96.2%)</span>
                 </div>
                 <a href="/static/downloads/evaluation/achilleid_thebaid_ranked.csv.gz"
                    target="_blank" rel="noopener noreferrer"
-                   className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs">
+                   className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs self-start sm:self-auto whitespace-nowrap">
                   CSV.GZ
                 </a>
               </div>
@@ -427,14 +427,14 @@ const DownloadsPage = () => {
           <div>
             <h4 className="font-medium text-gray-800 mb-2">Greek Benchmark</h4>
             <div className="space-y-2 text-sm">
-              <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2 bg-gray-50 rounded">
                 <div>
                   <span className="font-medium">Apollonius Argonautica 3 vs Homer</span>
                   <span className="text-gray-500 ml-2">(Hunter type 4+5, per-book methodology)</span>
                 </div>
                 <a href="/static/downloads/evaluation/apollonius_homer_ranked.csv.gz"
                    target="_blank" rel="noopener noreferrer"
-                   className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs">
+                   className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs self-start sm:self-auto whitespace-nowrap">
                   CSV.GZ
                 </a>
               </div>
@@ -444,14 +444,14 @@ const DownloadsPage = () => {
           <div>
             <h4 className="font-medium text-gray-800 mb-2">Cross-Lingual Benchmark</h4>
             <div className="space-y-2 text-sm">
-              <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2 bg-gray-50 rounded">
                 <div>
                   <span className="font-medium">Knauer Aeneid 1 vs Iliad — Gold Summary</span>
                   <span className="text-gray-500 ml-2">(412 pairs, per-target-line ranks)</span>
                 </div>
                 <a href="/static/downloads/evaluation/knauer_gold_summary.csv"
                    target="_blank" rel="noopener noreferrer"
-                   className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs">
+                   className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs self-start sm:self-auto whitespace-nowrap">
                   CSV
                 </a>
               </div>
@@ -464,80 +464,80 @@ const DownloadsPage = () => {
               Ranked results for text pairs cited in the article with specific rank claims.
             </p>
             <div className="space-y-2 text-sm">
-              <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2 bg-gray-50 rounded">
                 <div>
                   <span className="font-medium">Aeneid 7 vs Punica 2</span>
                   <span className="text-gray-500 ml-2">(Acheronta movebo)</span>
                 </div>
                 <a href="/static/downloads/evaluation/aen7_punica2_ranked.csv.gz"
                    target="_blank" rel="noopener noreferrer"
-                   className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs">
+                   className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs self-start sm:self-auto whitespace-nowrap">
                   CSV.GZ
                 </a>
               </div>
-              <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2 bg-gray-50 rounded">
                 <div>
                   <span className="font-medium">Aeneid 1 vs Bellum Civile 1</span>
                   <span className="text-gray-500 ml-2">(pectore curas)</span>
                 </div>
                 <a href="/static/downloads/evaluation/aen1_bc1_ranked.csv.gz"
                    target="_blank" rel="noopener noreferrer"
-                   className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs">
+                   className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs self-start sm:self-auto whitespace-nowrap">
                   CSV.GZ
                 </a>
               </div>
-              <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2 bg-gray-50 rounded">
                 <div>
                   <span className="font-medium">Aeneid 5 vs Thebaid 6</span>
                   <span className="text-gray-500 ml-2">(obstipuere animi)</span>
                 </div>
                 <a href="/static/downloads/evaluation/aen5_theb6_ranked.csv.gz"
                    target="_blank" rel="noopener noreferrer"
-                   className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs">
+                   className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs self-start sm:self-auto whitespace-nowrap">
                   CSV.GZ
                 </a>
               </div>
-              <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2 bg-gray-50 rounded">
                 <div>
                   <span className="font-medium">Georgics 3 vs DRN 6</span>
                   <span className="text-gray-500 ml-2">(Thomas plague / tricolon)</span>
                 </div>
                 <a href="/static/downloads/evaluation/georg3_drn6_ranked.csv.gz"
                    target="_blank" rel="noopener noreferrer"
-                   className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs">
+                   className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs self-start sm:self-auto whitespace-nowrap">
                   CSV.GZ
                 </a>
               </div>
-              <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2 bg-gray-50 rounded">
                 <div>
                   <span className="font-medium">Georgics vs DRN — Full Works</span>
                   <span className="text-gray-500 ml-2">(Thomas tricolon full-works rank)</span>
                 </div>
                 <a href="/static/downloads/evaluation/georg_drn_full_ranked.csv.gz"
                    target="_blank" rel="noopener noreferrer"
-                   className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs">
+                   className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs self-start sm:self-auto whitespace-nowrap">
                   CSV.GZ
                 </a>
               </div>
-              <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2 bg-gray-50 rounded">
                 <div>
                   <span className="font-medium">Hinds Incipits — Summary</span>
                   <span className="text-gray-500 ml-2">(6 cross-lingual pairs, semantic + fusion ranks)</span>
                 </div>
                 <a href="/static/downloads/evaluation/hinds_incipits_ranks.csv"
                    target="_blank" rel="noopener noreferrer"
-                   className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs">
+                   className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs self-start sm:self-auto whitespace-nowrap">
                   CSV
                 </a>
               </div>
-              <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2 bg-gray-50 rounded">
                 <div>
                   <span className="font-medium">Odyssey 11 vs Aeneid 6</span>
                   <span className="text-gray-500 ml-2">(shade embrace, cross-lingual)</span>
                 </div>
                 <a href="/static/downloads/evaluation/od11_aen6_crosslingual_ranked.csv.gz"
                    target="_blank" rel="noopener noreferrer"
-                   className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs">
+                   className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs self-start sm:self-auto whitespace-nowrap">
                   CSV.GZ
                 </a>
               </div>
@@ -547,14 +547,14 @@ const DownloadsPage = () => {
           <div>
             <h4 className="font-medium text-gray-800 mb-2">Recall Summary</h4>
             <div className="space-y-2 text-sm">
-              <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2 bg-gray-50 rounded">
                 <div>
                   <span className="font-medium">All Benchmarks — Recall Summary</span>
                   <span className="text-gray-500 ml-2">(aggregated results)</span>
                 </div>
                 <a href="/static/downloads/evaluation/recall_summary.csv"
                    target="_blank" rel="noopener noreferrer"
-                   className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs">
+                   className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 text-xs self-start sm:self-auto whitespace-nowrap">
                   CSV
                 </a>
               </div>
@@ -579,19 +579,19 @@ const DownloadsPage = () => {
           (~308 MB) and pre-computed semantic embeddings (~3.5 GB). The search indexes add another ~6.3 GB.
         </p>
 
-        <div className="bg-gray-50 rounded p-4 mb-4">
-          <p className="text-sm font-mono text-gray-700 mb-1">
+        <div className="bg-gray-50 rounded p-4 mb-4 overflow-x-auto">
+          <p className="text-xs sm:text-sm font-mono text-gray-700 mb-1">
             <span className="text-gray-500"># 1. Clone the repository (~4 GB, includes texts + embeddings):</span>
           </p>
-          <p className="text-sm font-mono text-gray-800 mb-3">git clone https://github.com/tesserae/tesserae-v6.git</p>
-          <p className="text-sm font-mono text-gray-700 mb-1">
+          <p className="text-xs sm:text-sm font-mono text-gray-800 mb-3 whitespace-nowrap">git clone https://github.com/tesserae/tesserae-v6.git</p>
+          <p className="text-xs sm:text-sm font-mono text-gray-700 mb-1">
             <span className="text-gray-500"># 2. Download search indexes (~1.3 GB compressed, ~6.3 GB uncompressed):</span>
           </p>
-          <p className="text-sm font-mono text-gray-800 mb-3">python scripts/download_data.py</p>
-          <p className="text-sm font-mono text-gray-700 mb-1">
+          <p className="text-xs sm:text-sm font-mono text-gray-800 mb-3">python scripts/download_data.py</p>
+          <p className="text-xs sm:text-sm font-mono text-gray-700 mb-1">
             <span className="text-gray-500"># 3. Check that all files are present:</span>
           </p>
-          <p className="text-sm font-mono text-gray-800">python scripts/download_data.py --check</p>
+          <p className="text-xs sm:text-sm font-mono text-gray-800">python scripts/download_data.py --check</p>
         </div>
 
         <p className="text-sm text-gray-600 mb-4">
@@ -600,7 +600,7 @@ const DownloadsPage = () => {
         </p>
 
         <div className="space-y-3">
-          <div className="flex items-center justify-between p-3 bg-gray-50 rounded">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-gray-50 rounded">
             <div>
               <span className="font-medium">Latin Search Index</span>
               <span className="text-sm text-gray-500 ml-2">(1,429 texts, 2.2 GB)</span>
@@ -613,7 +613,7 @@ const DownloadsPage = () => {
               Download
             </a>
           </div>
-          <div className="flex items-center justify-between p-3 bg-gray-50 rounded">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-gray-50 rounded">
             <div>
               <span className="font-medium">Greek Search Index</span>
               <span className="text-sm text-gray-500 ml-2">(659 texts, 1.4 GB)</span>
@@ -626,7 +626,7 @@ const DownloadsPage = () => {
               Download
             </a>
           </div>
-          <div className="flex items-center justify-between p-3 bg-gray-50 rounded">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-gray-50 rounded">
             <div>
               <span className="font-medium">English Search Index</span>
               <span className="text-sm text-gray-500 ml-2">(14 texts, 79 MB)</span>
@@ -639,7 +639,7 @@ const DownloadsPage = () => {
               Download
             </a>
           </div>
-          <div className="flex items-center justify-between p-3 bg-gray-50 rounded">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-gray-50 rounded">
             <div>
               <span className="font-medium">Latin Syntax Parses</span>
               <span className="text-sm text-gray-500 ml-2">(LatinPipe UD annotations, 1.6 GB)</span>
@@ -652,7 +652,7 @@ const DownloadsPage = () => {
               Download
             </a>
           </div>
-          <div className="flex items-center justify-between p-3 bg-gray-50 rounded">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-gray-50 rounded">
             <div>
               <span className="font-medium">Greek Syntax Parses</span>
               <span className="text-sm text-gray-500 ml-2">(650 texts, UD annotations, 967 MB)</span>
