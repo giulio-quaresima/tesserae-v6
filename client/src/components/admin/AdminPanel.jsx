@@ -28,6 +28,8 @@ export default function AdminPanel() {
   const [resetConfirm, setResetConfirm] = useState('');
   const [resetError, setResetError] = useState('');
   const [resetSuccess, setResetSuccess] = useState('');
+  const [resetLoading, setResetLoading] = useState(false);
+  const [showChangePassword, setShowChangePassword] = useState(false);
 
   const [textRequests, setTextRequests] = useState([]);
   const [feedback, setFeedback] = useState([]);
@@ -86,6 +88,19 @@ export default function AdminPanel() {
   const handleResetPassword = async () => {
     setResetError('');
     setResetSuccess('');
+    if (!resetCurrent || !resetNext || !resetConfirm) {
+      setResetError('Current password and new password are required');
+      return;
+    }
+    if (resetNext !== resetConfirm) {
+      setResetError('Passwords do not match');
+      return;
+    }
+    if (resetNext.length < 8) {
+      setResetError('Password must be at least 8 characters');
+      return;
+    }
+    setResetLoading(true);
     try {
       const res = await fetch('/api/admin/reset-password', {
         method: 'POST',
@@ -106,10 +121,31 @@ export default function AdminPanel() {
       setResetCurrent('');
       setResetNext('');
       setResetConfirm('');
+      setShowChangePassword(false);
       loadAdminData();
     } catch (err) {
       setResetError(err.message || 'Failed to reset password');
+    } finally {
+      setResetLoading(false);
     }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/admin/logout', {
+        method: 'POST',
+        credentials: 'include',
+      });
+    } catch (_ignored) {}
+    setIsAuthenticated(false);
+    setAdminRoles([]);
+    setMustResetPassword(false);
+    setResetCurrent('');
+    setResetNext('');
+    setResetConfirm('');
+    setResetError('');
+    setResetSuccess('');
+    setShowChangePassword(false);
   };
 
   const loadAdminData = async () => {
@@ -212,12 +248,24 @@ export default function AdminPanel() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold text-gray-900">Admin Panel</h2>
-        <button
-          onClick={() => setIsAuthenticated(false)}
-          className="text-sm text-gray-500 hover:text-gray-700"
-        >
-          Logout
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => {
+              setResetError('');
+              setResetSuccess('');
+              setShowChangePassword(true);
+            }}
+            className="text-sm text-blue-600 hover:text-blue-700"
+          >
+            Change Password
+          </button>
+          <button
+            onClick={handleLogout}
+            className="text-sm text-gray-500 hover:text-gray-700"
+          >
+            Logout
+          </button>
+        </div>
       </div>
 
       {loadError && (
@@ -262,9 +310,10 @@ export default function AdminPanel() {
             {resetSuccess && <div className="text-sm text-green-600">{resetSuccess}</div>}
             <button
               onClick={handleResetPassword}
+              disabled={resetLoading}
               className="px-4 py-2 bg-red-700 text-white rounded hover:bg-red-800"
             >
-              Update Password
+              {resetLoading ? 'Updating...' : 'Update Password'}
             </button>
           </div>
         </div>
@@ -348,6 +397,54 @@ export default function AdminPanel() {
             {activeTab === 'settings' && (
               <SettingsTab authHeaders={{}} />
             )}
+          </div>
+        </div>
+      )}
+
+      {showChangePassword && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-lg w-full mx-4 p-6">
+            <div className="flex justify-between items-center mb-3">
+              <h3 className="text-lg font-semibold text-gray-900">Change Admin Password</h3>
+              <button
+                onClick={() => setShowChangePassword(false)}
+                className="text-gray-400 hover:text-gray-600 text-2xl leading-none"
+              >
+                &times;
+              </button>
+            </div>
+            <div className="space-y-3">
+              <input
+                type="password"
+                className="w-full border rounded px-3 py-2"
+                placeholder="Current password"
+                value={resetCurrent}
+                onChange={(e) => setResetCurrent(e.target.value)}
+              />
+              <input
+                type="password"
+                className="w-full border rounded px-3 py-2"
+                placeholder="New password"
+                value={resetNext}
+                onChange={(e) => setResetNext(e.target.value)}
+              />
+              <input
+                type="password"
+                className="w-full border rounded px-3 py-2"
+                placeholder="Confirm new password"
+                value={resetConfirm}
+                onChange={(e) => setResetConfirm(e.target.value)}
+              />
+              {resetError && <div className="text-sm text-red-600">{resetError}</div>}
+              {resetSuccess && <div className="text-sm text-green-600">{resetSuccess}</div>}
+              <button
+                onClick={handleResetPassword}
+                disabled={resetLoading}
+                className="px-4 py-2 bg-red-700 text-white rounded hover:bg-red-800"
+              >
+                {resetLoading ? 'Updating...' : 'Update Password'}
+              </button>
+            </div>
           </div>
         </div>
       )}

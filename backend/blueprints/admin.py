@@ -197,6 +197,29 @@ def admin_me():
     })
 
 
+@admin_bp.route('/logout', methods=['POST'])
+def admin_logout():
+    """Clear current admin session."""
+    admin_email = session.get('admin_email')
+    session.pop('admin_user_id', None)
+    session.pop('admin_email', None)
+    session.pop('admin_roles', None)
+    session.modified = True
+    if admin_email:
+        try:
+            with get_db_cursor() as cur:
+                cur.execute(
+                    '''
+                    INSERT INTO admin_audit_log (admin_username, action, target_type, target_id, details)
+                    VALUES (%s, %s, %s, %s, %s)
+                    ''',
+                    (admin_email, 'logout', None, None, None),
+                )
+        except Exception as e:
+            logger.error(f"Failed to log admin logout: {e}")
+    return jsonify({'success': True})
+
+
 @admin_bp.route('/reset-password', methods=['POST'])
 def admin_reset_password():
     """Reset password for the currently logged-in admin."""
@@ -221,6 +244,8 @@ def admin_reset_password():
         return jsonify({'error': 'Invalid credentials'}), 401
     if not check_password_hash(user.password_hash, current_password):
         return jsonify({'error': 'Invalid credentials'}), 401
+    if check_password_hash(user.password_hash, new_password):
+        return jsonify({'error': 'New password must be different from current password'}), 400
 
     user.password_hash = generate_password_hash(new_password)
     user.must_reset_password = False
