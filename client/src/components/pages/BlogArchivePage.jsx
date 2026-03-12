@@ -36,7 +36,7 @@ export default function BlogArchivePage({ setPageType }) {
         </button>
         <h2 className="text-2xl font-semibold text-gray-900 mb-2">Archived V3 Blog Posts</h2>
         <p className="text-gray-600 text-sm">
-          These scholarly posts were preserved from the legacy Tesserae Version 3 website blog (2019–2021).
+          These posts were preserved from the legacy Tesserae Version 3 website blog (2019–2021).
           Original content recovered from the Wayback Machine.
         </p>
       </div>
