@@ -1,18 +1,35 @@
 const API_BASE = '/api';
 
+const jsonFetch = async (url) => {
+  const response = await fetch(url, {
+    headers: { 'Accept': 'application/json' },
+    credentials: 'same-origin'
+  });
+  if (!response.ok) {
+    throw new Error(`${response.status} from ${url}`);
+  }
+  const text = await response.text();
+  if (!text) {
+    throw new Error(`Empty response from ${url}`);
+  }
+  try {
+    return JSON.parse(text);
+  } catch (e) {
+    const preview = text.length > 120 ? text.substring(0, 120) + '...' : text;
+    throw new Error(`Bad JSON (${text.length}b) from ${url}: ${preview}`);
+  }
+};
+
 export const fetchCorpus = async (language) => {
-  const response = await fetch(`${API_BASE}/texts?language=${language}`);
-  return response.json();
+  return jsonFetch(`${API_BASE}/texts?language=${language}`);
 };
 
 export const fetchAuthors = async (language) => {
-  const response = await fetch(`${API_BASE}/authors?language=${language}`);
-  return response.json();
+  return jsonFetch(`${API_BASE}/authors?language=${language}`);
 };
 
 export const fetchTexts = async (author) => {
-  const response = await fetch(`${API_BASE}/texts?author=${author}`);
-  return response.json();
+  return jsonFetch(`${API_BASE}/texts?author=${author}`);
 };
 
 export const fetchTextContent = async (textId) => {
