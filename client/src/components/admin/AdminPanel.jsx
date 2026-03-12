@@ -9,15 +9,25 @@ import CacheTab from './tabs/CacheTab';
 import SourcesTab from './tabs/SourcesTab';
 import MetadataTab from './tabs/MetadataTab';
 import RequestsTab from './tabs/RequestsTab';
+import UsersTab from './tabs/UsersTab';
+
+const normalizeRole = (role) => (role || '').toString().trim().toUpperCase();
 
 export default function AdminPanel() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [adminUsername, setAdminUsername] = useState('');
+  const [adminEmail, setAdminEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [authError, setAuthError] = useState('');
   const [activeTab, setActiveTab] = useState('requests');
   const [loading, setLoading] = useState(false);
+  const [adminRoles, setAdminRoles] = useState([]);
+  const [mustResetPassword, setMustResetPassword] = useState(false);
+  const [resetCurrent, setResetCurrent] = useState('');
+  const [resetNext, setResetNext] = useState('');
+  const [resetConfirm, setResetConfirm] = useState('');
+  const [resetError, setResetError] = useState('');
+  const [resetSuccess, setResetSuccess] = useState('');
 
   const [textRequests, setTextRequests] = useState([]);
   const [feedback, setFeedback] = useState([]);
@@ -29,25 +39,76 @@ export default function AdminPanel() {
 
   const handleLogin = async () => {
     setAuthError('');
-    if (!adminUsername.trim()) {
-      setAuthError('Please enter your username');
+    if (!adminEmail.trim()) {
+      setAuthError('Please enter your email');
       return;
     }
     try {
       const res = await fetch('/api/admin/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password, username: adminUsername })
+        body: JSON.stringify({ password, email: adminEmail }),
+        credentials: 'include'
       });
       const data = await res.json();
       if (data.success) {
+        const normalizedRoles = Array.isArray(data.roles)
+          ? data.roles.map(normalizeRole).filter(Boolean)
+          : [];
         setIsAuthenticated(true);
-        loadAdminData();
+        setAdminRoles(normalizedRoles);
+        setMustResetPassword(Boolean(data.must_reset_password));
+        setResetError('');
+        setResetSuccess('');
+        try {
+          const meRes = await fetch('/api/admin/me', { credentials: 'include' });
+          if (meRes.ok) {
+            const meData = await meRes.json();
+            const meRoles = Array.isArray(meData.roles)
+              ? meData.roles.map(normalizeRole).filter(Boolean)
+              : [];
+            if (meRoles.length > 0) {
+              setAdminRoles(meRoles);
+            }
+          }
+        } catch (_ignored) {}
+        if (!data.must_reset_password) {
+          loadAdminData();
+        }
       } else {
-        setAuthError('Invalid password');
+        setAuthError(data.error || 'Authentication failed');
       }
     } catch (err) {
       setAuthError('Authentication failed');
+    }
+  };
+
+  const handleResetPassword = async () => {
+    setResetError('');
+    setResetSuccess('');
+    try {
+      const res = await fetch('/api/admin/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          current_password: resetCurrent,
+          new_password: resetNext,
+          confirm_password: resetConfirm
+        })
+      });
+      const data = await res.json();
+      if (!res.ok || data.error) {
+        throw new Error(data.error || 'Failed to reset password');
+      }
+      setResetSuccess('Password reset successfully.');
+      setMustResetPassword(false);
+      setResetCurrent('');
+      setResetNext('');
+      setResetConfirm('');
+      loadAdminData();
+    } catch (err) {
+      setResetError(err.message || 'Failed to reset password');
     }
   };
 
@@ -55,18 +116,17 @@ export default function AdminPanel() {
     setLoading(true);
     setLoadError(null);
     try {
-      const headers = { 'X-Admin-Password': password, 'X-Admin-Username': adminUsername };
       const [requestsRes, feedbackRes, corpusRes, analyticsRes, lemmaCacheRes, searchCacheRes, frequencyCacheRes, bigramRes] = await Promise.all([
-        fetch('/api/admin/requests', { headers }),
-        fetch('/api/admin/feedback', { headers }),
+        fetch('/api/admin/requests', { credentials: 'include' }),
+        fetch('/api/admin/feedback', { credentials: 'include' }),
         fetch('/api/corpus-status'),
-        fetch('/api/admin/analytics', { headers }),
-        fetch('/api/admin/lemma-cache/stats', { headers }),
-        fetch('/api/admin/search-cache/stats', { headers }),
-        fetch('/api/admin/frequency-cache/stats', { headers }),
-        fetch('/api/admin/bigram-cache/stats', { headers })
+        fetch('/api/admin/analytics', { credentials: 'include' }),
+        fetch('/api/admin/lemma-cache/stats', { credentials: 'include' }),
+        fetch('/api/admin/search-cache/stats', { credentials: 'include' }),
+        fetch('/api/admin/frequency-cache/stats', { credentials: 'include' }),
+        fetch('/api/admin/bigram-cache/stats', { credentials: 'include' })
       ]);
-      
+
       const requests = await requestsRes.json();
       const feedbackData = feedbackRes.ok ? await feedbackRes.json() : [];
       const corpus = corpusRes.ok ? await corpusRes.json() : null;
@@ -75,7 +135,7 @@ export default function AdminPanel() {
       const searchCache = searchCacheRes.ok ? await searchCacheRes.json() : {};
       const frequencyCache = frequencyCacheRes.ok ? await frequencyCacheRes.json() : {};
       const bigramData = bigramRes.ok ? await bigramRes.json() : {};
-      
+
       setTextRequests(requests.requests || []);
       setFeedback(Array.isArray(feedbackData) ? feedbackData : []);
       setCorpusStats(corpus?.summary?.total_texts || null);
@@ -100,20 +160,20 @@ export default function AdminPanel() {
           <h2 className="text-xl font-semibold text-gray-900 mb-4">Admin Login</h2>
           <div className="space-y-4">
             <div>
-              <label className="block text-sm text-gray-600 mb-1">Username</label>
+              <label className="block text-sm text-gray-600 mb-1">Email</label>
               <input
-                type="text"
-                value={adminUsername}
-                onChange={e => setAdminUsername(e.target.value)}
+                type="email"
+                value={adminEmail}
+                onChange={e => setAdminEmail(e.target.value)}
                 className="w-full border rounded px-3 py-2"
-                placeholder="Enter your admin username"
+                placeholder="Enter your admin email"
               />
             </div>
             <div>
               <label className="block text-sm text-gray-600 mb-1">Password</label>
               <div className="relative">
                 <input
-                  type={showPassword ? "text" : "password"}
+                  type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={e => setPassword(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && handleLogin()}
@@ -162,7 +222,7 @@ export default function AdminPanel() {
 
       {loadError && (
         <div className="bg-amber-50 border border-amber-300 rounded-lg p-4 flex items-start gap-3">
-          <span className="text-amber-600">⚠️</span>
+          <span className="text-amber-600">!</span>
           <div>
             <div className="font-medium text-amber-800">Warning</div>
             <p className="text-sm text-amber-700">{loadError}</p>
@@ -170,80 +230,127 @@ export default function AdminPanel() {
         </div>
       )}
 
-      <div className="bg-white rounded-lg shadow">
-        <div className="border-b">
-          <nav className="flex flex-wrap">
-            {['requests', 'feedback', 'sources', 'metadata', 'cache', 'stats', 'analytics', 'audit', 'settings'].map(tab => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`px-4 py-3 text-sm font-medium border-b-2 ${
-                  activeTab === tab 
-                    ? 'border-red-700 text-red-700' 
-                    : 'border-transparent text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                {tab === 'requests' ? 'Text Requests' : 
-                 tab === 'feedback' ? 'Feedback' :
-                 tab === 'sources' ? 'Sources' :
-                 tab === 'metadata' ? 'Corpus Metadata' :
-                 tab === 'cache' ? 'Cache Management' : 
-                 tab === 'stats' ? 'Corpus Stats' :
-                 tab === 'analytics' ? 'User Analytics' :
-                 tab === 'audit' ? 'Audit Log' : 'Settings'}
-              </button>
-            ))}
-          </nav>
-        </div>
-
-        <div className="p-4">
-          {activeTab === 'requests' && (
-            <RequestsTab
-              authHeaders={{ 'X-Admin-Password': password, 'X-Admin-Username': adminUsername }}
-              textRequests={textRequests}
-              onRefresh={loadAdminData}
+      {mustResetPassword && (
+        <div className="bg-white rounded-lg shadow p-6 max-w-lg">
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">Reset Admin Password</h3>
+          <p className="text-sm text-gray-600 mb-4">
+            Your account requires a password reset before using the admin panel.
+          </p>
+          <div className="space-y-3">
+            <input
+              type="password"
+              className="w-full border rounded px-3 py-2"
+              placeholder="Current password"
+              value={resetCurrent}
+              onChange={(e) => setResetCurrent(e.target.value)}
             />
-          )}
+            <input
+              type="password"
+              className="w-full border rounded px-3 py-2"
+              placeholder="New password"
+              value={resetNext}
+              onChange={(e) => setResetNext(e.target.value)}
+            />
+            <input
+              type="password"
+              className="w-full border rounded px-3 py-2"
+              placeholder="Confirm new password"
+              value={resetConfirm}
+              onChange={(e) => setResetConfirm(e.target.value)}
+            />
+            {resetError && <div className="text-sm text-red-600">{resetError}</div>}
+            {resetSuccess && <div className="text-sm text-green-600">{resetSuccess}</div>}
+            <button
+              onClick={handleResetPassword}
+              className="px-4 py-2 bg-red-700 text-white rounded hover:bg-red-800"
+            >
+              Update Password
+            </button>
+          </div>
+        </div>
+      )}
+
+      {!mustResetPassword && (
+        <div className="bg-white rounded-lg shadow">
+          <div className="border-b">
+            <nav className="flex flex-wrap">
+              {['requests', 'feedback', 'users', 'sources', 'metadata', 'cache', 'stats', 'analytics', 'audit', 'settings'].map(tab => (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  className={`px-4 py-3 text-sm font-medium border-b-2 ${
+                    activeTab === tab
+                      ? 'border-red-700 text-red-700'
+                      : 'border-transparent text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  {tab === 'requests' ? 'Text Requests' :
+                   tab === 'feedback' ? 'Feedback' :
+                   tab === 'users' ? 'Users & Roles' :
+                   tab === 'sources' ? 'Sources' :
+                   tab === 'metadata' ? 'Corpus Metadata' :
+                   tab === 'cache' ? 'Cache Management' :
+                   tab === 'stats' ? 'Corpus Stats' :
+                   tab === 'analytics' ? 'User Analytics' :
+                   tab === 'audit' ? 'Audit Log' : 'Settings'}
+                </button>
+              ))}
+            </nav>
+          </div>
+
+          <div className="p-4">
+            {activeTab === 'requests' && (
+              <RequestsTab
+                authHeaders={{}}
+                textRequests={textRequests}
+                onRefresh={loadAdminData}
+              />
+            )}
 
           {activeTab === 'feedback' && (
-            <FeedbackTab feedback={feedback} />
+            <FeedbackTab feedback={feedback} onRefresh={loadAdminData} />
           )}
 
-          {activeTab === 'sources' && (
-            <SourcesTab authHeaders={{ 'X-Admin-Password': password, 'X-Admin-Username': adminUsername }} />
-          )}
+            {activeTab === 'users' && (
+              <UsersTab authHeaders={{}} isSuperAdmin={adminRoles.map(normalizeRole).includes('SUPER_ADMIN')} />
+            )}
 
-          {activeTab === 'metadata' && (
-            <MetadataTab authHeaders={{ 'X-Admin-Password': password, 'X-Admin-Username': adminUsername }} />
-          )}
+            {activeTab === 'sources' && (
+              <SourcesTab authHeaders={{}} />
+            )}
 
-          {activeTab === 'cache' && (
-            <CacheTab
-              authHeaders={{ 'X-Admin-Password': password, 'X-Admin-Username': adminUsername }}
-              cacheInfo={cacheInfo}
-              bigramStats={bigramStats}
-              onRefresh={loadAdminData}
-              onBigramStatsUpdate={setBigramStats}
-            />
-          )}
+            {activeTab === 'metadata' && (
+              <MetadataTab authHeaders={{}} />
+            )}
 
-          {activeTab === 'stats' && (
-            <StatsTab corpusStats={corpusStats} />
-          )}
+            {activeTab === 'cache' && (
+              <CacheTab
+                authHeaders={{}}
+                cacheInfo={cacheInfo}
+                bigramStats={bigramStats}
+                onRefresh={loadAdminData}
+                onBigramStatsUpdate={setBigramStats}
+              />
+            )}
 
-          {activeTab === 'analytics' && (
-            <AnalyticsTab analytics={analytics} />
-          )}
+            {activeTab === 'stats' && (
+              <StatsTab corpusStats={corpusStats} />
+            )}
 
-          {activeTab === 'audit' && (
-            <AuditTab authHeaders={{ 'X-Admin-Password': password, 'X-Admin-Username': adminUsername }} />
-          )}
+            {activeTab === 'analytics' && (
+              <AnalyticsTab analytics={analytics} />
+            )}
 
-          {activeTab === 'settings' && (
-            <SettingsTab authHeaders={{ 'X-Admin-Password': password, 'X-Admin-Username': adminUsername }} />
-          )}
+            {activeTab === 'audit' && (
+              <AuditTab authHeaders={{}} />
+            )}
+
+            {activeTab === 'settings' && (
+              <SettingsTab authHeaders={{}} />
+            )}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

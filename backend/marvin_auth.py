@@ -11,9 +11,28 @@ from flask import Blueprint, g, session, redirect, request, url_for, jsonify
 from flask_login import LoginManager, login_user, logout_user, current_user
 
 from backend.models import db, User
+from backend.db_utils import get_db_cursor
 
 login_manager = None
 marvin_auth_bp = None
+
+
+def _load_user_roles(user_id):
+    try:
+        with get_db_cursor(commit=False) as cur:
+            cur.execute(
+                """
+                SELECT r.name
+                FROM roles r
+                JOIN user_roles ur ON ur.role_id = r.id
+                WHERE ur.user_id = %s
+                """,
+                (user_id,),
+            )
+            return [row[0] for row in cur.fetchall()]
+    except Exception:
+        return []
+
 
 def init_marvin_auth(app):
     """Initialize password-based authentication for Marvin"""
@@ -50,7 +69,9 @@ def create_marvin_auth_blueprint():
     @bp.route('/auth/register', methods=['POST'])
     def register():
         """Register a new user with email and password"""
-        data = request.get_json()
+        if os.environ.get('DISABLE_SELF_REGISTER', 'false').lower() in ('true', '1', 'yes'):
+            return jsonify({'success': False, 'error': 'Self-registration is disabled'}), 403
+        data = request.get_json() or {}
         email = data.get('email', '').strip().lower()
         password = data.get('password', '')
         first_name = data.get('first_name', '').strip()
@@ -87,13 +108,15 @@ def create_marvin_auth_blueprint():
                 'last_name': user.last_name,
                 'orcid': user.orcid,
                 'orcid_name': user.orcid_name,
+                'must_reset_password': user.must_reset_password,
+                'roles': _load_user_roles(user.id),
             }
         })
     
     @bp.route('/auth/login', methods=['POST'])
     def login():
         """Log in with email and password"""
-        data = request.get_json()
+        data = request.get_json() or {}
         email = data.get('email', '').strip().lower()
         password = data.get('password', '')
         
@@ -119,6 +142,8 @@ def create_marvin_auth_blueprint():
                 'last_name': user.last_name,
                 'orcid': user.orcid,
                 'orcid_name': user.orcid_name,
+                'must_reset_password': user.must_reset_password,
+                'roles': _load_user_roles(user.id),
             }
         })
     
@@ -129,6 +154,29 @@ def create_marvin_auth_blueprint():
         if request.method == 'POST':
             return jsonify({'success': True})
         return redirect('/')
+
+    @bp.route('/auth/reset-password', methods=['POST'])
+    def reset_password():
+        """Reset password for the current user"""
+        if not current_user.is_authenticated:
+            return jsonify({'success': False, 'error': 'Authentication required'}), 401
+
+        data = request.get_json() or {}
+        new_password = data.get('new_password', '')
+        confirm_password = data.get('confirm_password', '')
+
+        if not new_password or not confirm_password:
+            return jsonify({'success': False, 'error': 'Password is required'}), 400
+        if new_password != confirm_password:
+            return jsonify({'success': False, 'error': 'Passwords do not match'}), 400
+        if len(new_password) < 8:
+            return jsonify({'success': False, 'error': 'Password must be at least 8 characters'}), 400
+
+        current_user.password_hash = generate_password_hash(new_password)
+        current_user.must_reset_password = False
+        db.session.commit()
+
+        return jsonify({'success': True})
     
     return bp
 
@@ -144,6 +192,8 @@ def get_current_user_info():
             'institution': current_user.institution,
             'orcid': current_user.orcid,
             'orcid_name': current_user.orcid_name,
+            'must_reset_password': current_user.must_reset_password,
+            'roles': _load_user_roles(current_user.id),
         }
     return None
 

@@ -251,8 +251,16 @@ def init_db():
                     message TEXT NOT NULL,
                     status VARCHAR(50) DEFAULT 'new',
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    admin_notes TEXT
+                    admin_notes TEXT,
+                    responded_by VARCHAR(255),
+                    responded_at TIMESTAMP
                 )
+            ''')
+            cur.execute('''
+                ALTER TABLE feedback ADD COLUMN IF NOT EXISTS responded_by VARCHAR(255)
+            ''')
+            cur.execute('''
+                ALTER TABLE feedback ADD COLUMN IF NOT EXISTS responded_at TIMESTAMP
             ''')
             cur.execute('''
                 CREATE TABLE IF NOT EXISTS settings (
@@ -288,6 +296,51 @@ def init_db():
             ''')
             cur.execute('''
                 CREATE INDEX IF NOT EXISTS idx_search_logs_language ON search_logs(language)
+            ''')
+            cur.execute('''
+                ALTER TABLE users ADD COLUMN IF NOT EXISTS must_reset_password BOOLEAN DEFAULT FALSE
+            ''')
+            cur.execute('''
+                CREATE TABLE IF NOT EXISTS roles (
+                    id SERIAL PRIMARY KEY,
+                    name VARCHAR(50) UNIQUE NOT NULL,
+                    description TEXT
+                )
+            ''')
+            cur.execute('''
+                CREATE TABLE IF NOT EXISTS user_roles (
+                    user_id VARCHAR(255) NOT NULL,
+                    role_id INTEGER NOT NULL,
+                    assigned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    assigned_by VARCHAR(255),
+                    PRIMARY KEY (user_id, role_id)
+                )
+            ''')
+            cur.execute('''
+                CREATE TABLE IF NOT EXISTS admin_audit_log (
+                    id SERIAL PRIMARY KEY,
+                    admin_username VARCHAR(255),
+                    action VARCHAR(255) NOT NULL,
+                    target_type VARCHAR(100),
+                    target_id VARCHAR(255),
+                    details TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
+            cur.execute('''
+                INSERT INTO roles (name, description)
+                VALUES ('USER', 'Standard user')
+                ON CONFLICT (name) DO NOTHING
+            ''')
+            cur.execute('''
+                INSERT INTO roles (name, description)
+                VALUES ('ADMIN', 'Administrator')
+                ON CONFLICT (name) DO NOTHING
+            ''')
+            cur.execute('''
+                INSERT INTO roles (name, description)
+                VALUES ('SUPER_ADMIN', 'Super administrator')
+                ON CONFLICT (name) DO NOTHING
             ''')
         app_logger.info("Database initialized successfully")
     except Exception as e:
@@ -2322,7 +2375,7 @@ def get_feedback():
     try:
         with get_db_cursor(commit=False) as cur:
             cur.execute('''
-                SELECT id, name, email, feedback_type, message, status, created_at, admin_notes
+                SELECT id, name, email, feedback_type, message, status, created_at, admin_notes, responded_by, responded_at
                 FROM feedback
                 ORDER BY created_at DESC
             ''')
@@ -2336,9 +2389,11 @@ def get_feedback():
                 'email': row[2],
                 'type': row[3],
                 'message': row[4],
-                'status': row[5],
+                'status': row[5] or 'pending',
                 'created_at': row[6].isoformat() if row[6] else None,
-                'admin_notes': row[7]
+                'admin_notes': row[7],
+                'responded_by': row[8],
+                'responded_at': row[9].isoformat() if row[9] else None
             })
         return jsonify(feedback_list)
     except Exception as e:
@@ -2354,14 +2409,60 @@ def update_feedback(feedback_id):
     
     data = request.get_json() or {}
     status = data.get('status')
+    if status:
+        status = status.strip().lower()
+        if status in ('new', 'open', 'in_progress'):
+            status = 'pending'
+        elif status in ('resolved', 'done', 'closed'):
+            status = 'responded'
+        elif status not in ('pending', 'responded'):
+            return jsonify({'error': 'Invalid status'}), 400
     admin_notes = data.get('admin_notes')
     
     try:
         with get_db_cursor() as cur:
             if status and admin_notes is not None:
-                cur.execute('UPDATE feedback SET status = %s, admin_notes = %s WHERE id = %s', (status, admin_notes, feedback_id))
+                if status == 'responded':
+                    cur.execute(
+                        '''
+                        UPDATE feedback
+                        SET status = %s, admin_notes = %s, responded_by = %s, responded_at = %s
+                        WHERE id = %s
+                        ''',
+                        (status, admin_notes, 'admin', datetime.now(), feedback_id),
+                    )
+                elif status == 'pending':
+                    cur.execute(
+                        '''
+                        UPDATE feedback
+                        SET status = %s, admin_notes = %s, responded_by = NULL, responded_at = NULL
+                        WHERE id = %s
+                        ''',
+                        (status, admin_notes, feedback_id),
+                    )
+                else:
+                    cur.execute('UPDATE feedback SET status = %s, admin_notes = %s WHERE id = %s', (status, admin_notes, feedback_id))
             elif status:
-                cur.execute('UPDATE feedback SET status = %s WHERE id = %s', (status, feedback_id))
+                if status == 'responded':
+                    cur.execute(
+                        '''
+                        UPDATE feedback
+                        SET status = %s, responded_by = %s, responded_at = %s
+                        WHERE id = %s
+                        ''',
+                        (status, 'admin', datetime.now(), feedback_id),
+                    )
+                elif status == 'pending':
+                    cur.execute(
+                        '''
+                        UPDATE feedback
+                        SET status = %s, responded_by = NULL, responded_at = NULL
+                        WHERE id = %s
+                        ''',
+                        (status, feedback_id),
+                    )
+                else:
+                    cur.execute('UPDATE feedback SET status = %s WHERE id = %s', (status, feedback_id))
             elif admin_notes is not None:
                 cur.execute('UPDATE feedback SET admin_notes = %s WHERE id = %s', (admin_notes, feedback_id))
         return jsonify({'success': True})

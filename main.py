@@ -30,6 +30,14 @@ except Exception as e:
     sys.exit(1)
 
 if __name__ == '__main__':
+    try:
+        print("Building frontend (npm run build)...")
+        import subprocess
+        subprocess.run(['npm', 'run', 'build'], check=True)
+        print("Frontend build complete")
+    except Exception as e:
+        print(f"Warning: Frontend build failed (continuing): {e}")
+
     port = int(os.environ.get('PORT', 8080))
     print(f"Backend API and Frontend on port {port}")
     print("=" * 50)
