@@ -21,6 +21,11 @@ const Header = ({ user, setUser, onLogoClick }) => {
   const [loginLastName, setLoginLastName] = useState('');
   const [loginError, setLoginError] = useState('');
   const [loginLoading, setLoginLoading] = useState(false);
+  const [showResetModal, setShowResetModal] = useState(false);
+  const [resetPassword, setResetPassword] = useState('');
+  const [resetConfirmPassword, setResetConfirmPassword] = useState('');
+  const [resetError, setResetError] = useState('');
+  const [resetLoading, setResetLoading] = useState(false);
   const dropdownRef = useRef(null);
 
   useEffect(() => {
@@ -126,6 +131,9 @@ const Header = ({ user, setUser, onLogoClick }) => {
         setUser(userData);
         setShowLoginModal(false);
         resetLoginForm();
+        if (userData.must_reset_password) {
+          setShowResetModal(true);
+        }
       } else {
         setLoginError(data.error || 'Authentication failed');
       }
@@ -154,6 +162,58 @@ const Header = ({ user, setUser, onLogoClick }) => {
     }
   };
 
+  const handlePasswordReset = async (e) => {
+    e.preventDefault();
+    setResetError('');
+    setResetLoading(true);
+
+    if (resetPassword !== resetConfirmPassword) {
+      setResetError('Passwords do not match');
+      setResetLoading(false);
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE}/auth/reset-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          new_password: resetPassword,
+          confirm_password: resetConfirmPassword
+        })
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        setShowResetModal(false);
+        setResetPassword('');
+        setResetConfirmPassword('');
+        setResetError('');
+        if (user) {
+          setUser({ ...user, must_reset_password: false });
+        }
+      } else {
+        setResetError(data.error || 'Password reset failed');
+      }
+    } catch (err) {
+      setResetError('Failed to connect to server');
+    }
+
+    setResetLoading(false);
+  };
+
+  const getUserRoles = (userData) => {
+    if (!userData) return [];
+    if (Array.isArray(userData.roles)) return userData.roles;
+    if (typeof userData.role === 'string') return [userData.role];
+    return [];
+  };
+
+  const roles = getUserRoles(user);
+  const isSuperAdmin = roles.includes('SUPER_ADMIN');
+  const isAdmin = roles.includes('ADMIN');
+  const requiresPasswordReset = Boolean(user?.must_reset_password || user?.force_password_reset);
+
   return (
     <>
       <header className="bg-gradient-to-r from-red-800 via-red-700 to-orange-600 shadow-lg">
@@ -181,6 +241,11 @@ const Header = ({ user, setUser, onLogoClick }) => {
                 >
                   <div className="text-left">
                     <div className="font-medium">{user.name || user.orcid_name || `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'Account'}</div>
+                    {(isSuperAdmin || isAdmin) && (
+                      <div className="text-xs text-orange-100">
+                        {isSuperAdmin ? 'SUPER_ADMIN' : 'ADMIN'}
+                      </div>
+                    )}
                     {user.orcid && (
                       <div className="text-xs text-orange-200 flex items-center gap-1">
                         <img src="https://orcid.org/assets/vectors/orcid.logo.icon.svg" alt="" className="w-3 h-3" />
@@ -198,6 +263,25 @@ const Header = ({ user, setUser, onLogoClick }) => {
                     <div className="p-3 border-b">
                       <p className="font-medium text-gray-900">{user.name || user.orcid_name || `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'Account'}</p>
                       <p className="text-xs text-gray-500">{user.email || 'Signed in with Replit'}</p>
+                      {(isSuperAdmin || isAdmin) && (
+                        <div className="mt-2 flex flex-wrap gap-1">
+                          {isSuperAdmin && (
+                            <span className="text-[10px] uppercase tracking-wide bg-purple-100 text-purple-700 px-2 py-0.5 rounded">
+                              Super Admin
+                            </span>
+                          )}
+                          {isAdmin && !isSuperAdmin && (
+                            <span className="text-[10px] uppercase tracking-wide bg-blue-100 text-blue-700 px-2 py-0.5 rounded">
+                              Admin
+                            </span>
+                          )}
+                        </div>
+                      )}
+                      {requiresPasswordReset && (
+                        <div className="mt-2 text-xs text-red-600">
+                          Password reset required. Please update your password immediately.
+                        </div>
+                      )}
                     </div>
                     
                     <div className="p-2">
@@ -242,16 +326,6 @@ const Header = ({ user, setUser, onLogoClick }) => {
                   </div>
                 )}
               </div>
-            ) : authEnabled ? (
-              <button 
-                onClick={handleSignInClick}
-                className="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white px-3 py-2 rounded text-sm"
-              >
-                <span>Sign in</span>
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </button>
             ) : null}
           </div>
         </div>
@@ -339,6 +413,11 @@ const Header = ({ user, setUser, onLogoClick }) => {
             <p className="text-sm text-gray-600 mb-4">
               {isRegister ? 'Join Tesserae to save and share discoveries' : 'Welcome back to Tesserae'}
             </p>
+            {!isRegister && (
+              <div className="bg-amber-50 border border-amber-200 text-amber-700 px-3 py-2 rounded text-xs mb-3">
+                If your account was bootstrapped, you may be required to reset your password after signing in.
+              </div>
+            )}
             
             <form onSubmit={handlePasswordLogin} className="space-y-3">
               {isRegister && (
@@ -429,6 +508,67 @@ const Header = ({ user, setUser, onLogoClick }) => {
                 {isRegister ? 'Already have an account? Sign in' : "Don't have an account? Create one"}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+      {showResetModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-bold text-gray-900">Reset Password</h3>
+              <button
+                onClick={() => setShowResetModal(false)}
+                className="text-gray-400 hover:text-gray-600 text-2xl leading-none"
+              >
+                &times;
+              </button>
+            </div>
+
+            <p className="text-sm text-gray-600 mb-4">
+              Your account requires a password reset before continuing.
+            </p>
+
+            <form onSubmit={handlePasswordReset} className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">New Password</label>
+                <input
+                  type="password"
+                  value={resetPassword}
+                  onChange={(e) => setResetPassword(e.target.value)}
+                  required
+                  minLength={8}
+                  className="w-full border rounded px-3 py-2 text-sm"
+                  placeholder="At least 8 characters"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Confirm Password</label>
+                <input
+                  type="password"
+                  value={resetConfirmPassword}
+                  onChange={(e) => setResetConfirmPassword(e.target.value)}
+                  required
+                  minLength={8}
+                  className="w-full border rounded px-3 py-2 text-sm"
+                  placeholder="Confirm your password"
+                />
+              </div>
+
+              {resetError && (
+                <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded text-sm">
+                  {resetError}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={resetLoading}
+                className="w-full bg-gradient-to-r from-red-700 to-orange-600 text-white py-2 rounded font-medium hover:from-red-800 hover:to-orange-700 disabled:opacity-50"
+              >
+                {resetLoading ? 'Updating...' : 'Update Password'}
+              </button>
+            </form>
           </div>
         </div>
       )}

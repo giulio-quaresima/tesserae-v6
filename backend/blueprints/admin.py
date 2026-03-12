@@ -2,12 +2,15 @@
 Tesserae V6 - Admin Blueprint
 Routes for admin-only functionality
 """
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, session
 from datetime import datetime
+import uuid
 import os
 import json
 
 from backend.db_utils import get_db_cursor
+from werkzeug.security import check_password_hash, generate_password_hash
+from backend.models import User, db
 from backend.logging_config import get_logger
 from backend.utils import get_text_metadata, get_override, set_override, safe_listdir
 from backend.lemma_cache import (
@@ -34,6 +37,10 @@ _texts_dir = None
 _processed_cache = None
 
 
+def _normalize_role_name(value):
+    return (value or '').strip().upper()
+
+
 def init_admin_blueprint(admin_password, author_dates, author_dates_path, 
                          text_processor, texts_dir, processed_cache_ref):
     """Initialize blueprint with required dependencies"""
@@ -48,8 +55,8 @@ def init_admin_blueprint(admin_password, author_dates, author_dates_path,
 
 
 def get_admin_username():
-    """Get admin username from request header"""
-    return request.headers.get('X-Admin-Username', 'unknown')
+    """Get admin username from session"""
+    return session.get('admin_email', 'unknown')
 
 
 def log_admin_action(action, target_type=None, target_id=None, details=None):
@@ -76,9 +83,63 @@ def _parse_year(value):
 
 
 def check_admin_auth():
-    """Check admin authentication"""
-    password = request.headers.get('X-Admin-Password', '')
-    return password == _admin_password
+    """Check admin authentication via session"""
+    roles = [_normalize_role_name(r) for r in (session.get('admin_roles') or [])]
+    return bool(session.get('admin_user_id')) and any(role in ('ADMIN', 'SUPER_ADMIN') for role in roles)
+
+
+def _load_admin_roles(user_id):
+    """Load roles for a user from RBAC tables."""
+    try:
+        with get_db_cursor(commit=False) as cur:
+            cur.execute(
+                """
+                SELECT r.name
+                FROM roles r
+                JOIN user_roles ur ON ur.role_id = r.id
+                WHERE ur.user_id = %s
+                """,
+                (user_id,),
+            )
+            return [_normalize_role_name(row[0]) for row in cur.fetchall()]
+    except Exception as e:
+        logger.error(f"Failed to load admin roles: {e}")
+        return []
+
+
+def _get_role_id(role_name):
+    with get_db_cursor(commit=False) as cur:
+        cur.execute("SELECT id FROM roles WHERE name = %s", (role_name,))
+        row = cur.fetchone()
+        return row[0] if row else None
+
+
+def _get_user_roles(user_id):
+    with get_db_cursor(commit=False) as cur:
+        cur.execute(
+            """
+            SELECT r.name
+            FROM roles r
+            JOIN user_roles ur ON ur.role_id = r.id
+            WHERE ur.user_id = %s
+            """,
+            (user_id,),
+        )
+        return [_normalize_role_name(row[0]) for row in cur.fetchall()]
+
+
+def _count_super_admins():
+    with get_db_cursor(commit=False) as cur:
+        cur.execute(
+            """
+            SELECT COUNT(*)
+            FROM user_roles ur
+            JOIN roles r ON r.id = ur.role_id
+            WHERE r.name = 'SUPER_ADMIN'
+            """
+        )
+        row = cur.fetchone()
+        return row[0] if row else 0
 
 
 @admin_bp.route('/login', methods=['POST'])
@@ -86,23 +147,112 @@ def admin_login():
     """Verify admin password"""
     data = request.get_json() or {}
     password = data.get('password', '')
-    username = data.get('username', 'unknown')
-    
-    if not _admin_password:
-        return jsonify({'error': 'Admin password not configured'}), 500
-    
-    if password == _admin_password:
+    email = (data.get('email') or data.get('username') or '').strip().lower()
+
+    if not email or not password:
+        return jsonify({'error': 'Email and password are required'}), 400
+
+    user = User.query.filter(User.email.ilike(email)).first()
+    if not user or not user.password_hash:
+        return jsonify({'error': 'Invalid credentials'}), 401
+    if not check_password_hash(user.password_hash, password):
+        return jsonify({'error': 'Invalid credentials'}), 401
+
+    roles = _load_admin_roles(user.id)
+    if not any(role in ('ADMIN', 'SUPER_ADMIN') for role in roles):
+        return jsonify({'error': 'Admin access required'}), 403
+
+    session['admin_user_id'] = user.id
+    session['admin_email'] = user.email
+    session['admin_roles'] = roles
+    session.permanent = True
+
+    try:
+        with get_db_cursor() as cur:
+            cur.execute('''
+                INSERT INTO admin_audit_log (admin_username, action, target_type, target_id, details)
+                VALUES (%s, %s, %s, %s, %s)
+            ''', (user.email, 'login', None, None, None))
+    except Exception as e:
+        logger.error(f"Failed to log admin login: {e}")
+
+    return jsonify({'success': True, 'roles': roles, 'must_reset_password': bool(user.must_reset_password)})
+
+
+@admin_bp.route('/me', methods=['GET'])
+def admin_me():
+    """Return current admin session details."""
+    if not check_admin_auth():
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    user_id = session.get('admin_user_id')
+    roles = _load_admin_roles(user_id) if user_id else []
+    session['admin_roles'] = roles
+    return jsonify({
+        'success': True,
+        'user_id': user_id,
+        'email': session.get('admin_email'),
+        'roles': roles,
+        'is_super_admin': 'SUPER_ADMIN' in roles,
+    })
+
+
+@admin_bp.route('/logout', methods=['POST'])
+def admin_logout():
+    """Clear current admin session."""
+    admin_email = session.get('admin_email')
+    session.pop('admin_user_id', None)
+    session.pop('admin_email', None)
+    session.pop('admin_roles', None)
+    session.modified = True
+    if admin_email:
         try:
             with get_db_cursor() as cur:
-                cur.execute('''
+                cur.execute(
+                    '''
                     INSERT INTO admin_audit_log (admin_username, action, target_type, target_id, details)
                     VALUES (%s, %s, %s, %s, %s)
-                ''', (username, 'login', None, None, None))
+                    ''',
+                    (admin_email, 'logout', None, None, None),
+                )
         except Exception as e:
-            logger.error(f"Failed to log admin login: {e}")
-        return jsonify({'success': True})
-    else:
-        return jsonify({'error': 'Invalid password'}), 401
+            logger.error(f"Failed to log admin logout: {e}")
+    return jsonify({'success': True})
+
+
+@admin_bp.route('/reset-password', methods=['POST'])
+def admin_reset_password():
+    """Reset password for the currently logged-in admin."""
+    if not check_admin_auth():
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    data = request.get_json() or {}
+    current_password = data.get('current_password', '')
+    new_password = data.get('new_password', '')
+    confirm_password = data.get('confirm_password', '')
+
+    if not current_password or not new_password or not confirm_password:
+        return jsonify({'error': 'Current password and new password are required'}), 400
+    if new_password != confirm_password:
+        return jsonify({'error': 'Passwords do not match'}), 400
+    if len(new_password) < 8:
+        return jsonify({'error': 'Password must be at least 8 characters'}), 400
+
+    user_id = session.get('admin_user_id')
+    user = User.query.get(user_id)
+    if not user or not user.password_hash:
+        return jsonify({'error': 'Invalid credentials'}), 401
+    if not check_password_hash(user.password_hash, current_password):
+        return jsonify({'error': 'Invalid credentials'}), 401
+    if check_password_hash(user.password_hash, new_password):
+        return jsonify({'error': 'New password must be different from current password'}), 400
+
+    user.password_hash = generate_password_hash(new_password)
+    user.must_reset_password = False
+    db.session.commit()
+
+    log_admin_action('admin_password_reset', 'user', user.id, None)
+    return jsonify({'success': True})
 
 
 @admin_bp.route('/requests')
@@ -162,6 +312,174 @@ def get_requests():
         return jsonify({'requests': requests})
     except Exception as e:
         logger.error(f"Failed to get text requests: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@admin_bp.route('/roles', methods=['GET'])
+def get_roles():
+    """List available roles (admin only)."""
+    if not check_admin_auth():
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    try:
+        with get_db_cursor(commit=False) as cur:
+            cur.execute("SELECT id, name, description FROM roles ORDER BY id")
+            roles = [
+                {"id": row[0], "name": row[1], "description": row[2]}
+                for row in cur.fetchall()
+            ]
+        return jsonify({"roles": roles})
+    except Exception as e:
+        logger.error(f"Failed to get roles: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@admin_bp.route('/users', methods=['GET'])
+def get_users():
+    """List users with roles (admin only)."""
+    if not check_admin_auth():
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    try:
+        with get_db_cursor(commit=False) as cur:
+            cur.execute(
+                """
+                SELECT u.id, u.email, u.first_name, u.last_name
+                FROM users u
+                ORDER BY u.created_at DESC NULLS LAST, u.email
+                """
+            )
+            rows = cur.fetchall()
+
+        users = []
+        for row in rows:
+            user_id, email, first_name, last_name = row
+            roles = _get_user_roles(user_id)
+            name = f"{first_name or ''} {last_name or ''}".strip() or None
+            users.append({
+                "id": user_id,
+                "email": email,
+                "name": name,
+                "roles": roles,
+            })
+        return jsonify({"users": users})
+    except Exception as e:
+        logger.error(f"Failed to get users: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@admin_bp.route('/users', methods=['POST'])
+def create_admin_user():
+    """Create an admin user (SUPER_ADMIN only)."""
+    if not check_admin_auth():
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    admin_roles = [_normalize_role_name(r) for r in (session.get('admin_roles') or [])]
+    if 'SUPER_ADMIN' not in admin_roles:
+        return jsonify({'error': 'SUPER_ADMIN required'}), 403
+
+    data = request.get_json() or {}
+    email = (data.get('email') or '').strip().lower()
+    password = data.get('password') or ''
+    first_name = (data.get('first_name') or '').strip()
+    last_name = (data.get('last_name') or '').strip()
+    role_name = (data.get('role') or 'ADMIN').strip().upper()
+
+    if role_name not in ('ADMIN', 'SUPER_ADMIN'):
+        return jsonify({'error': 'Invalid role'}), 400
+    if not email or not password or not first_name or not last_name:
+        return jsonify({'error': 'Email, password, first name, and last name are required'}), 400
+    if len(password) < 8:
+        return jsonify({'error': 'Password must be at least 8 characters'}), 400
+
+    existing = User.query.filter(User.email.ilike(email)).first()
+    if existing:
+        return jsonify({'error': 'User already exists'}), 400
+
+    user = User()
+    user.id = uuid.uuid4().hex
+    user.email = email
+    user.password_hash = generate_password_hash(password)
+    user.first_name = first_name
+    user.last_name = last_name
+    user.must_reset_password = True
+
+    db.session.add(user)
+    db.session.commit()
+
+    role_id = _get_role_id(role_name)
+    if not role_id:
+        return jsonify({'error': 'Role not found'}), 404
+
+    try:
+        with get_db_cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO user_roles (user_id, role_id, assigned_at, assigned_by)
+                VALUES (%s, %s, NOW(), %s)
+                ON CONFLICT (user_id, role_id) DO NOTHING
+                """,
+                (user.id, role_id, get_admin_username()),
+            )
+        log_admin_action('admin_user_created', 'user', user.id, {'role': role_name})
+    except Exception as e:
+        logger.error(f"Failed to assign role: {e}")
+        return jsonify({'error': 'Failed to assign role'}), 500
+
+    return jsonify({'success': True, 'user_id': user.id, 'role': role_name})
+
+
+@admin_bp.route('/users/<user_id>/roles', methods=['POST'])
+def update_user_roles(user_id):
+    """Assign or remove a role for a user (admin only)."""
+    if not check_admin_auth():
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    data = request.get_json() or {}
+    role_name = (data.get('role') or '').strip().upper()
+    action = (data.get('action') or '').strip().lower()
+
+    if role_name not in ('USER', 'ADMIN', 'SUPER_ADMIN'):
+        return jsonify({'error': 'Invalid role'}), 400
+    if action not in ('add', 'remove'):
+        return jsonify({'error': 'Invalid action'}), 400
+
+    admin_roles = [_normalize_role_name(r) for r in (session.get('admin_roles') or [])]
+    if role_name in ('ADMIN', 'SUPER_ADMIN') and 'SUPER_ADMIN' not in admin_roles:
+        return jsonify({'error': 'SUPER_ADMIN required'}), 403
+
+    role_id = _get_role_id(role_name)
+    if not role_id:
+        return jsonify({'error': 'Role not found'}), 404
+
+    try:
+        with get_db_cursor() as cur:
+            if action == 'add':
+                cur.execute(
+                    """
+                    INSERT INTO user_roles (user_id, role_id, assigned_at, assigned_by)
+                    VALUES (%s, %s, NOW(), %s)
+                    ON CONFLICT (user_id, role_id) DO NOTHING
+                    """,
+                    (user_id, role_id, get_admin_username()),
+                )
+                log_admin_action('role_added', 'user', user_id, {'role': role_name})
+                return jsonify({'success': True, 'message': f'{role_name} added'})
+
+            if role_name == 'SUPER_ADMIN' and _count_super_admins() <= 2:
+                return jsonify({'error': 'Cannot remove the last two SUPER_ADMIN accounts'}), 400
+
+            cur.execute(
+                """
+                DELETE FROM user_roles
+                WHERE user_id = %s AND role_id = %s
+                """,
+                (user_id, role_id),
+            )
+            log_admin_action('role_removed', 'user', user_id, {'role': role_name})
+            return jsonify({'success': True, 'message': f'{role_name} removed'})
+    except Exception as e:
+        logger.error(f"Failed to update roles: {e}")
         return jsonify({'error': str(e)}), 500
 
 
@@ -821,7 +1139,7 @@ def get_feedback():
     try:
         with get_db_cursor(commit=False) as cur:
             cur.execute('''
-                SELECT id, name, email, feedback_type, message, status, created_at, admin_notes
+                SELECT id, name, email, feedback_type, message, status, created_at, admin_notes, responded_by, responded_at
                 FROM feedback
                 ORDER BY created_at DESC
             ''')
@@ -835,9 +1153,11 @@ def get_feedback():
                 'email': row[2],
                 'type': row[3],
                 'message': row[4],
-                'status': row[5],
+                'status': row[5] or 'pending',
                 'created_at': row[6].isoformat() if row[6] else None,
-                'admin_notes': row[7]
+                'admin_notes': row[7],
+                'responded_by': row[8],
+                'responded_at': row[9].isoformat() if row[9] else None,
             })
         return jsonify(feedback_list)
     except Exception as e:
@@ -853,15 +1173,63 @@ def update_feedback(feedback_id):
     
     data = request.get_json() or {}
     status = data.get('status')
+    if status:
+        status = status.strip().lower()
+        if status in ('new', 'open'):
+            status = 'pending'
+        elif status in ('resolved', 'done', 'closed'):
+            status = 'responded'
+        elif status not in ('pending', 'in_progress', 'responded'):
+            return jsonify({'error': 'Invalid status'}), 400
     admin_notes = data.get('admin_notes')
     
     try:
         with get_db_cursor() as cur:
             if status and admin_notes is not None:
-                cur.execute('UPDATE feedback SET status = %s, admin_notes = %s WHERE id = %s', 
-                           (status, admin_notes, feedback_id))
+                if status == 'responded':
+                    cur.execute(
+                        '''
+                        UPDATE feedback
+                        SET status = %s, admin_notes = %s, responded_by = %s, responded_at = %s
+                        WHERE id = %s
+                        ''',
+                        (status, admin_notes, get_admin_username(), datetime.now(), feedback_id),
+                    )
+                elif status == 'pending':
+                    cur.execute(
+                        '''
+                        UPDATE feedback
+                        SET status = %s, admin_notes = %s, responded_by = NULL, responded_at = NULL
+                        WHERE id = %s
+                        ''',
+                        (status, admin_notes, feedback_id),
+                    )
+                else:
+                    cur.execute(
+                        'UPDATE feedback SET status = %s, admin_notes = %s WHERE id = %s',
+                        (status, admin_notes, feedback_id),
+                    )
             elif status:
-                cur.execute('UPDATE feedback SET status = %s WHERE id = %s', (status, feedback_id))
+                if status == 'responded':
+                    cur.execute(
+                        '''
+                        UPDATE feedback
+                        SET status = %s, responded_by = %s, responded_at = %s
+                        WHERE id = %s
+                        ''',
+                        (status, get_admin_username(), datetime.now(), feedback_id),
+                    )
+                elif status == 'pending':
+                    cur.execute(
+                        '''
+                        UPDATE feedback
+                        SET status = %s, responded_by = NULL, responded_at = NULL
+                        WHERE id = %s
+                        ''',
+                        (status, feedback_id),
+                    )
+                else:
+                    cur.execute('UPDATE feedback SET status = %s WHERE id = %s', (status, feedback_id))
             elif admin_notes is not None:
                 cur.execute('UPDATE feedback SET admin_notes = %s WHERE id = %s', (admin_notes, feedback_id))
         return jsonify({'success': True})
