@@ -9,6 +9,12 @@ export default function HelpPage() {
   const [requestWork, setRequestWork] = useState('');
   const [requestLanguage, setRequestLanguage] = useState('latin');
   const [requestNotes, setRequestNotes] = useState('');
+  const [requestTextDate, setRequestTextDate] = useState('');
+  const [requestAuthorEra, setRequestAuthorEra] = useState('');
+  const [requestAuthorYear, setRequestAuthorYear] = useState('');
+  const [requestESource, setRequestESource] = useState('');
+  const [requestESourceUrl, setRequestESourceUrl] = useState('');
+  const [requestPrintSource, setRequestPrintSource] = useState('');
   const [requestFile, setRequestFile] = useState(null);
   const [requestSubmitting, setRequestSubmitting] = useState(false);
   const [requestMessage, setRequestMessage] = useState(null);
@@ -126,8 +132,21 @@ export default function HelpPage() {
 
   const submitTextRequest = async (e) => {
     e.preventDefault();
-    if (!requestAuthor.trim() || !requestWork.trim()) {
-      setRequestMessage({ type: 'error', text: 'Please enter author and work title' });
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+    if (!requestName.trim() || !requestEmail.trim() || !requestAuthor.trim() || !requestWork.trim()) {
+      setRequestMessage({ type: 'error', text: 'Please enter name, email, author, and work title' });
+      return;
+    }
+    if (!emailRegex.test(requestEmail.trim())) {
+      setRequestMessage({ type: 'error', text: 'Please enter a valid email address' });
+      return;
+    }
+    if (!requestESource.trim() || !requestESourceUrl.trim() || !requestPrintSource.trim()) {
+      setRequestMessage({ type: 'error', text: 'Please enter e-Source, e-Source URL, and Print Source' });
+      return;
+    }
+    if (!requestFile) {
+      setRequestMessage({ type: 'error', text: 'Please upload a text file' });
       return;
     }
     setRequestSubmitting(true);
@@ -140,6 +159,12 @@ export default function HelpPage() {
       formData.append('work', requestWork);
       formData.append('language', requestLanguage);
       formData.append('notes', requestNotes);
+      formData.append('text_date', requestTextDate);
+      formData.append('author_era', requestAuthorEra);
+      formData.append('author_year', requestAuthorYear);
+      formData.append('e_source', requestESource);
+      formData.append('e_source_url', requestESourceUrl);
+      formData.append('print_source', requestPrintSource);
       if (requestFile) {
         formData.append('file', requestFile);
       }
@@ -153,6 +178,12 @@ export default function HelpPage() {
         setRequestAuthor('');
         setRequestWork('');
         setRequestNotes('');
+        setRequestTextDate('');
+        setRequestAuthorEra('');
+        setRequestAuthorYear('');
+        setRequestESource('');
+        setRequestESourceUrl('');
+        setRequestPrintSource('');
         setRequestFile(null);
       } else {
         setRequestMessage({ type: 'error', text: data.error || 'Failed to submit text' });
@@ -1216,14 +1247,14 @@ export default function HelpPage() {
               <form onSubmit={submitTextRequest} className="space-y-4 max-w-lg">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Your Name (optional)</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Your Name *</label>
                     <input type="text" value={requestName} onChange={e => setRequestName(e.target.value)}
-                      className="w-full border rounded px-3 py-2 text-sm" />
+                      required className="w-full border rounded px-3 py-2 text-sm" />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Email (optional)</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
                     <input type="email" value={requestEmail} onChange={e => setRequestEmail(e.target.value)}
-                      className="w-full border rounded px-3 py-2 text-sm" />
+                      required pattern="^[^\s@]+@[^\s@]+\.[^\s@]{2,}$" className="w-full border rounded px-3 py-2 text-sm" />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
@@ -1247,12 +1278,93 @@ export default function HelpPage() {
                   <input type="text" value={requestWork} onChange={e => setRequestWork(e.target.value)}
                     placeholder="e.g., Annales" required className="w-full border rounded px-3 py-2 text-sm" />
                 </div>
+                <div className="border rounded-lg p-4 bg-gray-50 space-y-3">
+                  <p className="text-sm font-medium text-gray-900">Metadata (same fields reviewed in Admin Text Requests)</p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">e-Source *</label>
+                      <input
+                        type="text"
+                        value={requestESource}
+                        onChange={e => setRequestESource(e.target.value)}
+                        placeholder="e.g., Perseus"
+                        required
+                        className="w-full border rounded px-3 py-2 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">e-Source URL *</label>
+                      <input
+                        type="url"
+                        value={requestESourceUrl}
+                        onChange={e => setRequestESourceUrl(e.target.value)}
+                        placeholder="https://..."
+                        required
+                        className="w-full border rounded px-3 py-2 text-sm"
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Print Source *</label>
+                      <input
+                        type="text"
+                        value={requestPrintSource}
+                        onChange={e => setRequestPrintSource(e.target.value)}
+                        placeholder="Edition/citation details"
+                        required
+                        className="w-full border rounded px-3 py-2 text-sm"
+                      />
+                    </div>
+                  </div>
+                  <div className="pt-2 border-t border-gray-200 grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Text Date (optional)</label>
+                      <input
+                        type="text"
+                        value={requestTextDate}
+                        onChange={e => setRequestTextDate(e.target.value)}
+                        placeholder="e.g., c. 19 BCE"
+                        className="w-full border rounded px-3 py-2 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Era (optional)</label>
+                      <select
+                        value={requestAuthorEra}
+                        onChange={e => setRequestAuthorEra(e.target.value)}
+                        className="w-full border rounded px-3 py-2 text-sm"
+                      >
+                        <option value="">Select era...</option>
+                        <option value="Archaic">Archaic</option>
+                        <option value="Classical">Classical</option>
+                        <option value="Hellenistic">Hellenistic</option>
+                        <option value="Republic">Republic</option>
+                        <option value="Augustan">Augustan</option>
+                        <option value="Early Imperial">Early Imperial</option>
+                        <option value="Later Imperial">Later Imperial</option>
+                        <option value="Late Antique">Late Antique</option>
+                        <option value="Early Medieval">Early Medieval</option>
+                        <option value="Unknown">Unknown</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Year (optional, negative = BCE)</label>
+                      <input
+                        type="number"
+                        value={requestAuthorYear}
+                        onChange={e => setRequestAuthorYear(e.target.value)}
+                        placeholder="e.g., -19"
+                        className="w-full border rounded px-3 py-2 text-sm"
+                      />
+                    </div>
+                  </div>
+                </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Upload Text File</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Upload Text File *</label>
                   <input 
                     type="file" 
                     accept=".txt,.tess"
                     onChange={e => setRequestFile(e.target.files[0])}
+                    required
                     className="w-full border rounded px-3 py-2 text-sm file:mr-3 file:py-1 file:px-3 file:border-0 file:bg-gray-100 file:text-gray-700 file:rounded file:cursor-pointer" 
                   />
                   <p className="text-xs text-gray-500 mt-1">

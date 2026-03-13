@@ -16,6 +16,7 @@ const normalizeRole = (role) => (role || '').toString().trim().toUpperCase();
 export default function AdminPanel() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [adminEmail, setAdminEmail] = useState('');
+  const [adminName, setAdminName] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [authError, setAuthError] = useState('');
@@ -59,6 +60,7 @@ export default function AdminPanel() {
           : [];
         setIsAuthenticated(true);
         setAdminRoles(normalizedRoles);
+        setAdminName(data.admin_name || '');
         setMustResetPassword(Boolean(data.must_reset_password));
         setResetError('');
         setResetSuccess('');
@@ -71,6 +73,9 @@ export default function AdminPanel() {
               : [];
             if (meRoles.length > 0) {
               setAdminRoles(meRoles);
+            }
+            if (meData.admin_name) {
+              setAdminName(meData.admin_name);
             }
           }
         } catch (_ignored) {}
@@ -138,6 +143,7 @@ export default function AdminPanel() {
       });
     } catch (_ignored) {}
     setIsAuthenticated(false);
+    setAdminName('');
     setAdminRoles([]);
     setMustResetPassword(false);
     setResetCurrent('');
@@ -352,6 +358,7 @@ export default function AdminPanel() {
               <RequestsTab
                 authHeaders={{}}
                 textRequests={textRequests}
+                adminIdentity={adminName || adminEmail}
                 onRefresh={loadAdminData}
               />
             )}

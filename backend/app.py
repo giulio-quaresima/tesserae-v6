@@ -57,6 +57,20 @@ def natural_sort_key(s):
     """Sort strings with embedded numbers in natural order (1, 2, 10 not 1, 10, 2)"""
     return [int(c) if c.isdigit() else c.lower() for c in re.split(r'(\d+)', str(s))]
 
+
+def normalize_language_code(value):
+    """Normalize UI language values to corpus directory codes."""
+    raw = (value or '').strip().lower()
+    mapping = {
+        'latin': 'la',
+        'la': 'la',
+        'greek': 'grc',
+        'grc': 'grc',
+        'english': 'en',
+        'en': 'en',
+    }
+    return mapping.get(raw, raw or 'la')
+
 from backend.text_processor import TextProcessor
 from backend.matcher import Matcher
 from backend.scorer import Scorer
@@ -2108,14 +2122,32 @@ def corpus_search():
 @api_route('/request', methods=['POST'])
 def submit_request():
     """Submit a text upload request with optional file attachment"""
+    def _parse_year_value(value):
+        if value is None:
+            return None
+        s = str(value).strip()
+        if not s:
+            return None
+        try:
+            return int(s)
+        except (TypeError, ValueError):
+            return None
+
     # Handle both JSON and multipart form data
     if request.content_type and 'multipart/form-data' in request.content_type:
         name = request.form.get('name', '').strip()
         email = request.form.get('email', '').strip()
         author = request.form.get('author', '').strip()
         work = request.form.get('work', '').strip()
-        language = request.form.get('language', 'latin').strip()
+        language = normalize_language_code(request.form.get('language', 'latin'))
         notes = request.form.get('notes', '').strip()
+        text_date = request.form.get('text_date', '').strip()
+        author_era = request.form.get('author_era', '').strip()
+        author_year = _parse_year_value(request.form.get('author_year', ''))
+        e_source = request.form.get('e_source', '').strip()
+        e_source_url = request.form.get('e_source_url', '').strip()
+        print_source = request.form.get('print_source', '').strip()
+        added_by = request.form.get('added_by', '').strip()
         content = ''
         
         # Handle file upload
@@ -2136,21 +2168,41 @@ def submit_request():
         email = data.get('email', '').strip()
         author = data.get('author', '').strip()
         work = data.get('work', '').strip()
-        language = data.get('language', 'latin')
+        language = normalize_language_code(data.get('language', 'latin'))
         notes = data.get('notes', '').strip()
+        text_date = data.get('text_date', '').strip()
+        author_era = data.get('author_era', '').strip()
+        author_year = _parse_year_value(data.get('author_year'))
+        e_source = data.get('e_source', '').strip()
+        e_source_url = data.get('e_source_url', '').strip()
+        print_source = data.get('print_source', '').strip()
+        added_by = data.get('added_by', '').strip()
         content = data.get('content', '').strip()
     
     # Only author and work are required
-    if not author or not work:
-        return jsonify({'error': 'Author and work title are required'}), 400
+    if not name or not email or not author or not work:
+        return jsonify({'error': 'Name, email, author, and work title are required'}), 400
+    email_pattern = re.compile(r'^[^\s@]+@[^\s@]+\.[^\s@]{2,}$')
+    if not email_pattern.match(email):
+        return jsonify({'error': 'Please provide a valid email address'}), 400
+    if not e_source or not e_source_url or not print_source:
+        return jsonify({'error': 'e-Source, e-Source URL, and Print Source are required'}), 400
+    if not content:
+        return jsonify({'error': 'Upload text file is required'}), 400
     
     try:
         with get_db_cursor() as cur:
             cur.execute('''
-                INSERT INTO text_requests (name, email, author, work, language, notes, content)
-                VALUES (%s, %s, %s, %s, %s, %s, %s)
+                INSERT INTO text_requests (
+                    name, email, author, work, language, notes, content,
+                    text_date, author_era, author_year, e_source, e_source_url, print_source, added_by
+                )
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 RETURNING id
-            ''', (name, email, author, work, language, notes, content))
+            ''', (
+                name, email, author, work, language, notes, content,
+                text_date, author_era, author_year, e_source, e_source_url, print_source, added_by
+            ))
             result = cur.fetchone()
             request_id = result[0] if result else None
         
