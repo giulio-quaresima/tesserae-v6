@@ -56,7 +56,7 @@ def init_admin_blueprint(admin_password, author_dates, author_dates_path,
 
 def get_admin_username():
     """Get admin username from session"""
-    return session.get('admin_email', 'unknown')
+    return session.get('admin_name') or session.get('admin_email', 'unknown')
 
 
 def log_admin_action(action, target_type=None, target_id=None, details=None):
@@ -80,6 +80,19 @@ def _parse_year(value):
         return int(value)
     except (ValueError, TypeError):
         return None
+
+
+def _normalize_language_code(value):
+    raw = (value or '').strip().lower()
+    mapping = {
+        'latin': 'la',
+        'la': 'la',
+        'greek': 'grc',
+        'grc': 'grc',
+        'english': 'en',
+        'en': 'en',
+    }
+    return mapping.get(raw, raw or 'la')
 
 
 def check_admin_auth():
@@ -162,8 +175,10 @@ def admin_login():
     if not any(role in ('ADMIN', 'SUPER_ADMIN') for role in roles):
         return jsonify({'error': 'Admin access required'}), 403
 
+    admin_name = f"{user.first_name or ''} {user.last_name or ''}".strip() or user.email
     session['admin_user_id'] = user.id
     session['admin_email'] = user.email
+    session['admin_name'] = admin_name
     session['admin_roles'] = roles
     session.permanent = True
 
@@ -176,7 +191,12 @@ def admin_login():
     except Exception as e:
         logger.error(f"Failed to log admin login: {e}")
 
-    return jsonify({'success': True, 'roles': roles, 'must_reset_password': bool(user.must_reset_password)})
+    return jsonify({
+        'success': True,
+        'roles': roles,
+        'must_reset_password': bool(user.must_reset_password),
+        'admin_name': admin_name,
+    })
 
 
 @admin_bp.route('/me', methods=['GET'])
@@ -192,6 +212,7 @@ def admin_me():
         'success': True,
         'user_id': user_id,
         'email': session.get('admin_email'),
+        'admin_name': session.get('admin_name'),
         'roles': roles,
         'is_super_admin': 'SUPER_ADMIN' in roles,
     })
@@ -203,6 +224,7 @@ def admin_logout():
     admin_email = session.get('admin_email')
     session.pop('admin_user_id', None)
     session.pop('admin_email', None)
+    session.pop('admin_name', None)
     session.pop('admin_roles', None)
     session.modified = True
     if admin_email:
@@ -560,6 +582,7 @@ def approve_and_add_text(request_id):
     
     data = request.get_json() or {}
     final_content = data.get('content', '')
+    overwrite_existing = bool(data.get('overwrite', False))
     
     try:
         with get_db_cursor() as cur:
@@ -576,6 +599,7 @@ def approve_and_add_text(request_id):
             orig_author, orig_work, language, db_content, official_author, official_work, approved_filename, \
                 db_era, db_year, db_e_source, db_e_source_url, db_print_source, db_added_by = row
             
+            language = _normalize_language_code(language)
             author = official_author or orig_author
             work = official_work or orig_work
             
@@ -595,7 +619,7 @@ def approve_and_add_text(request_id):
             os.makedirs(lang_dir, exist_ok=True)
             filepath = os.path.join(lang_dir, filename)
             
-            if os.path.exists(filepath):
+            if os.path.exists(filepath) and not overwrite_existing:
                 return jsonify({'error': f'Text "{author} - {work}" already exists in corpus'}), 409
             
             content_to_use = final_content if final_content else db_content
@@ -619,9 +643,9 @@ def approve_and_add_text(request_id):
             
             cur.execute('''
                 UPDATE text_requests 
-                SET status = 'approved', reviewed_at = %s
+                SET status = 'approved', reviewed_at = %s, language = %s
                 WHERE id = %s
-            ''', (datetime.now(), request_id))
+            ''', (datetime.now(), language, request_id))
         
         # Step 3: Recalculate corpus frequencies (including bigram index)
         recalculate_language_frequencies(language, _text_processor)
@@ -688,6 +712,18 @@ def approve_and_add_text(request_id):
         
         # Step 9: Add to text_sources.json for the Sources page
         _add_to_text_sources(author, work, db_e_source, db_e_source_url, db_print_source, db_added_by)
+
+        # Ensure corpus/search dropdowns display the reviewed official names
+        # even if the approved filename was not regenerated from those names.
+        try:
+            existing_override = get_override(filename) or {}
+            set_override(filename, {
+                **existing_override,
+                'display_author': author,
+                'display_work': work
+            })
+        except Exception as e:
+            logger.warning(f"Could not set metadata override for {filename}: {e}")
         
         log_admin_action('approve_request', 'text_request', request_id, {
             'filename': filename,

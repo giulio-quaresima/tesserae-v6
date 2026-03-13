@@ -1,11 +1,27 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { LANG_NAMES } from '../adminConstants';
 
-export default function RequestsTab({ authHeaders, textRequests, onRefresh }) {
+export default function RequestsTab({ authHeaders, textRequests, onRefresh, adminIdentity = '' }) {
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [editingRequest, setEditingRequest] = useState(null);
   const [savingRequest, setSavingRequest] = useState(false);
   const [tessPreview, setTessPreview] = useState('');
+  const [actionMessage, setActionMessage] = useState(null);
+  const [modalError, setModalError] = useState('');
+
+  const parseApiResponse = async (response, fallbackMessage) => {
+    let data = null;
+    try {
+      data = await response.json();
+    } catch {
+      data = null;
+    }
+    if (!response.ok || data?.error) {
+      const reason = data?.error || data?.message || response.statusText || fallbackMessage;
+      throw new Error(reason);
+    }
+    return data;
+  };
 
   const approveRequest = async (requestId) => {
     try {
@@ -23,19 +39,28 @@ export default function RequestsTab({ authHeaders, textRequests, onRefresh }) {
     if (!window.confirm('Are you sure you want to delete this text request? This cannot be undone.')) {
       return;
     }
+    setActionMessage(null);
+    setModalError('');
     try {
-      await fetch(`/api/admin/requests/${requestId}`, {
+      const res = await fetch(`/api/admin/requests/${requestId}`, {
         method: 'DELETE',
         headers: authHeaders
       });
-      onRefresh();
+      await parseApiResponse(res, 'Failed to delete text request');
+      await onRefresh?.();
       setSelectedRequest(null);
+      setActionMessage({ type: 'success', text: 'Text request deleted successfully.' });
     } catch (err) {
+      const message = err.message || 'Failed to delete request';
+      setModalError(message);
+      setActionMessage({ type: 'error', text: message });
       console.error('Failed to delete request:', err);
     }
   };
 
   const openRequestDetails = (request) => {
+    setActionMessage(null);
+    setModalError('');
     setSelectedRequest(request);
     setEditingRequest({
       official_author: request.official_author || request.author || '',
@@ -49,7 +74,7 @@ export default function RequestsTab({ authHeaders, textRequests, onRefresh }) {
       e_source: request.e_source || '',
       e_source_url: request.e_source_url || '',
       print_source: request.print_source || '',
-      added_by: request.added_by || ''
+      added_by: request.added_by || adminIdentity || ''
     });
     updateTessPreview(request.content || '', request.official_author || request.author, request.official_work || request.work);
   };
@@ -73,44 +98,77 @@ export default function RequestsTab({ authHeaders, textRequests, onRefresh }) {
 
   const saveRequestChanges = async () => {
     if (!selectedRequest || !editingRequest) return;
+    setActionMessage(null);
+    setModalError('');
     setSavingRequest(true);
     try {
-      await fetch(`/api/admin/requests/${selectedRequest.id}`, {
+      const payload = {
+        ...editingRequest,
+        added_by: (editingRequest.added_by || adminIdentity || '').trim()
+      };
+      const res = await fetch(`/api/admin/requests/${selectedRequest.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', ...authHeaders },
-        body: JSON.stringify(editingRequest)
+        body: JSON.stringify(payload)
       });
-      onRefresh();
+      await parseApiResponse(res, 'Failed to save request changes');
+      await onRefresh?.();
       setSelectedRequest(null);
+      setActionMessage({ type: 'success', text: 'Request changes saved successfully.' });
     } catch (err) {
+      const message = err.message || 'Failed to save request changes';
+      setModalError(message);
+      setActionMessage({ type: 'error', text: message });
       console.error('Failed to save request changes:', err);
+    } finally {
+      setSavingRequest(false);
     }
-    setSavingRequest(false);
   };
 
   const approveWithEdits = async () => {
     if (!selectedRequest || !editingRequest) return;
+    setActionMessage(null);
+    setModalError('');
     setSavingRequest(true);
+    let saveCompleted = false;
     try {
-      await fetch(`/api/admin/requests/${selectedRequest.id}`, {
+      const payload = {
+        ...editingRequest,
+        added_by: (editingRequest.added_by || adminIdentity || '').trim(),
+        status: 'approved'
+      };
+      const saveRes = await fetch(`/api/admin/requests/${selectedRequest.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', ...authHeaders },
-        body: JSON.stringify({
-          ...editingRequest,
-          status: 'approved'
-        })
+        body: JSON.stringify(payload)
       });
-      await fetch(`/api/admin/requests/${selectedRequest.id}/approve`, {
+      await parseApiResponse(saveRes, 'Failed to save request before approval');
+      saveCompleted = true;
+
+      const approveRes = await fetch(`/api/admin/requests/${selectedRequest.id}/approve`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeaders },
-        body: JSON.stringify({ content: editingRequest.content })
+        body: JSON.stringify({
+          content: editingRequest.content,
+          overwrite: true
+        })
       });
-      onRefresh();
+      await parseApiResponse(approveRes, 'Failed to approve and add text to corpus');
+
+      await onRefresh?.();
       setSelectedRequest(null);
+      setActionMessage({ type: 'success', text: 'Request approved and added to corpus successfully.' });
     } catch (err) {
+      const base = err.message || 'Failed to approve request';
+      const message = saveCompleted
+        ? `Approval failed after saving your edits: ${base}`
+        : base;
+      setModalError(message);
+      setActionMessage({ type: 'error', text: message });
       console.error('Failed to approve request:', err);
+    } finally {
+      setSavingRequest(false);
     }
-    setSavingRequest(false);
   };
 
   const generateFilename = () => {
@@ -122,6 +180,22 @@ export default function RequestsTab({ authHeaders, textRequests, onRefresh }) {
     setEditingRequest(prev => ({ ...prev, approved_filename: `${safeAuthor}.${safeWork}.tess` }));
   };
 
+  const canApprove = useMemo(() => {
+    if (!editingRequest) return false;
+    if (!(editingRequest.content || '').trim()) return false;
+    if (!(editingRequest.official_author || '').trim()) return false;
+    if (!(editingRequest.official_work || '').trim()) return false;
+    return true;
+  }, [editingRequest]);
+
+  const approveDisabledReason = useMemo(() => {
+    if (!editingRequest) return '';
+    if (!(editingRequest.content || '').trim()) return 'Add text content to enable approval.';
+    if (!(editingRequest.official_author || '').trim()) return 'Official author is required.';
+    if (!(editingRequest.official_work || '').trim()) return 'Official work title is required.';
+    return '';
+  }, [editingRequest]);
+
   return (
     <>
       <div className="space-y-4">
@@ -131,6 +205,15 @@ export default function RequestsTab({ authHeaders, textRequests, onRefresh }) {
             {textRequests.filter(r => r.status === 'pending').length} pending
           </div>
         </div>
+        {actionMessage && (
+          <div className={`text-sm rounded px-3 py-2 border ${
+            actionMessage.type === 'success'
+              ? 'bg-green-50 text-green-700 border-green-200'
+              : 'bg-red-50 text-red-700 border-red-200'
+          }`}>
+            {actionMessage.text}
+          </div>
+        )}
 
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
@@ -448,13 +531,24 @@ export default function RequestsTab({ authHeaders, textRequests, onRefresh }) {
                 </button>
                 <button
                   onClick={approveWithEdits}
-                  disabled={savingRequest || !editingRequest.content}
+                  disabled={savingRequest || !canApprove}
+                  title={!canApprove ? approveDisabledReason : 'Approve this request and add text to corpus'}
                   className="px-4 py-2 bg-red-800 text-white rounded hover:bg-red-900 disabled:opacity-50"
                 >
                   {savingRequest ? 'Processing...' : 'Approve & Add to Corpus'}
                 </button>
               </div>
             </div>
+            {modalError && (
+              <div className="px-6 pt-3 text-sm text-red-700 bg-gray-50 border-t">
+                {modalError}
+              </div>
+            )}
+            {!canApprove && approveDisabledReason && (
+              <div className="px-6 pb-4 text-xs text-amber-700 bg-gray-50 border-t">
+                {approveDisabledReason}
+              </div>
+            )}
           </div>
         </div>
       )}
