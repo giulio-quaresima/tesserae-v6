@@ -2,11 +2,14 @@ export default function ResearchPage({ setPageType }) {
   return (
     <div className="bg-white rounded-lg shadow p-4 sm:p-8">
       <h2 className="text-2xl font-semibold text-gray-900 mb-2">Research</h2>
-      <p className="text-gray-600 text-sm mb-6">
+      <p className="text-gray-600 text-sm mb-4">
         As part of its ongoing work, the project team endeavors to produce publications and presentations
         that report on methods developed, theoretical consequences of digital intertextual search, and
         applied literary studies. The Tesserae project is by nature collaborative and interdisciplinary,
         and we welcome feedback from users and interested scholars.
+      </p>
+      <p className="text-gray-600 text-sm mb-6">
+        This work has been supported by the <strong>National Endowment for the Humanities (NEH)</strong> through a Start-Up Grant and a Digital Humanities Advancement Grant.
       </p>
 
       <div className="prose max-w-none space-y-8">
