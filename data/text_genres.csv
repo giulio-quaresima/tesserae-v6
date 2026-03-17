@@ -983,13 +983,13 @@ lucifer_bishop_of_cagliari.de_non_parcendo_in_deum_delinquentibus.tess,lucifer_b
 lucifer_bishop_of_cagliari.de_regibus_apostaticis.tess,lucifer_bishop_of_cagliari,de_regibus_apostaticis,Late Antique,prose,theology,auto
 lucifer_bishop_of_cagliari.epistulae.tess,lucifer_bishop_of_cagliari,epistulae,Late Antique,prose,theology,auto
 lucifer_bishop_of_cagliari.moriendum_esse_pro_dei_filio.tess,lucifer_bishop_of_cagliari,moriendum_esse_pro_dei_filio,Late Antique,prose,theology,auto
-lucretius.de_rerum_natura.part.1.tess,lucretius,de_rerum_natura,Republic,hexameter,epic,auto
-lucretius.de_rerum_natura.part.2.tess,lucretius,de_rerum_natura,Republic,hexameter,epic,auto
-lucretius.de_rerum_natura.part.3.tess,lucretius,de_rerum_natura,Republic,hexameter,epic,auto
-lucretius.de_rerum_natura.part.4.tess,lucretius,de_rerum_natura,Republic,hexameter,epic,auto
-lucretius.de_rerum_natura.part.5.tess,lucretius,de_rerum_natura,Republic,hexameter,epic,auto
-lucretius.de_rerum_natura.part.6.tess,lucretius,de_rerum_natura,Republic,hexameter,epic,auto
-lucretius.de_rerum_natura.tess,lucretius,de_rerum_natura,Republic,hexameter,epic,auto
+lucretius.de_rerum_natura.part.1.tess,lucretius,de_rerum_natura,Republic,hexameter,didactic,auto
+lucretius.de_rerum_natura.part.2.tess,lucretius,de_rerum_natura,Republic,hexameter,didactic,auto
+lucretius.de_rerum_natura.part.3.tess,lucretius,de_rerum_natura,Republic,hexameter,didactic,auto
+lucretius.de_rerum_natura.part.4.tess,lucretius,de_rerum_natura,Republic,hexameter,didactic,auto
+lucretius.de_rerum_natura.part.5.tess,lucretius,de_rerum_natura,Republic,hexameter,didactic,auto
+lucretius.de_rerum_natura.part.6.tess,lucretius,de_rerum_natura,Republic,hexameter,didactic,auto
+lucretius.de_rerum_natura.tess,lucretius,de_rerum_natura,Republic,hexameter,didactic,auto
 lupus_servatus.versus.tess,lupus_servatus,versus,Carolingian,prose,epistolary,auto
 macrobius.fragment.tess,macrobius,fragment,Late Antique,prose,philosophy,auto
 macrobius.in_somnium_Scipionis_commentarii.tess,macrobius,in_somnium_Scipionis_commentarii,Late Antique,prose,philosophy,auto
@@ -1015,13 +1015,13 @@ magnus_felix_ennodius.panegyricus_theodorico_regi_dictus.tess,magnus_felix_ennod
 magnus_felix_ennodius.petitorium_quo_absolutus_est_gerontius_p.tess,magnus_felix_ennodius,petitorium_quo_absolutus_est_gerontius_p,Late Antique,prose,medieval,auto
 magnus_felix_ennodius.praeceptum_quando_iussi_sunt_omnes_episc.tess,magnus_felix_ennodius,praeceptum_quando_iussi_sunt_omnes_episc,Late Antique,prose,medieval,auto
 magnus_felix_ennodius.vita_epiphanii.tess,magnus_felix_ennodius,vita_epiphanii,Late Antique,prose,medieval,auto
-manilius.astronomica.tess,manilius,astronomica,Augustan,hexameter,epic,auto
-manilius.astronomicon.part.1.tess,manilius,astronomicon,Augustan,hexameter,epic,auto
-manilius.astronomicon.part.2.tess,manilius,astronomicon,Augustan,hexameter,epic,auto
-manilius.astronomicon.part.3.tess,manilius,astronomicon,Augustan,hexameter,epic,auto
-manilius.astronomicon.part.4.tess,manilius,astronomicon,Augustan,hexameter,epic,auto
-manilius.astronomicon.part.5.tess,manilius,astronomicon,Augustan,hexameter,epic,auto
-manilius.astronomicon.tess,manilius,astronomicon,Augustan,hexameter,epic,auto
+manilius.astronomica.tess,manilius,astronomica,Augustan,hexameter,didactic,auto
+manilius.astronomicon.part.1.tess,manilius,astronomicon,Augustan,hexameter,didactic,auto
+manilius.astronomicon.part.2.tess,manilius,astronomicon,Augustan,hexameter,didactic,auto
+manilius.astronomicon.part.3.tess,manilius,astronomicon,Augustan,hexameter,didactic,auto
+manilius.astronomicon.part.4.tess,manilius,astronomicon,Augustan,hexameter,didactic,auto
+manilius.astronomicon.part.5.tess,manilius,astronomicon,Augustan,hexameter,didactic,auto
+manilius.astronomicon.tess,manilius,astronomicon,Augustan,hexameter,didactic,auto
 marbodus_redonensis.certamina_septem_fratrum_machabaeorum.tess,marbodus_redonensis,certamina_septem_fratrum_machabaeorum,Medieval,unknown,medieval,auto
 marcus_mincuius_felix.octavius.tess,marcus_mincuius_felix,octavius,Later Imperial,prose,theology,auto
 martial.epigrams.part.1.tess,martial,epigrams,Early Imperial,lyric,satire,auto
@@ -1569,11 +1569,11 @@ vergil.aeneid.part.8.tess,vergil,aeneid,Augustan,hexameter,epic,auto
 vergil.aeneid.part.9.tess,vergil,aeneid,Augustan,hexameter,epic,auto
 vergil.aeneid.tess,vergil,aeneid,Augustan,hexameter,epic,auto
 vergil.eclogues.tess,vergil,eclogues,Augustan,hexameter,pastoral,auto
-vergil.georgics.part.1.tess,vergil,georgics,Augustan,hexameter,epic,auto
-vergil.georgics.part.2.tess,vergil,georgics,Augustan,hexameter,epic,auto
-vergil.georgics.part.3.tess,vergil,georgics,Augustan,hexameter,epic,auto
-vergil.georgics.part.4.tess,vergil,georgics,Augustan,hexameter,epic,auto
-vergil.georgics.tess,vergil,georgics,Augustan,hexameter,epic,auto
+vergil.georgics.part.1.tess,vergil,georgics,Augustan,hexameter,didactic,auto
+vergil.georgics.part.2.tess,vergil,georgics,Augustan,hexameter,didactic,auto
+vergil.georgics.part.3.tess,vergil,georgics,Augustan,hexameter,didactic,auto
+vergil.georgics.part.4.tess,vergil,georgics,Augustan,hexameter,didactic,auto
+vergil.georgics.tess,vergil,georgics,Augustan,hexameter,didactic,auto
 vergil_pseudo.aetna.tess,vergil_pseudo,aetna,Augustan,hexameter,epic,auto
 vergil_pseudo.appendix_vergiliana_combined.tess,vergil_pseudo,appendix_vergiliana_combined,Augustan,elegiac,elegy,auto
 vergil_pseudo.catalepton.tess,vergil_pseudo,catalepton,Augustan,lyric,lyric,auto

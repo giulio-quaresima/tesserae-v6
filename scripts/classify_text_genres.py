@@ -137,6 +137,7 @@ def _load_scansion_data():
 # Genre -> default meter mapping (for texts not in scansion data)
 GENRE_METER_MAP = {
     'epic': 'hexameter',
+    'didactic': 'hexameter',
     'pastoral': 'hexameter',
     'panegyric': 'hexameter',
     'elegy': 'elegiac',
@@ -313,8 +314,10 @@ def classify_text(author, work, filename):
     w = work.lower() if work else ''
 
     # ── Epic ─────────────────────────────────────────────────────────────
-    if a == 'vergil' and w in ('aeneid', 'georgics'):
+    if a == 'vergil' and w == 'aeneid':
         return 'epic'
+    if a == 'vergil' and w == 'georgics':
+        return 'didactic'
     if a == 'lucan' and 'bellum_civile' in w:
         return 'epic'
     if a in ('statius',) and w in ('thebaid', 'achilleid'):
@@ -330,9 +333,9 @@ def classify_text(author, work, filename):
     if a == 'claudian' and 'de_raptu_proserpinae' in w:
         return 'epic'
     if a == 'lucretius' and 'de_rerum_natura' in w:
-        return 'epic'  # didactic epic
+        return 'didactic'
     if a == 'manilius' and w in ('astronomica', 'astronomicon'):
-        return 'epic'  # didactic epic
+        return 'didactic'
     if a == 'corippus' and 'johannis' in w:
         return 'epic'
     if a == 'maffeo_veggio' and 'aeneid' in w:
