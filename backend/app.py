@@ -342,6 +342,30 @@ def init_db():
                 VALUES ('SUPER_ADMIN', 'Super administrator')
                 ON CONFLICT (name) DO NOTHING
             ''')
+            cur.execute('''
+                CREATE TABLE IF NOT EXISTS dictionary_review (
+                    id SERIAL PRIMARY KEY,
+                    greek_lemma VARCHAR(255) NOT NULL,
+                    latin_lemma VARCHAR(255) NOT NULL,
+                    shared_senses TEXT,
+                    score REAL DEFAULT 0,
+                    source VARCHAR(100) DEFAULT 'perseus_pivot',
+                    greek_pos VARCHAR(50),
+                    latin_pos VARCHAR(50),
+                    status VARCHAR(20) DEFAULT 'pending',
+                    reviewed_by VARCHAR(255),
+                    reviewed_at TIMESTAMP,
+                    notes TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
+            cur.execute('''
+                CREATE INDEX IF NOT EXISTS idx_dict_review_status ON dictionary_review(status)
+            ''')
+            cur.execute('''
+                CREATE UNIQUE INDEX IF NOT EXISTS idx_dict_review_pair
+                ON dictionary_review(greek_lemma, latin_lemma, source)
+            ''')
         app_logger.info("Database initialized successfully")
     except Exception as e:
         app_logger.error(f"Database initialization error: {e}")
@@ -518,11 +542,22 @@ def index():
     static_folder = app.static_folder or '../frontend'
     return send_from_directory(static_folder, 'index.html')
 
-@app.route('/static/downloads/<path:filepath>')
-def serve_static_downloads(filepath):
-    """Serve static download files (benchmarks, etc.)"""
-    downloads_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'static', 'downloads')
-    return send_from_directory(downloads_dir, filepath)
+@app.before_request
+def serve_static_downloads():
+    """Intercept /static/downloads/ before Flask's built-in static handler.
+
+    Flask's static handler (with static_url_path='') tries to serve ALL paths
+    from dist/, fails for /static/downloads/*, and triggers the 404 catch-all
+    which returns index.html. This before_request hook catches download paths
+    first and serves them from the actual static/downloads/ directory.
+    """
+    if request.path.startswith('/static/downloads/'):
+        filepath = request.path[len('/static/downloads/'):]
+        downloads_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'static', 'downloads')
+        try:
+            return send_from_directory(downloads_dir, filepath)
+        except Exception:
+            return jsonify({'error': 'File not found'}), 404
 
 @app.route('/legacy')
 def legacy_frontend():
@@ -536,6 +571,9 @@ def page_not_found(e):
     api_path = f"{API_PREFIX}/" if API_PREFIX else "/api/"
     if request.path.startswith(api_path):
         return jsonify({'error': 'Not found'}), 404
+    # Don't serve SPA for static file requests — return real 404
+    if request.path.startswith('/static/'):
+        return jsonify({'error': 'File not found'}), 404
     static_folder = app.static_folder or '../frontend'
     return send_from_directory(static_folder, 'index.html')
 
