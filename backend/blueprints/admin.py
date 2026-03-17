@@ -82,6 +82,20 @@ def _parse_year(value):
         return None
 
 
+def _normalize_language_code(value):
+    """Normalize language names/codes to corpus directory codes."""
+    raw = (value or '').strip().lower()
+    mapping = {
+        'latin': 'la',
+        'la': 'la',
+        'greek': 'grc',
+        'grc': 'grc',
+        'english': 'en',
+        'en': 'en',
+    }
+    return mapping.get(raw, raw or 'la')
+
+
 def check_admin_auth():
     """Check admin authentication via session"""
     roles = [_normalize_role_name(r) for r in (session.get('admin_roles') or [])]
@@ -494,47 +508,74 @@ def update_request(request_id):
     try:
         with get_db_cursor() as cur:
             cur.execute('''
-                UPDATE text_requests 
-                SET status = COALESCE(%s, status),
-                    admin_notes = COALESCE(%s, admin_notes),
-                    reviewed_by = COALESCE(%s, reviewed_by),
-                    reviewed_at = %s,
-                    text_date = COALESCE(%s, text_date),
-                    approved_filename = COALESCE(%s, approved_filename),
-                    official_author = COALESCE(%s, official_author),
-                    official_work = COALESCE(%s, official_work),
-                    content = COALESCE(%s, content),
-                    admin_updated_at = %s,
-                    author_era = COALESCE(NULLIF(%s, ''), author_era),
-                    author_year = COALESCE(%s, author_year),
-                    e_source = COALESCE(NULLIF(%s, ''), e_source),
-                    e_source_url = COALESCE(NULLIF(%s, ''), e_source_url),
-                    print_source = COALESCE(NULLIF(%s, ''), print_source),
-                    added_by = COALESCE(NULLIF(%s, ''), added_by)
+                SELECT status, admin_notes, reviewed_by, text_date, approved_filename,
+                       official_author, official_work, content, author_era, author_year,
+                       e_source, e_source_url, print_source, added_by
+                FROM text_requests
                 WHERE id = %s
-            ''', (
-                data.get('status'),
-                data.get('admin_notes'),
-                data.get('reviewed_by', 'admin'),
-                datetime.now(),
-                data.get('text_date'),
-                data.get('approved_filename'),
-                data.get('official_author'),
-                data.get('official_work'),
-                data.get('content'),
-                datetime.now(),
-                data.get('author_era', ''),
-                _parse_year(data.get('author_year')),
-                data.get('e_source', ''),
-                data.get('e_source_url', ''),
-                data.get('print_source', ''),
-                data.get('added_by', ''),
-                request_id
-            ))
+            ''', (request_id,))
+            row = cur.fetchone()
+            if not row:
+                return jsonify({'error': 'Request not found'}), 404
+
+            columns = [
+                'status', 'admin_notes', 'reviewed_by', 'text_date', 'approved_filename',
+                'official_author', 'official_work', 'content', 'author_era', 'author_year',
+                'e_source', 'e_source_url', 'print_source', 'added_by'
+            ]
+            current = dict(zip(columns, row))
+
+            changed = {}
+
+            # Fields where empty string should be treated as "no update" (legacy behavior).
+            nullif_empty_fields = {'author_era', 'e_source', 'e_source_url', 'print_source', 'added_by'}
+
+            for field in columns:
+                if field not in data:
+                    continue
+
+                incoming = data.get(field)
+
+                if field == 'author_year':
+                    incoming = _parse_year(incoming)
+                    if incoming is None:
+                        continue
+                elif field in nullif_empty_fields:
+                    incoming = (incoming or '').strip() if isinstance(incoming, str) else incoming
+                    if incoming in (None, ''):
+                        continue
+                else:
+                    if incoming is None:
+                        continue
+
+                if incoming != current.get(field):
+                    changed[field] = incoming
+
+            if not changed:
+                return jsonify({'success': True, 'message': 'No effective changes detected'})
+
+            set_clauses = []
+            params = []
+            for field, value in changed.items():
+                set_clauses.append(f"{field} = %s")
+                params.append(value)
+
+            now = datetime.now()
+            set_clauses.append("reviewed_at = %s")
+            params.append(now)
+            set_clauses.append("admin_updated_at = %s")
+            params.append(now)
+            params.append(request_id)
+
+            cur.execute(
+                f"UPDATE text_requests SET {', '.join(set_clauses)} WHERE id = %s",
+                tuple(params)
+            )
+
         log_admin_action('update_request', 'text_request', request_id, {
-            'fields_updated': list(data.keys())
+            'fields_updated': list(changed.keys())
         })
-        return jsonify({'success': True})
+        return jsonify({'success': True, 'fields_updated': list(changed.keys())})
     except Exception as e:
         logger.error(f"Failed to update text request: {e}")
         return jsonify({'error': str(e)}), 500
@@ -560,6 +601,7 @@ def approve_and_add_text(request_id):
     
     data = request.get_json() or {}
     final_content = data.get('content', '')
+    overwrite_existing = bool(data.get('overwrite', False))
     
     try:
         with get_db_cursor() as cur:
@@ -575,6 +617,7 @@ def approve_and_add_text(request_id):
             
             orig_author, orig_work, language, db_content, official_author, official_work, approved_filename, \
                 db_era, db_year, db_e_source, db_e_source_url, db_print_source, db_added_by = row
+            language = _normalize_language_code(language)
             
             author = official_author or orig_author
             work = official_work or orig_work
@@ -595,7 +638,7 @@ def approve_and_add_text(request_id):
             os.makedirs(lang_dir, exist_ok=True)
             filepath = os.path.join(lang_dir, filename)
             
-            if os.path.exists(filepath):
+            if os.path.exists(filepath) and not overwrite_existing:
                 return jsonify({'error': f'Text "{author} - {work}" already exists in corpus'}), 409
             
             content_to_use = final_content if final_content else db_content
@@ -616,12 +659,6 @@ def approve_and_add_text(request_id):
             
             with open(filepath, 'w', encoding='utf-8') as f:
                 f.write('\n'.join(formatted_lines))
-            
-            cur.execute('''
-                UPDATE text_requests 
-                SET status = 'approved', reviewed_at = %s
-                WHERE id = %s
-            ''', (datetime.now(), request_id))
         
         # Step 3: Recalculate corpus frequencies (including bigram index)
         recalculate_language_frequencies(language, _text_processor)
@@ -688,6 +725,14 @@ def approve_and_add_text(request_id):
         
         # Step 9: Add to text_sources.json for the Sources page
         _add_to_text_sources(author, work, db_e_source, db_e_source_url, db_print_source, db_added_by)
+
+        # Final step: mark approved only after pipeline completes successfully
+        with get_db_cursor() as cur:
+            cur.execute('''
+                UPDATE text_requests
+                SET status = 'approved', reviewed_at = %s, reviewed_by = %s, language = %s
+                WHERE id = %s
+            ''', (datetime.now(), get_admin_username(), language, request_id))
         
         log_admin_action('approve_request', 'text_request', request_id, {
             'filename': filename,
