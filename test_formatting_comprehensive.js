@@ -99,6 +99,21 @@ const testCases = [
     name: 'Augustine De Civitate Dei (Smart Fallback)',
     input: 'augustine.de_civitate_dei.1.1',
     expected: 'Augustine, De Civitate Dei 1.1'
+  },
+  {
+    name: 'Augustine De Civitate Dei (Trailing Space Check)',
+    input: 'augustine.de_civitate_dei.',
+    expected: 'Augustine, De Civitate Dei'
+  },
+  {
+    name: 'Seneca Medea (No location/trailing space)',
+    input: 'seneca.med.',
+    expected: 'Seneca, Medea'
+  },
+  {
+    name: 'Anonymous (Double Underscore)',
+    input: 'carm__biblioth.5',
+    expected: 'Carm Biblioth 5'
   }
 ];
 

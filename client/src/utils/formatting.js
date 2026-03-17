@@ -524,6 +524,17 @@ const formatLocation = (loc) => {
   return loc.trim().replace(/\s+/g, '.');
 };
 
+const appendLocation = (base, location) => (location ? `${base} ${location}` : base);
+
+const formatUnderscoreTitle = (tag) => {
+  if (!tag) return '';
+  return tag
+    .split('_')
+    .filter(Boolean)
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+};
+
 export const formatReference = (ref, language = null) => {
   if (!ref) return '';
 
@@ -563,10 +574,10 @@ export const formatReference = (ref, language = null) => {
       
       const meta = englishWorkMetadata[workKey];
       if (meta) {
-        return `${meta.author}, ${meta.title} ${location}`;
+        return appendLocation(`${meta.author}, ${meta.title}`, location);
       }
       const titleCase = workKey.charAt(0).toUpperCase() + workKey.slice(1);
-      return `${titleCase} ${location}`;
+      return appendLocation(titleCase, location);
     }
   }
   
@@ -588,12 +599,12 @@ export const formatReference = (ref, language = null) => {
           const twoPartKey = secondPart && thirdPart ? `${secondPart}.${thirdPart}` : null;
           if (twoPartKey && overrides[twoPartKey]) {
             const location = formatLocation(parts.slice(3).join('.'));
-            return `${firstMeta.author}, ${overrides[twoPartKey]} ${location}`;
+            return appendLocation(`${firstMeta.author}, ${overrides[twoPartKey]}`, location);
           }
           // Try single-part abbreviation (e.g., "med" for Seneca)
           if (secondPart && overrides[secondPart]) {
             const location = formatLocation(parts.slice(2).join('.'));
-            return `${firstMeta.author}, ${overrides[secondPart]} ${location}`;
+            return appendLocation(`${firstMeta.author}, ${overrides[secondPart]}`, location);
           }
         }
 
@@ -602,26 +613,26 @@ export const formatReference = (ref, language = null) => {
 
         if (workTitle) {
           const location = formatLocation(parts.slice(2).join('.'));
-          return `${firstMeta.author}, ${workTitle} ${location}`;
+          return appendLocation(`${firstMeta.author}, ${workTitle}`, location);
         }
 
         // Smart fallback: If second part has underscores (e.g., "de_civitate_dei"),
         // automatically format it as a title ("De Civitate Dei").
         if (secondPart && secondPart.includes('_')) {
-          const formattedTitle = secondPart.split('_')
-            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-            .join(' ');
-          const location = formatLocation(parts.slice(2).join('.'));
-          return `${firstMeta.author}, ${formattedTitle} ${location}`;
+          const formattedTitle = formatUnderscoreTitle(secondPart);
+          if (formattedTitle) {
+            const location = formatLocation(parts.slice(2).join('.'));
+            return appendLocation(`${firstMeta.author}, ${formattedTitle}`, location);
+          }
         }
 
         if (firstMeta.work) {
           const location = formatLocation(parts.slice(1).join('.'));
-          return `${firstMeta.author}, ${firstMeta.work} ${location}`;
+          return appendLocation(`${firstMeta.author}, ${firstMeta.work}`, location);
         }
 
         const location = formatLocation(parts.slice(1).join('.'));
-        return `${firstMeta.author} ${location}`;
+        return appendLocation(firstMeta.author, location);
       }
       
       const secondPart = parts[1]?.toLowerCase().trim();
@@ -629,16 +640,16 @@ export const formatReference = (ref, language = null) => {
       if (workTitle) {
         const authorCase = firstKey.charAt(0).toUpperCase() + firstKey.slice(1);
         const location = formatLocation(parts.slice(2).join('.'));
-        return `${authorCase}, ${workTitle} ${location}`;
+        return appendLocation(`${authorCase}, ${workTitle}`, location);
       }
 
       // Smart fallback for anonymous/unknown work tags with underscores (e.g., "carm_biblioth")
       if (firstKey.includes('_')) {
-        const formattedTitle = firstKey.split('_')
-          .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-          .join(' ');
-        const location = formatLocation(parts.slice(1).join('.'));
-        return `${formattedTitle} ${location}`;
+        const formattedTitle = formatUnderscoreTitle(firstKey);
+        if (formattedTitle) {
+          const location = formatLocation(parts.slice(1).join('.'));
+          return appendLocation(formattedTitle, location);
+        }
       }
     }
   }
