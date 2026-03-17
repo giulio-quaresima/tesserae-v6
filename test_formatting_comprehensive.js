@@ -1,4 +1,5 @@
-
+import test from 'node:test';
+import assert from 'node:assert/strict';
 import { formatReference } from './client/src/utils/formatting.js';
 
 const testCases = [
@@ -99,24 +100,13 @@ const testCases = [
   }
 ];
 
-console.log('--- Running Title Rendering Tests ---');
-let passed = 0;
-testCases.forEach(test => {
-  const result = formatReference(test.input);
-  if (result === test.expected) {
-    console.log(`✅ PASSED: ${test.name}`);
-    passed++;
-  } else {
-    console.log(`❌ FAILED: ${test.name}`);
-    console.log(`   Input:    ${test.input}`);
-    console.log(`   Expected: ${test.expected}`);
-    console.log(`   Actual:   ${result}`);
-  }
+test('formatReference formatting comprehensive cases', () => {
+  testCases.forEach(tc => {
+    const result = formatReference(tc.input);
+    assert.strictEqual(
+      result,
+      tc.expected,
+      `Unexpected formatting for case "${tc.name}" with input "${tc.input}"`
+    );
+  });
 });
-
-console.log(`\nTests Summary: ${passed}/${testCases.length} Passed`);
-if (passed === testCases.length) {
-  process.exit(0);
-} else {
-  process.exit(1);
-}
