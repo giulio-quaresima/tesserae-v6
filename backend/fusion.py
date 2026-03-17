@@ -126,17 +126,16 @@ _STOPLISTS = {
 #   Total recall: 784/862 (91.0%, unchanged by rarity scoring).
 # ---------------------------------------------------------------------------
 CHANNEL_WEIGHTS = {
-    "edit_distance": 2.0,   # sub-lexical: Levenshtein fuzzy match (highest for phonetic echoes)
-    "sound": 4.0,           # sub-lexical: character trigram overlap (most heavily weighted —
-                            #   sound echoes are strong evidence of intentional allusion)
-    "exact": 1.0,           # lexical: identical surface forms (low — subsumed by lemma)
+    "edit_distance": 2.0,   # sub-lexical: Levenshtein fuzzy match
+    "sound": 5.0,           # sub-lexical: character trigram overlap (LLM analysis: 1.74× lift
+                            #   for A/B quality — best single-channel predictor after rare_word)
+    "exact": 0.5,           # lexical: identical surface forms (LLM: only 1.08× lift, demoted)
     "lemma": 2.0,           # lexical: shared dictionary headwords (core V3-style matching)
-    "dictionary": 0.5,      # distributional: curated V3 synonym pairs (low — broad recall,
-                            #   many false positives without co-occurrence)
-    "semantic": 1.2,        # distributional: SPhilBERTa cosine similarity (moderate —
-                            #   good at catching paraphrase but noisy at low thresholds)
-    "rare_word": 2.0,       # lexical: shared low-frequency lemmata (high — rare word sharing
-                            #   is strong allusion evidence; min_matches=1 is sufficient)
+    "dictionary": 0.10,     # distributional: curated V3 synonym pairs (LLM: 0.86× lift —
+                            #   predicts noise; value is only as convergence evidence)
+    "semantic": 1.0,        # distributional: SPhilBERTa cosine similarity (LLM: 1.30× lift)
+    "rare_word": 7.0,       # lexical: shared low-frequency lemmata (LLM analysis: 1.94× lift —
+                            #   strongest quality predictor; rare_word+sound = 68% A/B precision)
     "syntax": 0.3,          # structural: dependency pattern match (low — supplements other
                             #   channels but unreliable as primary signal)
     "syntax_structural": 0.5,  # structural: identical dependency head pattern with no shared
@@ -153,7 +152,16 @@ CHANNEL_WEIGHTS = {
 # 0.75 is safe: even 8 extra channels on a common-word pair contribute
 # little (0.75 * 8 * 0.13 = 0.78), while 4 extra channels on a distinctive
 # pair contribute 0.75 * 4 * 1.0 = 3.0 — a meaningful boost.
-CONVERGENCE_BONUS = 0.75
+CONVERGENCE_BONUS = 1.0   # LLM analysis: channel count ≥6 = 57-71% A/B precision; raised from 0.75
+
+# Step bonus for high channel convergence (LLM analysis: AB precision jumps
+# from 34% at 5 channels to 57% at 6 channels — a dramatic quality cliff).
+HIGH_CONVERGENCE_THRESHOLD = 6      # channel count threshold for step bonus
+HIGH_CONVERGENCE_BONUS = 1.0        # additive bonus when threshold met
+
+# Interaction bonus when rare_word + sound both fire (LLM analysis: 68% AB
+# precision when both present, vs 40% for rare_word alone).
+RARE_SOUND_INTERACTION_BONUS = 1.5  # additive bonus for rare_word + sound synergy
 
 # ---------------------------------------------------------------------------
 # Rarity scoring parameters: graduated corpus-IDF multiplier
@@ -1656,6 +1664,15 @@ def fuse_results(channel_results, weights=None, convergence_bonus=None,
         if (n_unique_words <= 1 and not has_structural) or min_idf_gate_fired:
             weighted_n = 0.0
         conv_score = _convergence_bonus * (weighted_n - 1.0) if weighted_n > 1.0 else 0.0
+
+        # Step bonus for high channel convergence (6+ channels)
+        if n >= HIGH_CONVERGENCE_THRESHOLD and weighted_n > 1.0:
+            conv_score += HIGH_CONVERGENCE_BONUS * idf_weight
+
+        # Interaction bonus: rare_word + sound synergy
+        ch_set = set(info["channels"])
+        if "rare_word" in ch_set and "sound" in ch_set and weighted_n > 1.0:
+            conv_score += RARE_SOUND_INTERACTION_BONUS * idf_weight
 
         # ---------------------------------------------------------------
         # Final score assembly
