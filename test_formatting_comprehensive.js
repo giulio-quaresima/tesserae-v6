@@ -1,3 +1,5 @@
+// To run this test file directly with Node's test runner:
+//   node --test test_formatting_comprehensive.js
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { formatReference } from './client/src/utils/formatting.js';
