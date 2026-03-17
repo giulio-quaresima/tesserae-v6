@@ -21,6 +21,32 @@ const GENRE_COLORS = {
   unclassified: 'bg-red-50 text-red-500',
 };
 
+const ERA_COLORS = {
+  'Republic': 'bg-emerald-100 text-emerald-700',
+  'Augustan': 'bg-amber-100 text-amber-700',
+  'Early Imperial': 'bg-orange-100 text-orange-700',
+  'Later Imperial': 'bg-orange-100 text-orange-600',
+  'Late Imperial': 'bg-orange-100 text-orange-600',
+  'Late Antique': 'bg-gray-100 text-gray-700',
+  'Carolingian': 'bg-gray-100 text-gray-600',
+  'Early Medieval': 'bg-gray-100 text-gray-600',
+  'Medieval': 'bg-gray-100 text-gray-600',
+  'Renaissance': 'bg-violet-100 text-violet-700',
+  'Modern': 'bg-violet-100 text-violet-600',
+  'Unknown': 'bg-red-50 text-red-500',
+  'unknown': 'bg-red-50 text-red-500',
+};
+
+const METER_COLORS = {
+  'hexameter': 'bg-blue-100 text-blue-700',
+  'elegiac': 'bg-amber-100 text-amber-700',
+  'lyric': 'bg-purple-100 text-purple-700',
+  'dramatic': 'bg-red-100 text-red-700',
+  'prose': 'bg-gray-100 text-gray-600',
+  'mixed': 'bg-orange-100 text-orange-700',
+  'unknown': 'bg-red-50 text-red-500',
+};
+
 function formatGenre(genre) {
   return genre.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 }
@@ -34,10 +60,19 @@ function formatWork(work) {
   return work.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 }
 
+function formatLabel(value) {
+  if (!value) return '';
+  return value.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+}
+
 export default function GenreClassificationTab() {
   const [texts, setTexts] = useState([]);
   const [genres, setGenres] = useState([]);
+  const [eras, setEras] = useState([]);
+  const [meters, setMeters] = useState([]);
   const [counts, setCounts] = useState({});
+  const [eraCounts, setEraCounts] = useState({});
+  const [meterCounts, setMeterCounts] = useState({});
   const [total, setTotal] = useState(0);
   const [classified, setClassified] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -46,8 +81,13 @@ export default function GenreClassificationTab() {
 
   // Filters
   const [genreFilter, setGenreFilter] = useState('all');
+  const [eraFilter, setEraFilter] = useState('all');
+  const [meterFilter, setMeterFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [confidenceFilter, setConfidenceFilter] = useState('all');
+
+  // Which filter section is expanded
+  const [activeFilterSection, setActiveFilterSection] = useState('genre');
 
   // Sorting
   const [sortBy, setSortBy] = useState('author');
@@ -57,12 +97,12 @@ export default function GenreClassificationTab() {
   const [page, setPage] = useState(0);
   const PAGE_SIZE = 50;
 
-  // Pending edits: { filename: newGenre }
+  // Pending edits: { filename: { genre?, era?, meter? } }
   const [pendingEdits, setPendingEdits] = useState({});
   const [saving, setSaving] = useState(false);
 
   // New genre input
-  const [showNewGenre, setShowNewGenre] = useState(null); // filename that triggered it
+  const [showNewGenre, setShowNewGenre] = useState(null);
   const [newGenreName, setNewGenreName] = useState('');
 
   const loadData = useCallback(async () => {
@@ -74,7 +114,11 @@ export default function GenreClassificationTab() {
       if (!res.ok || data.error) throw new Error(data.error || 'Failed to load');
       setTexts(data.texts || []);
       setGenres(data.genres || []);
+      setEras(data.eras || []);
+      setMeters(data.meters || []);
       setCounts(data.counts || {});
+      setEraCounts(data.era_counts || {});
+      setMeterCounts(data.meter_counts || {});
       setTotal(data.total || 0);
       setClassified(data.classified || 0);
     } catch (err) {
@@ -93,8 +137,24 @@ export default function GenreClassificationTab() {
     // Apply genre filter
     if (genreFilter !== 'all') {
       result = result.filter(t => {
-        const effectiveGenre = pendingEdits[t.filename] || t.genre;
+        const effectiveGenre = pendingEdits[t.filename]?.genre || t.genre;
         return effectiveGenre === genreFilter;
+      });
+    }
+
+    // Apply era filter
+    if (eraFilter !== 'all') {
+      result = result.filter(t => {
+        const effectiveEra = pendingEdits[t.filename]?.era || t.era || 'unknown';
+        return effectiveEra === eraFilter;
+      });
+    }
+
+    // Apply meter filter
+    if (meterFilter !== 'all') {
+      result = result.filter(t => {
+        const effectiveMeter = pendingEdits[t.filename]?.meter || t.meter || 'unknown';
+        return effectiveMeter === meterFilter;
       });
     }
 
@@ -123,8 +183,14 @@ export default function GenreClassificationTab() {
         va = (a.work || '').toLowerCase();
         vb = (b.work || '').toLowerCase();
       } else if (sortBy === 'genre') {
-        va = (pendingEdits[a.filename] || a.genre).toLowerCase();
-        vb = (pendingEdits[b.filename] || b.genre).toLowerCase();
+        va = (pendingEdits[a.filename]?.genre || a.genre).toLowerCase();
+        vb = (pendingEdits[b.filename]?.genre || b.genre).toLowerCase();
+      } else if (sortBy === 'era') {
+        va = (pendingEdits[a.filename]?.era || a.era || 'unknown').toLowerCase();
+        vb = (pendingEdits[b.filename]?.era || b.era || 'unknown').toLowerCase();
+      } else if (sortBy === 'meter') {
+        va = (pendingEdits[a.filename]?.meter || a.meter || 'unknown').toLowerCase();
+        vb = (pendingEdits[b.filename]?.meter || b.meter || 'unknown').toLowerCase();
       } else if (sortBy === 'confidence') {
         va = a.confidence;
         vb = b.confidence;
@@ -138,7 +204,7 @@ export default function GenreClassificationTab() {
     });
 
     return result;
-  }, [texts, genreFilter, confidenceFilter, searchQuery, sortBy, sortDir, pendingEdits]);
+  }, [texts, genreFilter, eraFilter, meterFilter, confidenceFilter, searchQuery, sortBy, sortDir, pendingEdits]);
 
   // Paginated slice
   const pageTexts = useMemo(() => {
@@ -147,20 +213,29 @@ export default function GenreClassificationTab() {
 
   const totalPages = Math.ceil(filteredTexts.length / PAGE_SIZE);
 
-  const handleGenreChange = (filename, genre) => {
-    if (genre === '__new__') {
+  const handleFieldChange = (filename, field, value) => {
+    if (field === 'genre' && value === '__new__') {
       setShowNewGenre(filename);
       setNewGenreName('');
       return;
     }
     setPendingEdits(prev => {
       const next = { ...prev };
-      // Find original genre to detect no-ops
       const orig = texts.find(t => t.filename === filename);
-      if (orig && orig.genre === genre) {
-        delete next[filename];
+      const origValue = orig ? (orig[field] || '') : '';
+
+      if (!next[filename]) {
+        next[filename] = {};
+      }
+
+      if (origValue === value) {
+        delete next[filename][field];
+        // Remove entry if no pending changes remain
+        if (Object.keys(next[filename]).length === 0) {
+          delete next[filename];
+        }
       } else {
-        next[filename] = genre;
+        next[filename][field] = value;
       }
       return next;
     });
@@ -173,15 +248,18 @@ export default function GenreClassificationTab() {
       setGenres(prev => [...prev, cleaned].sort());
     }
     if (showNewGenre) {
-      setPendingEdits(prev => ({ ...prev, [showNewGenre]: cleaned }));
+      setPendingEdits(prev => ({
+        ...prev,
+        [showNewGenre]: { ...(prev[showNewGenre] || {}), genre: cleaned }
+      }));
     }
     setShowNewGenre(null);
     setNewGenreName('');
   };
 
   const handleSave = async () => {
-    const updates = Object.entries(pendingEdits).map(([filename, genre]) => ({
-      filename, genre
+    const updates = Object.entries(pendingEdits).map(([filename, fields]) => ({
+      filename, ...fields
     }));
     if (updates.length === 0) return;
 
@@ -197,7 +275,7 @@ export default function GenreClassificationTab() {
       });
       const data = await res.json();
       if (!res.ok || data.error) throw new Error(data.error || 'Failed to save');
-      setSuccess(`Saved ${data.updated} genre classification${data.updated !== 1 ? 's' : ''}.`);
+      setSuccess(`Saved ${data.updated} classification${data.updated !== 1 ? 's' : ''}.`);
       setPendingEdits({});
       setTimeout(() => setSuccess(''), 4000);
       loadData();
@@ -225,12 +303,35 @@ export default function GenreClassificationTab() {
 
   const pendingCount = Object.keys(pendingEdits).length;
 
-  // All available genres for dropdowns (including any from pending edits)
+  // All available values for dropdowns (including any from pending edits)
   const allGenres = useMemo(() => {
     const set = new Set(genres);
-    Object.values(pendingEdits).forEach(g => set.add(g));
+    Object.values(pendingEdits).forEach(fields => {
+      if (fields.genre) set.add(fields.genre);
+    });
     return [...set].sort();
   }, [genres, pendingEdits]);
+
+  const allEras = useMemo(() => {
+    const set = new Set(eras);
+    Object.values(pendingEdits).forEach(fields => {
+      if (fields.era) set.add(fields.era);
+    });
+    return [...set].sort();
+  }, [eras, pendingEdits]);
+
+  const allMeters = useMemo(() => {
+    const set = new Set(meters);
+    Object.values(pendingEdits).forEach(fields => {
+      if (fields.meter) set.add(fields.meter);
+    });
+    return [...set].sort();
+  }, [meters, pendingEdits]);
+
+  // Active filter counts
+  const activeFilterCount = (genreFilter !== 'all' ? 1 : 0)
+    + (eraFilter !== 'all' ? 1 : 0)
+    + (meterFilter !== 'all' ? 1 : 0);
 
   if (loading && texts.length === 0) {
     return <p className="text-gray-500 text-sm">Loading genre data...</p>;
@@ -255,6 +356,11 @@ export default function GenreClassificationTab() {
           <h3 className="font-medium text-gray-900">Genre Classification</h3>
           <p className="text-xs text-gray-500 mt-0.5">
             {classified} of {total} texts classified ({total > 0 ? Math.round((classified / total) * 100) : 0}%)
+            {activeFilterCount > 0 && (
+              <span className="ml-2 text-red-600">
+                {activeFilterCount} filter{activeFilterCount !== 1 ? 's' : ''} active
+              </span>
+            )}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -291,32 +397,124 @@ export default function GenreClassificationTab() {
         </div>
       )}
 
-      {/* Genre summary chips */}
-      <div className="flex flex-wrap gap-1.5">
-        <button
-          onClick={() => { setGenreFilter('all'); setPage(0); }}
-          className={`px-2 py-1 text-xs rounded border ${
-            genreFilter === 'all'
-              ? 'bg-red-700 text-white border-red-700'
-              : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-          }`}
-        >
-          All ({total})
-        </button>
-        {allGenres.map(g => (
+      {/* Filter section tabs */}
+      <div className="flex gap-1 border-b border-gray-200">
+        {[
+          { key: 'genre', label: 'Genre', filter: genreFilter, count: Object.keys(counts).length },
+          { key: 'era', label: 'Era', filter: eraFilter, count: Object.keys(eraCounts).length },
+          { key: 'meter', label: 'Meter', filter: meterFilter, count: Object.keys(meterCounts).length },
+        ].map(tab => (
           <button
-            key={g}
-            onClick={() => { setGenreFilter(g); setPage(0); }}
+            key={tab.key}
+            onClick={() => setActiveFilterSection(tab.key)}
+            className={`px-3 py-1.5 text-xs font-medium border-b-2 -mb-px transition-colors ${
+              activeFilterSection === tab.key
+                ? 'border-red-600 text-red-700'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            {tab.label}
+            {tab.filter !== 'all' && (
+              <span className="ml-1 inline-block w-1.5 h-1.5 rounded-full bg-red-500" />
+            )}
+          </button>
+        ))}
+        {activeFilterCount > 0 && (
+          <button
+            onClick={() => { setGenreFilter('all'); setEraFilter('all'); setMeterFilter('all'); setPage(0); }}
+            className="ml-auto px-2 py-1 text-xs text-gray-500 hover:text-red-600"
+          >
+            Clear all filters
+          </button>
+        )}
+      </div>
+
+      {/* Genre filter chips */}
+      {activeFilterSection === 'genre' && (
+        <div className="flex flex-wrap gap-1.5">
+          <button
+            onClick={() => { setGenreFilter('all'); setPage(0); }}
             className={`px-2 py-1 text-xs rounded border ${
-              genreFilter === g
+              genreFilter === 'all'
                 ? 'bg-red-700 text-white border-red-700'
                 : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
             }`}
           >
-            {formatGenre(g)} ({counts[g] || 0})
+            All ({total})
           </button>
-        ))}
-      </div>
+          {allGenres.map(g => (
+            <button
+              key={g}
+              onClick={() => { setGenreFilter(g); setPage(0); }}
+              className={`px-2 py-1 text-xs rounded border ${
+                genreFilter === g
+                  ? 'bg-red-700 text-white border-red-700'
+                  : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+              }`}
+            >
+              {formatGenre(g)} ({counts[g] || 0})
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Era filter chips */}
+      {activeFilterSection === 'era' && (
+        <div className="flex flex-wrap gap-1.5">
+          <button
+            onClick={() => { setEraFilter('all'); setPage(0); }}
+            className={`px-2 py-1 text-xs rounded border ${
+              eraFilter === 'all'
+                ? 'bg-red-700 text-white border-red-700'
+                : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+            }`}
+          >
+            All ({total})
+          </button>
+          {allEras.map(e => (
+            <button
+              key={e}
+              onClick={() => { setEraFilter(e); setPage(0); }}
+              className={`px-2 py-1 text-xs rounded border ${
+                eraFilter === e
+                  ? 'bg-red-700 text-white border-red-700'
+                  : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+              }`}
+            >
+              {formatLabel(e)} ({eraCounts[e] || 0})
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Meter filter chips */}
+      {activeFilterSection === 'meter' && (
+        <div className="flex flex-wrap gap-1.5">
+          <button
+            onClick={() => { setMeterFilter('all'); setPage(0); }}
+            className={`px-2 py-1 text-xs rounded border ${
+              meterFilter === 'all'
+                ? 'bg-red-700 text-white border-red-700'
+                : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+            }`}
+          >
+            All ({total})
+          </button>
+          {allMeters.map(m => (
+            <button
+              key={m}
+              onClick={() => { setMeterFilter(m); setPage(0); }}
+              className={`px-2 py-1 text-xs rounded border ${
+                meterFilter === m
+                  ? 'bg-red-700 text-white border-red-700'
+                  : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+              }`}
+            >
+              {formatLabel(m)} ({meterCounts[m] || 0})
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Search + confidence filter */}
       <div className="flex items-center gap-3">
@@ -364,6 +562,18 @@ export default function GenreClassificationTab() {
                 Work{sortArrow('work')}
               </th>
               <th
+                onClick={() => handleSort('era')}
+                className="py-2 px-2 text-xs font-medium text-gray-500 uppercase cursor-pointer hover:text-gray-700 select-none"
+              >
+                Era{sortArrow('era')}
+              </th>
+              <th
+                onClick={() => handleSort('meter')}
+                className="py-2 px-2 text-xs font-medium text-gray-500 uppercase cursor-pointer hover:text-gray-700 select-none"
+              >
+                Meter{sortArrow('meter')}
+              </th>
+              <th
                 onClick={() => handleSort('genre')}
                 className="py-2 px-2 text-xs font-medium text-gray-500 uppercase cursor-pointer hover:text-gray-700 select-none"
               >
@@ -379,8 +589,11 @@ export default function GenreClassificationTab() {
           </thead>
           <tbody className="divide-y">
             {pageTexts.map(t => {
-              const effectiveGenre = pendingEdits[t.filename] || t.genre;
+              const edits = pendingEdits[t.filename] || {};
               const isEdited = t.filename in pendingEdits;
+              const effectiveGenre = edits.genre || t.genre;
+              const effectiveEra = edits.era || t.era || 'unknown';
+              const effectiveMeter = edits.meter || t.meter || 'unknown';
               return (
                 <tr
                   key={t.filename}
@@ -394,10 +607,50 @@ export default function GenreClassificationTab() {
                   </td>
                   <td className="py-1.5 px-2">
                     <select
-                      value={effectiveGenre}
-                      onChange={e => handleGenreChange(t.filename, e.target.value)}
+                      value={effectiveEra}
+                      onChange={e => handleFieldChange(t.filename, 'era', e.target.value)}
                       className={`text-xs rounded px-2 py-0.5 border ${
-                        isEdited
+                        edits.era
+                          ? 'border-amber-400 bg-amber-100'
+                          : 'border-gray-200 bg-white'
+                      }`}
+                    >
+                      {allEras.map(e => (
+                        <option key={e} value={e}>{formatLabel(e)}</option>
+                      ))}
+                    </select>
+                    {!edits.era && (
+                      <span className={`ml-1 inline-block px-1.5 py-0.5 text-xs rounded ${ERA_COLORS[effectiveEra] || 'bg-gray-100 text-gray-600'}`}>
+                        {formatLabel(effectiveEra)}
+                      </span>
+                    )}
+                  </td>
+                  <td className="py-1.5 px-2">
+                    <select
+                      value={effectiveMeter}
+                      onChange={e => handleFieldChange(t.filename, 'meter', e.target.value)}
+                      className={`text-xs rounded px-2 py-0.5 border ${
+                        edits.meter
+                          ? 'border-amber-400 bg-amber-100'
+                          : 'border-gray-200 bg-white'
+                      }`}
+                    >
+                      {allMeters.map(m => (
+                        <option key={m} value={m}>{formatLabel(m)}</option>
+                      ))}
+                    </select>
+                    {!edits.meter && (
+                      <span className={`ml-1 inline-block px-1.5 py-0.5 text-xs rounded ${METER_COLORS[effectiveMeter] || 'bg-gray-100 text-gray-600'}`}>
+                        {formatLabel(effectiveMeter)}
+                      </span>
+                    )}
+                  </td>
+                  <td className="py-1.5 px-2">
+                    <select
+                      value={effectiveGenre}
+                      onChange={e => handleFieldChange(t.filename, 'genre', e.target.value)}
+                      className={`text-xs rounded px-2 py-0.5 border ${
+                        edits.genre
                           ? 'border-amber-400 bg-amber-100'
                           : 'border-gray-200 bg-white'
                       }`}
@@ -407,7 +660,7 @@ export default function GenreClassificationTab() {
                       ))}
                       <option value="__new__">+ Add new genre...</option>
                     </select>
-                    {!isEdited && (
+                    {!edits.genre && (
                       <span className={`ml-2 inline-block px-1.5 py-0.5 text-xs rounded ${GENRE_COLORS[effectiveGenre] || 'bg-gray-100 text-gray-600'}`}>
                         {formatGenre(effectiveGenre)}
                       </span>

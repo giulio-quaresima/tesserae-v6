@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
 """
-Tesserae V6 — Auto-classify Latin texts by genre from filenames.
+Tesserae V6 — Auto-classify Latin texts by genre, era, and meter from filenames.
 
 Reads all .tess filenames from texts/la/ and applies rule-based genre
-classification. Outputs data/text_genres.csv for use by the admin panel
+classification, plus era lookup (from author_dates.json) and meter
+detection (from mqdq_scansions.json + genre-based inference).
+
+Outputs data/text_genres.csv for use by the admin panel
 and (future) genre-specific IDF computation.
 
 Usage:
@@ -11,6 +14,7 @@ Usage:
 """
 
 import csv
+import json
 import os
 import re
 import sys
@@ -19,6 +23,248 @@ import sys
 
 TEXTS_DIR = os.path.join(os.path.dirname(__file__), '..', 'texts', 'la')
 OUTPUT_CSV = os.path.join(os.path.dirname(__file__), '..', 'data', 'text_genres.csv')
+AUTHOR_DATES_PATH = os.path.join(os.path.dirname(__file__), '..', 'backend', 'author_dates.json')
+SCANSION_PATH = os.path.join(os.path.dirname(__file__), '..', 'data', 'scansion', 'mqdq_scansions.json')
+
+# ─── Era lookup ──────────────────────────────────────────────────────────────
+
+def _load_author_dates():
+    """Load author_dates.json and return flat dict: author_key -> era string."""
+    path = os.path.abspath(AUTHOR_DATES_PATH)
+    if not os.path.exists(path):
+        print(f"WARNING: author_dates.json not found at {path}")
+        return {}
+    with open(path, 'r', encoding='utf-8') as f:
+        data = json.load(f)
+    # Flatten all languages into a single dict keyed by author name
+    result = {}
+    for lang_data in data.values():
+        for author_key, info in lang_data.items():
+            result[author_key.lower()] = info.get('era', 'Unknown')
+    return result
+
+
+def lookup_era(author, author_dates):
+    """Look up era for an author. Tries exact match, then partial matches."""
+    a = author.lower()
+    # Exact match
+    if a in author_dates:
+        return author_dates[a]
+    # Try without _pseudo suffix
+    base = re.sub(r'_pseudo$', '', a)
+    if base in author_dates:
+        return author_dates[base]
+    # Try the first part before _of_, _the_, _saint etc.
+    simplified = re.split(r'_(of|the|saint|bishop|pseudo|active)', a)[0]
+    if simplified in author_dates:
+        return author_dates[simplified]
+    return 'unknown'
+
+
+# ─── Meter lookup (MQDQ scansion data) ──────────────────────────────────────
+
+# Map MQDQ meter_type codes to human-readable labels
+METER_TYPE_MAP = {
+    'H': 'hexameter',
+    'P': 'elegiac',       # pentameter (appears in elegiac couplets)
+    'D': 'lyric',         # various lyric meters (Horace odes)
+    'G': 'mixed',         # mixed meters
+    'G1': 'lyric',        # iambic/epodic meters
+    'F': 'mixed',         # mixed meters (polymetric books)
+    'O': 'lyric',         # other lyric meters
+    'X': 'hexameter',     # hexameter variant marking
+    'Y': 'mixed',         # mixed minor meters
+    'elegiac': 'elegiac',
+    'hendecasyllable': 'lyric',
+}
+
+# Map scansion author names to .tess author names
+SCANSION_AUTHOR_MAP = {
+    'vergilius': 'vergil',
+    'horatius': 'horace',
+    'ouidius': 'ovid',
+    'lucanus': 'lucan',
+    'iuuenalis': 'juvenal',
+    'iuuencus': 'juvencus',
+    'martialis': 'martial',
+}
+
+
+def _load_scansion_data():
+    """Load MQDQ scansion data and build a lookup dict.
+    Returns dict: (normalized_author, normalized_work) -> meter label.
+    Also returns a by-author dict for partial matching.
+    """
+    path = os.path.abspath(SCANSION_PATH)
+    if not os.path.exists(path):
+        print(f"WARNING: mqdq_scansions.json not found at {path}")
+        return {}, {}
+
+    with open(path, 'r', encoding='utf-8') as f:
+        data = json.load(f)
+
+    by_key = {}   # (author, work) -> meter
+    by_author = {}  # author -> set of meters
+
+    for key, info in data.items():
+        raw_meter = info.get('meter_type', '')
+        if not raw_meter:
+            continue
+        meter = METER_TYPE_MAP.get(raw_meter, raw_meter.lower())
+
+        parts = key.split('.', 1)
+        scansion_author = parts[0].lower()
+        scansion_work = parts[1].lower() if len(parts) > 1 else ''
+
+        # Normalize author name to match .tess conventions
+        tess_author = SCANSION_AUTHOR_MAP.get(scansion_author, scansion_author)
+
+        # Normalize work name: strip trailing _N (book numbers), lowercase
+        # e.g., "Aeneis" -> "aeneis", "siluae_1" -> "siluae"
+        tess_work = scansion_work.lower()
+        # Remove .part.N suffixes
+        tess_work = re.sub(r'\.part\.\d+.*$', '', tess_work)
+
+        by_key[(tess_author, tess_work)] = meter
+
+        if tess_author not in by_author:
+            by_author[tess_author] = set()
+        by_author[tess_author].add(meter)
+
+    return by_key, by_author
+
+
+# Genre -> default meter mapping (for texts not in scansion data)
+GENRE_METER_MAP = {
+    'epic': 'hexameter',
+    'pastoral': 'hexameter',
+    'panegyric': 'hexameter',
+    'elegy': 'elegiac',
+    'lyric': 'lyric',
+    'satire': 'hexameter',       # Horace/Juvenal/Persius are hex satirists
+    'drama': 'dramatic',
+    'oratory': 'prose',
+    'philosophy': 'prose',
+    'historiography': 'prose',
+    'epistolary': 'prose',
+    'technical': 'prose',
+    'theology': 'prose',
+    'rhetoric': 'prose',
+    'scripture': 'prose',
+    'medieval': 'unknown',        # could be verse or prose
+    'christian_poetry': 'unknown',  # varies
+    'unclassified': 'unknown',
+}
+
+# Work name aliases to help match scansion data to .tess filenames
+WORK_ALIASES = {
+    # vergil
+    ('vergil', 'aeneid'): [('vergil', 'aeneis'), ('vergilius', 'aeneis')],
+    ('vergil', 'eclogues'): [('vergil', 'eclogae'), ('vergilius', 'eclogae')],
+    ('vergil', 'georgics'): [('vergil', 'georgicon'), ('vergilius', 'georgicon')],
+    # ovid
+    ('ovid', 'ex_ponto'): [('ovid', 'ex_ponto_1'), ('ovid', 'ex_ponto_2'),
+                            ('ovid', 'ex_ponto_3'), ('ovid', 'ex_ponto_4'),
+                            ('ouidius', 'ex_ponto_1')],
+    ('ovid', 'tristia'): [('ovid', 'tristia_1'), ('ovid', 'tristia_3'),
+                           ('ovid', 'tristia_4'), ('ovid', 'tristia_5'),
+                           ('ouidius', 'tristia_1')],
+    ('ovid', 'amores'): [('ovid', 'amores'), ('ouidius', 'amores_1')],
+    ('ovid', 'ars_amatoria'): [('ovid', 'ars_amatoria'), ('ouidius', 'ars')],
+    ('ovid', 'heroides'): [('ovid', 'heroides'), ('ouidius', 'epistulae_heroides')],
+    ('ovid', 'fasti'): [('ovid', 'fasti'), ('ouidius', 'fasti')],
+    ('ovid', 'metamorphoses'): [('ovid', 'metamorphoses'), ('ouidius', 'metamorphoses')],
+    # horace
+    ('horace', 'satires'): [('horace', 'saturae_1'), ('horace', 'saturae_2'),
+                             ('horatius', 'saturae_1'), ('horatius', 'saturae_2')],
+    ('horace', 'epistles'): [('horace', 'epistulae_1'), ('horace', 'epistulae_2'),
+                              ('horatius', 'epistulae_1'), ('horatius', 'epistulae_2')],
+    ('horace', 'odes'): [('horace', 'carmina_1'), ('horace', 'carmina_4'),
+                          ('horatius', 'carmina_1'), ('horatius', 'carmina_4')],
+    ('horace', 'epodes'): [('horace', 'epodi'), ('horatius', 'epodi')],
+    # statius
+    ('statius', 'thebaid'): [('statius', 'thebais')],
+    ('statius', 'achilleid'): [('statius', 'achilleis')],
+    ('statius', 'silvae'): [('statius', 'siluae_1'), ('statius', 'siluae_2'),
+                             ('statius', 'siluae_3'), ('statius', 'siluae_4'),
+                             ('statius', 'siluae_5')],
+    # lucan
+    ('lucan', 'bellum_civile'): [('lucan', 'pharsalia'), ('lucanus', 'pharsalia')],
+    # silius
+    ('silius_italicus', 'punica'): [('silius_italicus', 'punica')],
+    # valerius flaccus
+    ('valerius_flaccus', 'argonautica'): [('valerius_flaccus', 'argonautica')],
+    # propertius
+    ('propertius', 'elegiae'): [('propertius', 'elegiae_1'), ('propertius', 'elegiae_2'),
+                                 ('propertius', 'elegiae_3'), ('propertius', 'elegiae_4'),
+                                 ('propertius', 'elegies')],
+    # tibullus
+    ('tibullus', 'elegiae'): [('tibullus', 'elegiae_1'), ('tibullus', 'elegiae_2'),
+                               ('tibullus', 'elegies')],
+    # juvenal
+    ('juvenal', 'saturae'): [('juvenal', 'saturae'), ('iuuenalis', 'saturae')],
+    # persius
+    ('persius', 'saturae'): [('persius', 'saturae')],
+    # catullus
+    ('catullus', 'carmina'): [('catullus', 'carmina')],
+    # martial
+    ('martial', 'epigrams'): [('martial', 'epigrams')],
+    # seneca
+    ('seneca', 'apocolocyntosis'): [('seneca', 'apocolocyntosis')],
+    # claudian
+    ('claudian', 'de_raptu_proserpinae'): [('claudianus', 'de_raptu_proserpinae')],
+    # calpurnius
+    ('calpurnius_siculus', 'eclogae'): [('calpurnius_siculus', 'eclogae')],
+}
+
+
+def lookup_meter(author, work, genre, scansion_keys, scansion_by_author, text_type_func=None, filename=None):
+    """Determine meter for a text using scansion data + genre inference.
+
+    Priority:
+    1. Exact (author, work) match in scansion data
+    2. Alias-based match
+    3. If text_type is prose -> 'prose'
+    4. Genre-based inference
+    """
+    a = author.lower()
+    w = work.lower() if work else ''
+
+    # 1. Exact match
+    if (a, w) in scansion_keys:
+        return scansion_keys[(a, w)]
+
+    # Try with numbered suffix stripped (e.g., silvae -> siluae_1)
+    # and case variations
+    for key, meter in scansion_keys.items():
+        ka, kw = key
+        # Match if tess author matches and work is a prefix
+        if ka == a and kw.startswith(w) and w:
+            return meter
+        # Match with work name starting with our work
+        if ka == a and w and w.startswith(kw):
+            return meter
+
+    # 2. Check aliases
+    alias_key = (a, w)
+    if alias_key in WORK_ALIASES:
+        for alt_a, alt_w in WORK_ALIASES[alias_key]:
+            alt_a = alt_a.lower()
+            alt_w = alt_w.lower()
+            if (alt_a, alt_w) in scansion_keys:
+                return scansion_keys[(alt_a, alt_w)]
+
+    # 3. Check text_type (prose override)
+    if text_type_func and filename:
+        try:
+            text_type = text_type_func(filename)
+            if text_type == 'prose':
+                return 'prose'
+        except Exception:
+            pass
+
+    # 4. Genre-based inference
+    return GENRE_METER_MAP.get(genre, 'unknown')
 
 # Genre definitions: each entry is (genre_name, list_of_matching_rules)
 # Rules are checked in order; first match wins.
@@ -638,6 +884,23 @@ def main():
     # Ensure output directory exists
     os.makedirs(os.path.dirname(output_csv), exist_ok=True)
 
+    # Load era and meter data
+    author_dates = _load_author_dates()
+    print(f"Loaded {len(author_dates)} author era entries")
+
+    scansion_keys, scansion_by_author = _load_scansion_data()
+    print(f"Loaded {len(scansion_keys)} scansion entries")
+
+    # Try to import detect_text_type for prose override
+    text_type_func = None
+    try:
+        sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+        from backend.utils import detect_text_type
+        text_type_func = detect_text_type
+        print("Loaded detect_text_type from backend.utils")
+    except ImportError as e:
+        print(f"WARNING: Could not import detect_text_type: {e}")
+
     # Read all .tess files
     files = sorted([f for f in os.listdir(texts_dir) if f.endswith('.tess')])
     print(f"Found {len(files)} .tess files in {texts_dir}")
@@ -645,30 +908,39 @@ def main():
     # Classify each file
     results = []
     genre_counts = {}
+    era_counts = {}
+    meter_counts = {}
 
     for filename in files:
         author, work = parse_filename(filename)
         genre = classify_text(author, work, filename)
+        era = lookup_era(author, author_dates)
+        meter = lookup_meter(author, work, genre, scansion_keys, scansion_by_author,
+                             text_type_func, filename)
 
         results.append({
             'filename': filename,
             'author': author,
             'work': work,
+            'era': era,
+            'meter': meter,
             'genre': genre,
             'confidence': 'auto'
         })
 
         genre_counts[genre] = genre_counts.get(genre, 0) + 1
+        era_counts[era] = era_counts.get(era, 0) + 1
+        meter_counts[meter] = meter_counts.get(meter, 0) + 1
 
     # Write CSV
     with open(output_csv, 'w', newline='', encoding='utf-8') as f:
-        writer = csv.DictWriter(f, fieldnames=['filename', 'author', 'work', 'genre', 'confidence'])
+        writer = csv.DictWriter(f, fieldnames=['filename', 'author', 'work', 'era', 'meter', 'genre', 'confidence'])
         writer.writeheader()
         writer.writerows(results)
 
     print(f"\nWrote {len(results)} entries to {output_csv}")
 
-    # Print summary
+    # Print genre summary
     print(f"\n{'Genre':<25} {'Count':>6} {'%':>7}")
     print('-' * 40)
     for genre, count in sorted(genre_counts.items(), key=lambda x: -x[1]):
@@ -681,6 +953,20 @@ def main():
     unclassified = genre_counts.get('unclassified', 0)
     print(f"\n  Classified: {classified} ({classified/len(results)*100:.1f}%)")
     print(f"  Unclassified: {unclassified} ({unclassified/len(results)*100:.1f}%)")
+
+    # Print era summary
+    print(f"\n{'Era':<25} {'Count':>6} {'%':>7}")
+    print('-' * 40)
+    for era, count in sorted(era_counts.items(), key=lambda x: -x[1]):
+        pct = count / len(results) * 100
+        print(f"  {era:<23} {count:>6} {pct:>6.1f}%")
+
+    # Print meter summary
+    print(f"\n{'Meter':<25} {'Count':>6} {'%':>7}")
+    print('-' * 40)
+    for meter, count in sorted(meter_counts.items(), key=lambda x: -x[1]):
+        pct = count / len(results) * 100
+        print(f"  {meter:<23} {count:>6} {pct:>6.1f}%")
 
     # Print unique author.work combos that are unclassified
     if unclassified > 0:

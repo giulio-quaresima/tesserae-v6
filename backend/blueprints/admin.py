@@ -1993,29 +1993,50 @@ def _save_genre_csv(rows):
     import csv
     csv_path = os.path.abspath(GENRE_CSV_PATH)
     os.makedirs(os.path.dirname(csv_path), exist_ok=True)
+    # Use columns present in the data; include era and meter if available
+    fieldnames = ['filename', 'author', 'work', 'era', 'meter', 'genre', 'confidence']
     with open(csv_path, 'w', newline='', encoding='utf-8') as f:
-        writer = csv.DictWriter(f, fieldnames=['filename', 'author', 'work', 'genre', 'confidence'])
+        writer = csv.DictWriter(f, fieldnames=fieldnames, extrasaction='ignore')
         writer.writeheader()
+        # Ensure each row has all fields (backward compat with old CSVs)
+        for row in rows:
+            row.setdefault('era', 'unknown')
+            row.setdefault('meter', 'unknown')
         writer.writerows(rows)
 
 
 @admin_bp.route('/text-genres', methods=['GET'])
 def get_text_genres():
-    """Return all texts with their genre classifications."""
+    """Return all texts with their genre, era, and meter classifications."""
     if not check_admin_auth():
         return jsonify({'error': 'Unauthorized'}), 401
     try:
         rows = _load_genre_csv()
         if not rows:
-            return jsonify({'texts': [], 'genres': [], 'counts': {}})
+            return jsonify({'texts': [], 'genres': [], 'eras': [], 'meters': [],
+                            'counts': {}, 'era_counts': {}, 'meter_counts': {}})
 
-        # Collect unique genres
+        # Ensure each row has era and meter fields (backward compat)
+        for r in rows:
+            r.setdefault('era', 'unknown')
+            r.setdefault('meter', 'unknown')
+
+        # Collect unique values
         genres = sorted(set(r['genre'] for r in rows))
-        # Count per genre
+        eras = sorted(set(r['era'] for r in rows))
+        meters = sorted(set(r['meter'] for r in rows))
+
+        # Count per category
         counts = {}
+        era_counts = {}
+        meter_counts = {}
         for r in rows:
             g = r['genre']
             counts[g] = counts.get(g, 0) + 1
+            e = r['era']
+            era_counts[e] = era_counts.get(e, 0) + 1
+            m = r['meter']
+            meter_counts[m] = meter_counts.get(m, 0) + 1
 
         total = len(rows)
         classified = sum(1 for r in rows if r['genre'] != 'unclassified')
@@ -2023,7 +2044,11 @@ def get_text_genres():
         return jsonify({
             'texts': rows,
             'genres': genres,
+            'eras': eras,
+            'meters': meters,
             'counts': counts,
+            'era_counts': era_counts,
+            'meter_counts': meter_counts,
             'total': total,
             'classified': classified
         })
@@ -2034,7 +2059,7 @@ def get_text_genres():
 
 @admin_bp.route('/text-genres', methods=['POST'])
 def update_text_genres():
-    """Update genre for one or more texts."""
+    """Update genre, era, and/or meter for one or more texts."""
     if not check_admin_auth():
         return jsonify({'error': 'Unauthorized'}), 401
     try:
@@ -2044,6 +2069,11 @@ def update_text_genres():
             return jsonify({'error': 'No updates provided'}), 400
 
         rows = _load_genre_csv()
+        # Ensure era/meter fields exist (backward compat)
+        for r in rows:
+            r.setdefault('era', 'unknown')
+            r.setdefault('meter', 'unknown')
+
         # Build lookup by filename
         row_map = {r['filename']: r for r in rows}
 
@@ -2051,11 +2081,20 @@ def update_text_genres():
         reviewer = get_admin_username()
         for u in updates:
             filename = u.get('filename')
-            genre = u.get('genre', '').strip()
-            if not filename or not genre:
+            if not filename or filename not in row_map:
                 continue
-            if filename in row_map:
-                row_map[filename]['genre'] = genre
+            # Update whichever fields are provided
+            changed = False
+            if 'genre' in u and u['genre'].strip():
+                row_map[filename]['genre'] = u['genre'].strip()
+                changed = True
+            if 'era' in u and u['era'].strip():
+                row_map[filename]['era'] = u['era'].strip()
+                changed = True
+            if 'meter' in u and u['meter'].strip():
+                row_map[filename]['meter'] = u['meter'].strip()
+                changed = True
+            if changed:
                 row_map[filename]['confidence'] = 'manual'
                 updated_count += 1
 
@@ -2076,11 +2115,12 @@ def update_text_genres():
 def reclassify_text_genres():
     """Re-run auto-classification for texts still marked 'auto'.
     Does not overwrite manual classifications.
+    Reclassifies genre, era, and meter.
     """
     if not check_admin_auth():
         return jsonify({'error': 'Unauthorized'}), 401
     try:
-        # Import the classification function from the script
+        # Import the classification functions from the script
         import importlib.util
         script_path = os.path.abspath(os.path.join(
             os.path.dirname(__file__), '..', '..', 'scripts', 'classify_text_genres.py'
@@ -2089,15 +2129,38 @@ def reclassify_text_genres():
         mod = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(mod)
 
+        # Load era and meter data sources
+        author_dates = mod._load_author_dates()
+        scansion_keys, scansion_by_author = mod._load_scansion_data()
+
+        # Try to get detect_text_type
+        text_type_func = None
+        try:
+            from backend.utils import detect_text_type
+            text_type_func = detect_text_type
+        except ImportError:
+            pass
+
         rows = _load_genre_csv()
+        # Ensure era/meter fields exist
+        for r in rows:
+            r.setdefault('era', 'unknown')
+            r.setdefault('meter', 'unknown')
+
         reclassified = 0
         for r in rows:
             if r['confidence'] == 'manual':
                 continue  # Preserve manual classifications
             author, work = mod.parse_filename(r['filename'])
             new_genre = mod.classify_text(author, work, r['filename'])
-            if new_genre != r['genre']:
+            new_era = mod.lookup_era(author, author_dates)
+            new_meter = mod.lookup_meter(author, work, new_genre,
+                                         scansion_keys, scansion_by_author,
+                                         text_type_func, r['filename'])
+            if new_genre != r['genre'] or new_era != r.get('era') or new_meter != r.get('meter'):
                 r['genre'] = new_genre
+                r['era'] = new_era
+                r['meter'] = new_meter
                 reclassified += 1
             r['confidence'] = 'auto'
 
