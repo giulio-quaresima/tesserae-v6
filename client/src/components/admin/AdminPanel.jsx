@@ -10,6 +10,8 @@ import SourcesTab from './tabs/SourcesTab';
 import MetadataTab from './tabs/MetadataTab';
 import RequestsTab from './tabs/RequestsTab';
 import UsersTab from './tabs/UsersTab';
+import DictionaryReviewTab from './tabs/DictionaryReviewTab';
+import GenreClassificationTab from './tabs/GenreClassificationTab';
 
 const normalizeRole = (role) => (role || '').toString().trim().toUpperCase();
 
@@ -322,26 +324,28 @@ export default function AdminPanel() {
       {!mustResetPassword && (
         <div className="bg-white rounded-lg shadow">
           <div className="border-b">
-            <nav className="flex flex-wrap">
-              {['requests', 'feedback', 'users', 'sources', 'metadata', 'cache', 'stats', 'analytics', 'audit', 'settings'].map(tab => (
+            <nav className="flex overflow-x-auto">
+              {['requests', 'feedback', 'users', 'sources', 'metadata', 'cache', 'stats', 'analytics', 'audit', 'settings', 'dictionary', 'genres'].map(tab => (
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
-                  className={`px-4 py-3 text-sm font-medium border-b-2 ${
+                  className={`px-3 py-3 text-xs font-medium border-b-2 whitespace-nowrap ${
                     activeTab === tab
                       ? 'border-red-700 text-red-700'
                       : 'border-transparent text-gray-500 hover:text-gray-700'
                   }`}
                 >
-                  {tab === 'requests' ? 'Text Requests' :
+                  {tab === 'requests' ? 'Requests' :
                    tab === 'feedback' ? 'Feedback' :
-                   tab === 'users' ? 'Users & Roles' :
+                   tab === 'dictionary' ? 'Dictionary' :
+                   tab === 'genres' ? 'Genres' :
+                   tab === 'users' ? 'Users' :
                    tab === 'sources' ? 'Sources' :
-                   tab === 'metadata' ? 'Corpus Metadata' :
-                   tab === 'cache' ? 'Cache Management' :
-                   tab === 'stats' ? 'Corpus Stats' :
-                   tab === 'analytics' ? 'User Analytics' :
-                   tab === 'audit' ? 'Audit Log' : 'Settings'}
+                   tab === 'metadata' ? 'Metadata' :
+                   tab === 'cache' ? 'Cache' :
+                   tab === 'stats' ? 'Stats' :
+                   tab === 'analytics' ? 'Analytics' :
+                   tab === 'audit' ? 'Audit' : 'Settings'}
                 </button>
               ))}
             </nav>
@@ -359,6 +363,14 @@ export default function AdminPanel() {
           {activeTab === 'feedback' && (
             <FeedbackTab feedback={feedback} onRefresh={loadAdminData} />
           )}
+
+            {activeTab === 'dictionary' && (
+              <DictionaryReviewTab />
+            )}
+
+            {activeTab === 'genres' && (
+              <GenreClassificationTab />
+            )}
 
             {activeTab === 'users' && (
               <UsersTab authHeaders={{}} isSuperAdmin={adminRoles.map(normalizeRole).includes('SUPER_ADMIN')} />

@@ -1786,3 +1786,327 @@ def update_text_metadata(text_id):
     except Exception as e:
         logger.error(f"Failed to update text metadata: {e}")
         return jsonify({'error': str(e)}), 500
+
+
+# =============================================================================
+# DICTIONARY REVIEW
+# =============================================================================
+
+@admin_bp.route('/dictionary-review', methods=['GET'])
+def get_dictionary_review():
+    """Get dictionary review entries with optional status filter"""
+    if not check_admin_auth():
+        return jsonify({'error': 'Unauthorized'}), 401
+    try:
+        status = request.args.get('status', 'pending')
+        limit = min(int(request.args.get('limit', 50)), 200)
+        offset = int(request.args.get('offset', 0))
+
+        with get_db_cursor(commit=False) as cur:
+            if status == 'all':
+                cur.execute('''
+                    SELECT id, greek_lemma, latin_lemma, shared_senses, score,
+                           source, greek_pos, latin_pos, status, reviewed_by,
+                           reviewed_at, notes
+                    FROM dictionary_review
+                    ORDER BY score DESC
+                    LIMIT %s OFFSET %s
+                ''', (limit, offset))
+            else:
+                cur.execute('''
+                    SELECT id, greek_lemma, latin_lemma, shared_senses, score,
+                           source, greek_pos, latin_pos, status, reviewed_by,
+                           reviewed_at, notes
+                    FROM dictionary_review
+                    WHERE status = %s
+                    ORDER BY score DESC
+                    LIMIT %s OFFSET %s
+                ''', (status, limit, offset))
+            rows = cur.fetchall()
+
+            cur.execute('SELECT COUNT(*) FROM dictionary_review WHERE status = %s', ('pending',))
+            pending_count = cur.fetchone()[0]
+            cur.execute('SELECT COUNT(*) FROM dictionary_review WHERE status = %s', ('accepted',))
+            accepted_count = cur.fetchone()[0]
+            cur.execute('SELECT COUNT(*) FROM dictionary_review WHERE status = %s', ('rejected',))
+            rejected_count = cur.fetchone()[0]
+            cur.execute('SELECT COUNT(*) FROM dictionary_review WHERE status = %s', ('skipped',))
+            skipped_count = cur.fetchone()[0]
+
+        entries = [{
+            'id': r[0], 'greek_lemma': r[1], 'latin_lemma': r[2],
+            'shared_senses': r[3], 'score': r[4], 'source': r[5],
+            'greek_pos': r[6], 'latin_pos': r[7], 'status': r[8],
+            'reviewed_by': r[9],
+            'reviewed_at': r[10].isoformat() if r[10] else None,
+            'notes': r[11]
+        } for r in rows]
+
+        return jsonify({
+            'entries': entries,
+            'counts': {
+                'pending': pending_count,
+                'accepted': accepted_count,
+                'rejected': rejected_count,
+                'skipped': skipped_count
+            }
+        })
+    except Exception as e:
+        logger.error(f"Failed to get dictionary review entries: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@admin_bp.route('/dictionary-review/<int:entry_id>', methods=['PUT'])
+def update_dictionary_review(entry_id):
+    """Update a dictionary review entry (accept/reject/skip)"""
+    if not check_admin_auth():
+        return jsonify({'error': 'Unauthorized'}), 401
+    try:
+        data = request.get_json() or {}
+        status = data.get('status')
+        notes = data.get('notes')
+
+        if status not in ('accepted', 'rejected', 'pending', 'skipped'):
+            return jsonify({'error': 'Invalid status'}), 400
+
+        reviewer = get_admin_username()
+        now = datetime.now() if status in ('accepted', 'rejected') else None
+
+        with get_db_cursor() as cur:
+            cur.execute('''
+                UPDATE dictionary_review
+                SET status = %s, reviewed_by = %s, reviewed_at = %s, notes = %s
+                WHERE id = %s
+            ''', (status, reviewer, now, notes, entry_id))
+
+        log_admin_action('dictionary_review', 'dictionary_entry', str(entry_id),
+                         {'status': status, 'notes': notes})
+
+        return jsonify({'success': True})
+    except Exception as e:
+        logger.error(f"Failed to update dictionary review: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@admin_bp.route('/dictionary-review/batch', methods=['PUT'])
+def batch_update_dictionary_review():
+    """Batch update multiple entries"""
+    if not check_admin_auth():
+        return jsonify({'error': 'Unauthorized'}), 401
+    try:
+        data = request.get_json() or {}
+        updates = data.get('updates', [])
+        if not updates:
+            return jsonify({'error': 'No updates provided'}), 400
+
+        reviewer = get_admin_username()
+        now = datetime.now()
+        count = 0
+
+        with get_db_cursor() as cur:
+            for u in updates:
+                entry_id = u.get('id')
+                status = u.get('status')
+                if not entry_id or status not in ('accepted', 'rejected', 'pending', 'skipped'):
+                    continue
+                review_time = now if status in ('accepted', 'rejected') else None
+                cur.execute('''
+                    UPDATE dictionary_review
+                    SET status = %s, reviewed_by = %s, reviewed_at = %s
+                    WHERE id = %s
+                ''', (status, reviewer, review_time, entry_id))
+                count += 1
+
+        log_admin_action('dictionary_review_batch', 'dictionary_entry', None,
+                         {'count': count})
+
+        return jsonify({'success': True, 'updated': count})
+    except Exception as e:
+        logger.error(f"Failed to batch update dictionary review: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@admin_bp.route('/dictionary-review/export', methods=['GET'])
+def export_dictionary_review():
+    """Export accepted entries as CSV"""
+    if not check_admin_auth():
+        return jsonify({'error': 'Unauthorized'}), 401
+    try:
+        with get_db_cursor(commit=False) as cur:
+            cur.execute('''
+                SELECT greek_lemma, latin_lemma, shared_senses, score,
+                       greek_pos, latin_pos, reviewed_by, reviewed_at
+                FROM dictionary_review
+                WHERE status = 'accepted'
+                ORDER BY score DESC
+            ''')
+            rows = cur.fetchall()
+
+        lines = ['greek_lemma,latin_lemma,shared_senses,score,greek_pos,latin_pos,reviewed_by,reviewed_at']
+        for r in rows:
+            senses = (r[2] or '').replace('"', '""')
+            lines.append(f'{r[0]},{r[1]},"{senses}",{r[3]},{r[4]},{r[5]},{r[6] or ""},{r[7] or ""}')
+
+        from flask import Response
+        return Response(
+            '\n'.join(lines),
+            mimetype='text/csv',
+            headers={'Content-Disposition': 'attachment; filename=accepted_dictionary_entries.csv'}
+        )
+    except Exception as e:
+        logger.error(f"Failed to export dictionary review: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@admin_bp.route('/dictionary-review/reload', methods=['POST'])
+def reload_dictionary():
+    """Reload accepted review entries into the running dictionary"""
+    if not check_admin_auth():
+        return jsonify({'error': 'Unauthorized'}), 401
+    try:
+        from backend.synonym_dict import load_accepted_review_entries
+        count = load_accepted_review_entries()
+        return jsonify({'success': True, 'loaded': count})
+    except Exception as e:
+        logger.error(f"Failed to reload dictionary: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+# ─── Genre Classification ────────────────────────────────────────────────────
+
+GENRE_CSV_PATH = os.path.join(os.path.dirname(__file__), '..', '..', 'data', 'text_genres.csv')
+
+
+def _load_genre_csv():
+    """Load genre classifications from CSV file."""
+    import csv
+    csv_path = os.path.abspath(GENRE_CSV_PATH)
+    if not os.path.exists(csv_path):
+        return []
+    with open(csv_path, 'r', encoding='utf-8') as f:
+        reader = csv.DictReader(f)
+        return list(reader)
+
+
+def _save_genre_csv(rows):
+    """Save genre classifications to CSV file."""
+    import csv
+    csv_path = os.path.abspath(GENRE_CSV_PATH)
+    os.makedirs(os.path.dirname(csv_path), exist_ok=True)
+    with open(csv_path, 'w', newline='', encoding='utf-8') as f:
+        writer = csv.DictWriter(f, fieldnames=['filename', 'author', 'work', 'genre', 'confidence'])
+        writer.writeheader()
+        writer.writerows(rows)
+
+
+@admin_bp.route('/text-genres', methods=['GET'])
+def get_text_genres():
+    """Return all texts with their genre classifications."""
+    if not check_admin_auth():
+        return jsonify({'error': 'Unauthorized'}), 401
+    try:
+        rows = _load_genre_csv()
+        if not rows:
+            return jsonify({'texts': [], 'genres': [], 'counts': {}})
+
+        # Collect unique genres
+        genres = sorted(set(r['genre'] for r in rows))
+        # Count per genre
+        counts = {}
+        for r in rows:
+            g = r['genre']
+            counts[g] = counts.get(g, 0) + 1
+
+        total = len(rows)
+        classified = sum(1 for r in rows if r['genre'] != 'unclassified')
+
+        return jsonify({
+            'texts': rows,
+            'genres': genres,
+            'counts': counts,
+            'total': total,
+            'classified': classified
+        })
+    except Exception as e:
+        logger.error(f"Failed to load text genres: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@admin_bp.route('/text-genres', methods=['POST'])
+def update_text_genres():
+    """Update genre for one or more texts."""
+    if not check_admin_auth():
+        return jsonify({'error': 'Unauthorized'}), 401
+    try:
+        data = request.get_json() or {}
+        updates = data.get('updates', [])
+        if not updates:
+            return jsonify({'error': 'No updates provided'}), 400
+
+        rows = _load_genre_csv()
+        # Build lookup by filename
+        row_map = {r['filename']: r for r in rows}
+
+        updated_count = 0
+        reviewer = get_admin_username()
+        for u in updates:
+            filename = u.get('filename')
+            genre = u.get('genre', '').strip()
+            if not filename or not genre:
+                continue
+            if filename in row_map:
+                row_map[filename]['genre'] = genre
+                row_map[filename]['confidence'] = 'manual'
+                updated_count += 1
+
+        # Reconstruct rows in original order
+        rows = [row_map[r['filename']] for r in rows if r['filename'] in row_map]
+        _save_genre_csv(rows)
+
+        log_admin_action('genre_update', 'text_genres', None,
+                         {'count': updated_count, 'updates': updates[:10]})
+
+        return jsonify({'success': True, 'updated': updated_count})
+    except Exception as e:
+        logger.error(f"Failed to update text genres: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@admin_bp.route('/text-genres/reclassify', methods=['POST'])
+def reclassify_text_genres():
+    """Re-run auto-classification for texts still marked 'auto'.
+    Does not overwrite manual classifications.
+    """
+    if not check_admin_auth():
+        return jsonify({'error': 'Unauthorized'}), 401
+    try:
+        # Import the classification function from the script
+        import importlib.util
+        script_path = os.path.abspath(os.path.join(
+            os.path.dirname(__file__), '..', '..', 'scripts', 'classify_text_genres.py'
+        ))
+        spec = importlib.util.spec_from_file_location("classify_genres", script_path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+
+        rows = _load_genre_csv()
+        reclassified = 0
+        for r in rows:
+            if r['confidence'] == 'manual':
+                continue  # Preserve manual classifications
+            author, work = mod.parse_filename(r['filename'])
+            new_genre = mod.classify_text(author, work, r['filename'])
+            if new_genre != r['genre']:
+                r['genre'] = new_genre
+                reclassified += 1
+            r['confidence'] = 'auto'
+
+        _save_genre_csv(rows)
+
+        log_admin_action('genre_reclassify', 'text_genres', None,
+                         {'reclassified': reclassified})
+
+        return jsonify({'success': True, 'reclassified': reclassified})
+    except Exception as e:
+        logger.error(f"Failed to reclassify genres: {e}")
+        return jsonify({'error': str(e)}), 500
