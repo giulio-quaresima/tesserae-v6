@@ -469,6 +469,17 @@ const claudianOverrides = {
   'ruf': 'In Rufinum',
 };
 
+const ammianusOverrides = {
+  'gest': 'Rerum Gestarum',
+};
+
+const sallustOverrides = {
+  'cat': 'Bellum Catilinae',
+  'catil': 'Bellum Catilinae',
+  'jug': 'Bellum Iugurthinum',
+  'iug': 'Bellum Iugurthinum',
+};
+
 const authorWorkOverrides = {
   'sen': senecaOverrides,
   'seneca': senecaOverrides,
@@ -492,24 +503,10 @@ const authorWorkOverrides = {
   'cicero': ciceroOverrides,
   'plaut': plautusOverrides,
   'plautus': plautusOverrides,
-  'amm': {
-    'gest': 'Rerum Gestarum',
-  },
-  'ammianus': {
-    'gest': 'Rerum Gestarum',
-  },
-  'sall': {
-    'cat': 'Bellum Catilinae',
-    'catil': 'Bellum Catilinae',
-    'jug': 'Bellum Iugurthinum',
-    'iug': 'Bellum Iugurthinum',
-  },
-  'sallust': {
-    'cat': 'Bellum Catilinae',
-    'catil': 'Bellum Catilinae',
-    'jug': 'Bellum Iugurthinum',
-    'iug': 'Bellum Iugurthinum',
-  },
+  'amm': ammianusOverrides,
+  'ammianus': ammianusOverrides,
+  'sall': sallustOverrides,
+  'sallust': sallustOverrides,
   'aus': ausoniusOverrides,
   'ausonius': ausoniusOverrides,
   'prud': prudentiusOverrides,

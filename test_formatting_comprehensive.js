@@ -102,13 +102,15 @@ const testCases = [
   }
 ];
 
-test('formatReference formatting comprehensive cases', () => {
-  testCases.forEach(tc => {
-    const result = formatReference(tc.input);
-    assert.strictEqual(
-      result,
-      tc.expected,
-      `Unexpected formatting for case "${tc.name}" with input "${tc.input}"`
-    );
-  });
+test('formatReference formatting comprehensive cases', async (t) => {
+  for (const tc of testCases) {
+    await t.test(tc.name, () => {
+      const result = formatReference(tc.input);
+      assert.strictEqual(
+        result,
+        tc.expected,
+        `Unexpected formatting for input "${tc.input}"`
+      );
+    });
+  }
 });
