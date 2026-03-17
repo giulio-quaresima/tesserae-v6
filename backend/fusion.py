@@ -1847,8 +1847,11 @@ def fuse_results(channel_results, weights=None, convergence_bonus=None,
             # pattern match counts as additional evidence beyond lexical,
             # so even 1 dictionary synonym is meaningful confirmation.
             min_idf_gate_fired = False
+            # Meter IDF compresses score ranges, so single-word pairs
+            # need a tighter penalty to maintain separation from multi-word.
+            _single_penalty = SINGLE_WORD_PENALTY * 0.3 if _effective_freq_basis == 'meter' else SINGLE_WORD_PENALTY
             if n_unique_words <= 1 and not has_structural:
-                multiplier *= SINGLE_WORD_PENALTY
+                multiplier *= _single_penalty
             elif n_content_words == 0:
                 # All-function-words penalty: every matched lemma is on the
                 # curated stoplist (e.g., "tum + inde", "nec + sic", "ubi").
@@ -1867,7 +1870,7 @@ def fuse_results(channel_results, weights=None, convergence_bonus=None,
                 # and zero convergence.  A match on "tum + vires" should
                 # rank like a match on just "vires", not like a genuine
                 # 2-content-word allusion.
-                multiplier *= SINGLE_WORD_PENALTY
+                multiplier *= _single_penalty
                 min_idf_gate_fired = True
         else:
             # No corpus IDF data: either all matched words are sub-lexical
