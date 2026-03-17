@@ -352,7 +352,7 @@ DEFAULT_LATIN_STOP_WORDS_LIST = [
     'aut', 'nec', 'neque', 'enim', 'nam', 'iam', 'tamen', 'autem',
     'quidem', 'hic', 'haec', 'hoc', 'ille', 'illa', 'illud', 'is', 
     'ea', 'id', 'ipse', 'ipsa', 'ipsum', 'se', 'suus', 'sua', 'suum',
-    'esse', 'sum', 'fui', 'sunt', 'erat', 'erant', 'fuit', 'a', 'o',
+    'esse', 'sum', 'fui', 'sunt', 'erat', 'erant', 'fuit', 'ait', 'a', 'o',
     'te', 'tu', 'me', 'ego', 'nos', 'vos', 'noster', 'vester',
     'omnis', 'omnia', 'omnes', 'nullus', 'nulla', 'nullum',
     'unus', 'duo', 'tres', 'primus', 'secundus', 'tertius',

@@ -45,8 +45,11 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+# Use a project-local directory instead of /tmp so lock files are visible
+# and cleanable even when Apache runs with PrivateTmp=yes.
+_PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 LOCK_DIR = os.environ.get(
-    'TESSERAE_LOCK_DIR', '/tmp/tesserae_search_slots')
+    'TESSERAE_LOCK_DIR', os.path.join(_PROJECT_ROOT, 'tmp', 'search_slots'))
 MAX_HEAVY_SEARCHES = int(os.environ.get(
     'TESSERAE_MAX_HEAVY_SEARCHES', '2'))
 MEMORY_THRESHOLD_GB = float(os.environ.get(
