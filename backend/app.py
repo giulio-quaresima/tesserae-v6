@@ -2154,6 +2154,9 @@ def submit_request():
         work = request.form.get('work', '').strip()
         language = request.form.get('language', 'latin').strip()
         notes = request.form.get('notes', '').strip()
+        e_source = request.form.get('e_source', '').strip()
+        e_source_url = request.form.get('e_source_url', '').strip()
+        print_source = request.form.get('print_source', '').strip()
         content = ''
         
         # Handle file upload
@@ -2176,6 +2179,9 @@ def submit_request():
         work = data.get('work', '').strip()
         language = data.get('language', 'latin')
         notes = data.get('notes', '').strip()
+        e_source = data.get('e_source', '').strip()
+        e_source_url = data.get('e_source_url', '').strip()
+        print_source = data.get('print_source', '').strip()
         content = data.get('content', '').strip()
     
     # Only author and work are required
@@ -2185,10 +2191,16 @@ def submit_request():
     try:
         with get_db_cursor() as cur:
             cur.execute('''
-                INSERT INTO text_requests (name, email, author, work, language, notes, content)
-                VALUES (%s, %s, %s, %s, %s, %s, %s)
+                INSERT INTO text_requests (
+                    name, email, author, work, language, notes, content,
+                    e_source, e_source_url, print_source
+                )
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 RETURNING id
-            ''', (name, email, author, work, language, notes, content))
+            ''', (
+                name, email, author, work, language, notes, content,
+                e_source, e_source_url, print_source
+            ))
             result = cur.fetchone()
             request_id = result[0] if result else None
         
