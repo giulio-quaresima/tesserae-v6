@@ -2184,9 +2184,14 @@ def submit_request():
         print_source = data.get('print_source', '').strip()
         content = data.get('content', '').strip()
     
+    language = (language or '').strip().lower()
+    allowed_languages = {'latin', 'greek', 'english'}
+
     # Only author and work are required
     if not author or not work:
         return jsonify({'error': 'Author and work title are required'}), 400
+    if language not in allowed_languages:
+        return jsonify({'error': 'Please select a valid language (Latin, Greek, or English)'}), 400
     
     try:
         with get_db_cursor() as cur:

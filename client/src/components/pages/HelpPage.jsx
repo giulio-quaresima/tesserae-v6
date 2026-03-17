@@ -7,7 +7,7 @@ export default function HelpPage() {
   const [requestEmail, setRequestEmail] = useState('');
   const [requestAuthor, setRequestAuthor] = useState('');
   const [requestWork, setRequestWork] = useState('');
-  const [requestLanguage, setRequestLanguage] = useState('latin');
+  const [requestLanguage, setRequestLanguage] = useState('');
   const [requestNotes, setRequestNotes] = useState('');
   const [requestESource, setRequestESource] = useState('');
   const [requestESourceUrl, setRequestESourceUrl] = useState('');
@@ -1274,7 +1274,8 @@ export default function HelpPage() {
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Language *</label>
                     <select value={requestLanguage} onChange={e => setRequestLanguage(e.target.value)}
-                      className="w-full border rounded px-3 py-2 text-sm">
+                      required className="w-full border rounded px-3 py-2 text-sm">
+                      <option value="">Select language...</option>
                       <option value="latin">Latin</option>
                       <option value="greek">Greek</option>
                       <option value="english">English</option>
