@@ -118,7 +118,8 @@ function App() {
     bigram_boost: false,
     stoplist: false,
     use_meter: true,
-    exclude_proper_nouns: false
+    exclude_proper_nouns: false,
+    freq_basis: 'corpus'
   });
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
   

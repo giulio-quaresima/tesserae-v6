@@ -136,6 +136,27 @@ const SearchSettings = ({ settings, setSettings, showAdvanced, setShowAdvanced, 
           </div>
           )}
 
+          {settings.match_type === 'fusion' && language === 'la' && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Frequency Baseline
+            </label>
+            <select
+              value={settings.freq_basis || 'corpus'}
+              onChange={(e) => handleChange('freq_basis', e.target.value)}
+              className="w-full border rounded px-2 py-2 text-base sm:text-sm"
+            >
+              <option value="corpus">Full corpus</option>
+              <option value="meter">Same meter</option>
+            </select>
+            <p className="text-xs text-gray-400 mt-1">
+              {settings.freq_basis === 'meter'
+                ? 'IDF computed from texts in the same meter (e.g., hexameter only). Falls back to full corpus if texts differ in meter.'
+                : 'IDF computed from all texts in the corpus (default).'}
+            </p>
+          </div>
+          )}
+
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Source Unit Type

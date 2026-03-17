@@ -82,6 +82,9 @@ def search_fusion_stream():
             source_unit_type = data.get('source_unit_type', 'line')
             target_unit_type = data.get('target_unit_type', 'line')
             use_meter = data.get('use_meter', False)
+            freq_basis = data.get('freq_basis', 'corpus')  # corpus | meter
+            if freq_basis not in ('corpus', 'meter'):
+                freq_basis = 'corpus'
             if max_results <= 0:
                 max_results = 5000  # enforce cap for browser payload size
 
@@ -107,6 +110,7 @@ def search_fusion_stream():
                 'source_unit_type': source_unit_type,
                 'target_unit_type': target_unit_type,
                 'use_meter': use_meter,
+                'freq_basis': freq_basis,
             }
             cached_results, cached_meta = (None, None) if skip_cache else \
                 get_cached_results(source_id, target_id, language, cache_settings)
@@ -172,6 +176,7 @@ def search_fusion_stream():
                 source_path=source_path,
                 target_path=target_path,
                 user_settings={'use_meter': use_meter},
+                freq_basis=freq_basis,
             ):
                 if event_type == "channel_start":
                     phase = evt_data['phase']

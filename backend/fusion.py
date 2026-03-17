@@ -1075,6 +1075,212 @@ _corpus_doc_freq_cache = {}
 _total_texts_cache = {}
 _headword_map_cache = {}
 
+# Meter-specific IDF caches (keyed by meter name, e.g. "hexameter")
+_meter_doc_freq_cache = {}   # meter -> {lemma: doc_freq}
+_meter_total_texts_cache = {}  # meter -> int
+_text_genre_cache = None     # filename -> row dict from text_genres.csv
+_meter_text_ids_cache = {}   # meter -> set of text_ids in the index
+
+
+def _load_text_genres():
+    """Load data/text_genres.csv into a dict keyed by filename (cached)."""
+    global _text_genre_cache
+    if _text_genre_cache is not None:
+        return _text_genre_cache
+    import csv
+    csv_path = os.path.join(os.path.dirname(os.path.dirname(__file__)),
+                            'data', 'text_genres.csv')
+    _text_genre_cache = {}
+    try:
+        with open(csv_path, 'r', encoding='utf-8') as f:
+            for row in csv.DictReader(f):
+                _text_genre_cache[row['filename']] = row
+    except Exception as e:
+        logger.warning(f"[METER IDF] Could not load text_genres.csv: {e}")
+        _text_genre_cache = {}
+    return _text_genre_cache
+
+
+def _get_text_meter(filename):
+    """Return the meter string for a text filename, or None if unknown."""
+    genres = _load_text_genres()
+    row = genres.get(filename)
+    if row:
+        meter = row.get('meter', '').strip().lower()
+        if meter and meter not in ('unknown', 'mixed', ''):
+            return meter
+    return None
+
+
+def _get_meter_text_ids(meter, language='la'):
+    """Get set of text_ids from the inverted index that belong to a meter group.
+
+    Joins text_genres.csv filenames against the index's texts table.
+    Cached per (meter, language).
+    """
+    cache_key = (meter, language)
+    if cache_key in _meter_text_ids_cache:
+        return _meter_text_ids_cache[cache_key]
+
+    genres = _load_text_genres()
+    meter_filenames = {fn for fn, row in genres.items()
+                       if row.get('meter', '').strip().lower() == meter}
+    if not meter_filenames:
+        _meter_text_ids_cache[cache_key] = set()
+        return set()
+
+    try:
+        from backend.inverted_index import get_connection
+        conn = get_connection(language)
+        if not conn:
+            _meter_text_ids_cache[cache_key] = set()
+            return set()
+
+        cursor = conn.cursor()
+        # Fetch all text_id/filename pairs and filter in Python to avoid
+        # huge IN clauses
+        cursor.execute('SELECT text_id, filename FROM texts')
+        text_ids = set()
+        for text_id, filename in cursor.fetchall():
+            if filename in meter_filenames:
+                text_ids.add(text_id)
+
+        _meter_text_ids_cache[cache_key] = text_ids
+        logger.info(f"[METER IDF] Found {len(text_ids)} texts for meter "
+                    f"'{meter}' (language={language})")
+    except Exception as e:
+        logger.error(f"[METER IDF] Failed to load text_ids for meter "
+                     f"'{meter}': {e}")
+        _meter_text_ids_cache[cache_key] = set()
+
+    return _meter_text_ids_cache[cache_key]
+
+
+def _get_meter_doc_freqs(lemmas, meter, language='la'):
+    """Batch-fetch meter-specific document frequencies, with caching.
+
+    Like _get_corpus_doc_freqs but restricted to texts of a given meter.
+    Queries the inverted index postings table filtered by text_ids that
+    belong to the meter group.
+
+    Returns dict: lemma -> document count within the meter group.
+    """
+    cache_key = meter  # one flat cache per meter
+    if cache_key not in _meter_doc_freq_cache:
+        _meter_doc_freq_cache[cache_key] = {}
+    meter_cache = _meter_doc_freq_cache[cache_key]
+
+    uncached = [l for l in lemmas if l not in meter_cache]
+    if not uncached:
+        return {l: meter_cache.get(l, 0) for l in lemmas}
+
+    text_ids = _get_meter_text_ids(meter, language)
+    if not text_ids:
+        # No texts for this meter — return zeros
+        for l in uncached:
+            meter_cache[l] = 0
+        return {l: meter_cache.get(l, 0) for l in lemmas}
+
+    try:
+        from backend.inverted_index import get_connection
+        conn = get_connection(language)
+        if not conn:
+            for l in uncached:
+                meter_cache[l] = 0
+            return {l: meter_cache.get(l, 0) for l in lemmas}
+
+        cursor = conn.cursor()
+
+        # Prepare u/v dedup for Latin (same logic as _get_corpus_doc_freqs)
+        if language == 'la':
+            canonical = {}
+            query_set = set()
+            for l in uncached:
+                norm = l.replace('v', 'u').replace('j', 'i')
+                if norm not in canonical:
+                    canonical[norm] = l
+                    query_set.add(l)
+            query_lemmas = list(query_set)
+        else:
+            query_lemmas = list(set(uncached))
+
+        # Expand u/v variants for SQL
+        expanded_map = {}  # expanded_form -> original_lemma
+        for lemma in query_lemmas:
+            variants = {lemma}
+            if language == 'la':
+                variants.add(lemma.replace('u', 'v'))
+                variants.add(lemma.replace('v', 'u'))
+            for v in variants:
+                expanded_map[v] = lemma
+
+        # Query in batches, filtering by text_ids in the meter group
+        text_id_list = list(text_ids)
+        all_variants = list(expanded_map.keys())
+        batch_size = 500
+
+        # Build a temporary result dict: original_lemma -> count
+        batch_result = {}
+        for i in range(0, len(all_variants), batch_size):
+            batch = all_variants[i:i + batch_size]
+            lemma_ph = ','.join(['?' for _ in batch])
+            tid_ph = ','.join(['?' for _ in text_id_list])
+            sql = (f'SELECT lemma, COUNT(DISTINCT text_id) FROM postings '
+                   f'WHERE lemma IN ({lemma_ph}) AND text_id IN ({tid_ph}) '
+                   f'GROUP BY lemma')
+            cursor.execute(sql, batch + text_id_list)
+            for row_lemma, count in cursor.fetchall():
+                original = expanded_map.get(row_lemma, row_lemma)
+                batch_result[original] = batch_result.get(original, 0) + count
+
+        # Populate cache
+        if language == 'la':
+            for l in uncached:
+                norm = l.replace('v', 'u').replace('j', 'i')
+                canon_lemma = canonical[norm]
+                meter_cache[l] = batch_result.get(canon_lemma, 0)
+        else:
+            for l in uncached:
+                meter_cache[l] = batch_result.get(l, 0)
+
+        # Headword normalization (same as corpus version)
+        headword_map = _get_headword_map(language)
+        if headword_map:
+            hw_to_fetch = set()
+            for l in uncached:
+                hw = headword_map.get(l)
+                if hw and hw != l and hw not in meter_cache:
+                    hw_to_fetch.add(hw)
+
+            if hw_to_fetch:
+                # Recurse for headwords
+                hw_freqs = _get_meter_doc_freqs(list(hw_to_fetch), meter,
+                                                 language)
+                for hw, df in hw_freqs.items():
+                    meter_cache[hw] = df
+
+            for l in uncached:
+                hw = headword_map.get(l)
+                if hw and hw != l:
+                    hw_df = meter_cache.get(hw, 0)
+                    meter_cache[l] = max(meter_cache[l], hw_df)
+
+    except Exception as e:
+        logger.error(f"[METER IDF] Batch query failed for meter '{meter}': {e}")
+        for l in uncached:
+            meter_cache[l] = meter_cache.get(l, 0)
+
+    return {l: meter_cache.get(l, 0) for l in lemmas}
+
+
+def _get_meter_total_texts(meter, language='la'):
+    """Get total text count for a meter group (cached)."""
+    cache_key = (meter, language)
+    if cache_key not in _meter_total_texts_cache:
+        text_ids = _get_meter_text_ids(meter, language)
+        _meter_total_texts_cache[cache_key] = len(text_ids) if text_ids else 0
+    return _meter_total_texts_cache[cache_key]
+
 
 def _get_headword_map(language='la'):
     """Load headword map from lemma table (cached at module level).
@@ -1347,7 +1553,8 @@ def _recover_semantic_for_structural(line_channel_results, source_units,
 def fuse_results(channel_results, weights=None, convergence_bonus=None,
                   idf_floor=None, idf_threshold=None,
                   convergence_idf_power=None, min_idf_threshold=None,
-                  min_idf_penalty=None, language='la'):
+                  min_idf_penalty=None, language='la',
+                  freq_basis='corpus', source_id=None, target_id=None):
     """Combine results from multiple channels using weighted score fusion.
 
     Three-layer rarity scoring for each (source_ref, target_ref) pair:
@@ -1365,6 +1572,13 @@ def fuse_results(channel_results, weights=None, convergence_bonus=None,
 
     Optional overrides allow testing different parameter configurations
     without modifying module globals (used by weight optimization).
+
+    freq_basis controls which document-frequency baseline is used for IDF:
+      "corpus" (default) — full corpus (all texts in the inverted index)
+      "meter" — only texts sharing the same meter as source/target
+                (falls back to corpus if texts don't share a meter,
+                or if text_genres.csv lacks meter info)
+    source_id/target_id: filenames needed for meter lookup.
     """
     _weights = weights if weights is not None else CHANNEL_WEIGHTS
     _convergence_bonus = convergence_bonus if convergence_bonus is not None else CONVERGENCE_BONUS
@@ -1484,8 +1698,41 @@ def fuse_results(channel_results, weights=None, convergence_bonus=None,
         for lemma, mw in info["all_matched_words"].items():
             if lemma and not lemma.startswith('['):
                 all_lexical_lemmas.add(lemma)
-    total_texts = _get_total_texts(language) if all_lexical_lemmas else 1429
-    doc_freq_map = _get_corpus_doc_freqs(list(all_lexical_lemmas), language) if all_lexical_lemmas else {}
+    # Select document-frequency baseline based on freq_basis parameter.
+    # "corpus" (default): full inverted index.
+    # "meter": restricted to texts sharing the same meter as source/target.
+    _effective_freq_basis = 'corpus'  # fallback
+    _shared_meter = None
+    if freq_basis == 'meter' and source_id and target_id and language == 'la':
+        src_meter = _get_text_meter(source_id)
+        tgt_meter = _get_text_meter(target_id)
+        if src_meter and tgt_meter and src_meter == tgt_meter:
+            meter_n = _get_meter_total_texts(src_meter, language)
+            if meter_n >= 5:  # need enough texts for meaningful IDF
+                _shared_meter = src_meter
+                _effective_freq_basis = 'meter'
+                logger.info(f"[FREQ BASIS] Using meter-specific IDF: "
+                            f"'{src_meter}' ({meter_n} texts)")
+            else:
+                logger.info(f"[FREQ BASIS] Meter '{src_meter}' has only "
+                            f"{meter_n} texts, falling back to corpus")
+        else:
+            logger.info(f"[FREQ BASIS] Texts don't share a meter "
+                        f"(source={src_meter}, target={tgt_meter}), "
+                        f"falling back to corpus")
+
+    if all_lexical_lemmas:
+        if _effective_freq_basis == 'meter' and _shared_meter:
+            total_texts = _get_meter_total_texts(_shared_meter, language)
+            doc_freq_map = _get_meter_doc_freqs(
+                list(all_lexical_lemmas), _shared_meter, language)
+        else:
+            total_texts = _get_total_texts(language)
+            doc_freq_map = _get_corpus_doc_freqs(
+                list(all_lexical_lemmas), language)
+    else:
+        total_texts = 1429
+        doc_freq_map = {}
 
     # Pre-compute constants used in the inner loop to avoid repeated
     # arithmetic on every iteration.
@@ -2041,7 +2288,8 @@ def iter_fusion_search(source_units, target_units, matcher, scorer,
                        mode='merged', max_results=5000,
                        source_path=None, target_path=None,
                        user_settings=None,
-                       source_language=None, target_language=None):
+                       source_language=None, target_language=None,
+                       freq_basis='corpus'):
     """Generator version of run_fusion_search for progressive SSE streaming.
 
     Yields (event_type, data) tuples as the search progresses:
@@ -2115,7 +2363,9 @@ def iter_fusion_search(source_units, target_units, matcher, scorer,
         # Cap intermediates at 500 (preview only) to avoid huge JSON payloads;
         # the full max_results set is sent in the final "complete" event.
         if count > 0 and line_channel_results:
-            fused = fuse_results(line_channel_results, language=language)
+            fused = fuse_results(line_channel_results, language=language,
+                                 freq_basis=freq_basis,
+                                 source_id=source_id, target_id=target_id)
             preview_cap = min(max_results, 500) if max_results > 0 else 500
             top = fused[:preview_cap]
             yield ("intermediate", {
@@ -2183,7 +2433,9 @@ def iter_fusion_search(source_units, target_units, matcher, scorer,
             logger.info(f"[STRUCTURAL GATE] Kept {after}/{before} structural pairs "
                         f"(dictionary or cosine >= {MIN_COSINE_NO_DICT})")
 
-    line_fused = fuse_results(line_channel_results, language=language)
+    line_fused = fuse_results(line_channel_results, language=language,
+                               freq_basis=freq_basis,
+                               source_id=source_id, target_id=target_id)
 
     if mode == 'line':
         final = line_fused[:max_results] if max_results > 0 else line_fused
@@ -2223,7 +2475,9 @@ def iter_fusion_search(source_units, target_units, matcher, scorer,
             "phase": "window",
         })
 
-    window_fused = fuse_results(window_channel_results, language=language)
+    window_fused = fuse_results(window_channel_results, language=language,
+                                 freq_basis=freq_basis,
+                                 source_id=source_id, target_id=target_id)
     window_fused = penalize_single_line_windows(window_fused)
 
     if mode == 'window':
@@ -2242,7 +2496,8 @@ def run_fusion_search(source_units, target_units, matcher, scorer,
                       mode='merged', max_results=500,
                       source_path=None, target_path=None,
                       progress_callback=None,
-                      source_language=None, target_language=None):
+                      source_language=None, target_language=None,
+                      freq_basis='corpus'):
     """Run two-pass weighted fusion search.
 
     Pass 1 (line-level): All 9 channels run on individual verse lines.
@@ -2264,6 +2519,7 @@ def run_fusion_search(source_units, target_units, matcher, scorer,
         source_path: Full path to source .tess file (for semantic)
         target_path: Full path to target .tess file (for semantic)
         progress_callback: Optional fn(step, total, channel_name, phase) for SSE
+        freq_basis: IDF baseline ('corpus' or 'meter')
 
     Returns:
         List of result dicts sorted by fused_score descending.
@@ -2341,7 +2597,9 @@ def run_fusion_search(source_units, target_units, matcher, scorer,
             logger.info(f"[STRUCTURAL GATE] Kept {after}/{before} structural pairs "
                         f"(dictionary or cosine >= {MIN_COSINE_NO_DICT2})")
 
-    line_fused = fuse_results(line_channel_results, language=language)
+    line_fused = fuse_results(line_channel_results, language=language,
+                               freq_basis=freq_basis,
+                               source_id=source_id, target_id=target_id)
 
     if mode == 'line':
         return line_fused[:max_results] if max_results > 0 else line_fused
@@ -2361,7 +2619,9 @@ def run_fusion_search(source_units, target_units, matcher, scorer,
         progress_callback,
         source_language=source_language, target_language=target_language,
     )
-    window_fused = fuse_results(window_channel_results, language=language)
+    window_fused = fuse_results(window_channel_results, language=language,
+                                 freq_basis=freq_basis,
+                                 source_id=source_id, target_id=target_id)
     window_fused = penalize_single_line_windows(window_fused)
 
     if mode == 'window':
