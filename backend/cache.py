@@ -38,6 +38,7 @@ def get_cache_key(source_id, target_id, language, settings):
         'bigram_boost': settings.get('bigram_boost', False),
         'unbounded_scoring': settings.get('unbounded_scoring', False),
         'custom_stopwords': settings.get('custom_stopwords', ''),
+        'freq_basis': settings.get('freq_basis', 'corpus'),
     }
     key_str = json.dumps(key_parts, sort_keys=True)
     return hashlib.md5(key_str.encode()).hexdigest()
