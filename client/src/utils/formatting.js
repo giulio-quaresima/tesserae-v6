@@ -191,6 +191,29 @@ const greekLatinWorkMetadata = {
   'augustine': { author: 'Augustine' },
   'amm': { author: 'Ammianus' },
   'ammianus': { author: 'Ammianus' },
+  'alcuin': { author: 'Alcuin' },
+  'hildeb': { author: 'Hildebert of Lavardin' },
+  'hildebert': { author: 'Hildebert of Lavardin' },
+  'hildebert_of_lavardin': { author: 'Hildebert of Lavardin' },
+  'hildeg': { author: 'Hildegard of Bingen' },
+  'hildegard': { author: 'Hildegard of Bingen' },
+  'hildegard_of_bingen': { author: 'Hildegard of Bingen' },
+  'vulgate': { author: 'Vulgate' },
+  'petronius': { author: 'Petronius' },
+  'petr': { author: 'Petronius' },
+  'sallust': { author: 'Sallust' },
+  'sall': { author: 'Sallust' },
+  'aus': { author: 'Ausonius' },
+  'ausonius': { author: 'Ausonius' },
+  'prud': { author: 'Prudentius' },
+  'prudentius': { author: 'Prudentius' },
+  'claud': { author: 'Claudian' },
+  'claudian': { author: 'Claudian' },
+  'gel': { author: 'Aulus Gellius' },
+  'gellius': { author: 'Aulus Gellius' },
+  'ambrose': { author: 'Ambrose' },
+  'tertullian': { author: 'Tertullian' },
+  'jerome': { author: 'Jerome' },
 };
 
 const workTitles = {
@@ -305,6 +328,11 @@ const workTitles = {
   'drn': 'De Rerum Natura',
   'rnr': 'De Rerum Natura',
   'nat': 'De Rerum Natura',
+  'genesis': 'Genesis',
+  'exodus': 'Exodus',
+  'leviticus': 'Leviticus',
+  'numbers': 'Numbers',
+  'deuteronomy': 'Deuteronomy',
 };
 
 // Author-specific work abbreviation overrides.
@@ -339,6 +367,7 @@ const authorWorkOverrides = {
   },
   'alcuin': {
     'carm': 'Carmina',
+    'carmina': 'Carmina',
   },
   'hor': {
     'carm': 'Odes',
@@ -346,9 +375,270 @@ const authorWorkOverrides = {
   'horace': {
     'carm': 'Odes',
   },
-  'hildebert': {
+  'hildeb': {
+    'carm_lib_reg': 'Carmen in libros regum',
     'carm': 'Carmina',
+    'carmina': 'Carmina',
+    'de_ordine_mundi': 'De ordine mundi',
+    'de_operibus_sex_dierum': 'De operibus sex dierum',
+    'de_mysterio_missae': 'De mysterio missae',
+    'de_machabaeis': 'De Machabaeis',
+    'vita_mariae_aegyptiacae': 'Vita Mariae Aegyptiacae',
   },
+  'hildebert': {
+    'carm_lib_reg': 'Carmen in libros regum',
+    'carm': 'Carmina',
+    'carmina': 'Carmina',
+    'de_ordine_mundi': 'De ordine mundi',
+    'de_operibus_sex_dierum': 'De operibus sex dierum',
+    'de_mysterio_missae': 'De mysterio missae',
+    'de_machabaeis': 'De Machabaeis',
+    'vita_mariae_aegyptiacae': 'Vita Mariae Aegyptiacae',
+  },
+  'hildebert_of_lavardin': {
+    'carm_lib_reg': 'Carmen in libros regum',
+    'carm': 'Carmina',
+    'carmina': 'Carmina',
+    'de_ordine_mundi': 'De ordine mundi',
+    'de_operibus_sex_dierum': 'De operibus sex dierum',
+    'de_mysterio_missae': 'De mysterio missae',
+    'de_machabaeis': 'De Machabaeis',
+    'vita_mariae_aegyptiacae': 'Vita Mariae Aegyptiacae',
+  },
+  'hildeg': {
+    'scivias': 'Scivias',
+    'physica': 'Physica',
+    'cause_et_cure': 'Causae et Curae',
+    'symphonia': 'Symphonia',
+  },
+  'hildegard': {
+    'scivias': 'Scivias',
+    'physica': 'Physica',
+    'cause_et_cure': 'Causae et Curae',
+    'symphonia': 'Symphonia',
+  },
+  'hildegard_of_bingen': {
+    'scivias': 'Scivias',
+    'physica': 'Physica',
+    'cause_et_cure': 'Causae et Curae',
+    'symphonia': 'Symphonia',
+  },
+  'cic': {
+    'att': 'Epistulae ad Atticum',
+    'fam': 'Epistulae ad Familiares',
+    'ver': 'In Verrem',
+    'phil': 'Philippicae',
+    'tusc': 'Tusculanae Disputationes',
+    'fin': 'De Finibus',
+    'nat': 'De Natura Deorum',
+    'off': 'De Officiis',
+    'catil': 'In Catilinam',
+    'arch': 'Pro Archia',
+    'brut': 'Brutus',
+    'amicit': 'De Amicitia',
+    'senect': 'De Senectute',
+    'div': 'De Divinatione',
+    'rep': 'De Republica',
+    'inv': 'De Inventione',
+    'orat': 'De Oratore',
+    'orator': 'Orator',
+    'clu': 'Pro Cluentio',
+    'mil': 'Pro Milone',
+    'mur': 'Pro Murena',
+    'sest': 'Pro Sestio',
+    'caec': 'Pro Caecina',
+    'planc': 'Pro Plancio',
+    'quinct': 'Pro Quinctio',
+    'ros': 'Pro Roscio Amerino',
+  },
+  'cicero': {
+    'att': 'Epistulae ad Atticum',
+    'fam': 'Epistulae ad Familiares',
+    'ver': 'In Verrem',
+    'phil': 'Philippicae',
+    'tusc': 'Tusculanae Disputationes',
+    'fin': 'De Finibus',
+    'nat': 'De Natura Deorum',
+    'off': 'De Officiis',
+    'catil': 'In Catilinam',
+    'arch': 'Pro Archia',
+    'brut': 'Brutus',
+    'amicit': 'De Amicitia',
+    'senect': 'De Senectute',
+    'div': 'De Divinatione',
+    'rep': 'De Republica',
+    'inv': 'De Inventione',
+    'orat': 'De Oratore',
+    'orator': 'Orator',
+    'clu': 'Pro Cluentio',
+    'mil': 'Pro Milone',
+    'mur': 'Pro Murena',
+    'sest': 'Pro Sestio',
+    'caec': 'Pro Caecina',
+    'planc': 'Pro Plancio',
+    'quinct': 'Pro Quinctio',
+    'ros': 'Pro Roscio Amerino',
+  },
+  'plaut': {
+    'amph': 'Amphitruo',
+    'am': 'Amphitruo',
+    'asin': 'Asinaria',
+    'as': 'Asinaria',
+    'aul': 'Aulularia',
+    'bacch': 'Bacchides',
+    'capt': 'Captivi',
+    'cas': 'Casina',
+    'cist': 'Cistellaria',
+    'curc': 'Curculio',
+    'epid': 'Epidicus',
+    'ep': 'Epidicus',
+    'men': 'Menaechmi',
+    'merc': 'Mercator',
+    'mil': 'Miles Gloriosus',
+    'most': 'Mostellaria',
+    'pers': 'Persa',
+    'poen': 'Poenulus',
+    'pseud': 'Pseudolus',
+    'ps': 'Pseudolus',
+    'rud': 'Rudens',
+    'stich': 'Stichus',
+    'trin': 'Trinummus',
+    'truc': 'Truculentus',
+  },
+  'plautus': {
+    'amph': 'Amphitruo',
+    'am': 'Amphitruo',
+    'asin': 'Asinaria',
+    'as': 'Asinaria',
+    'aul': 'Aulularia',
+    'bacch': 'Bacchides',
+    'capt': 'Captivi',
+    'cas': 'Casina',
+    'cist': 'Cistellaria',
+    'curc': 'Curculio',
+    'epid': 'Epidicus',
+    'ep': 'Epidicus',
+    'men': 'Menaechmi',
+    'merc': 'Mercator',
+    'mil': 'Miles Gloriosus',
+    'most': 'Mostellaria',
+    'pers': 'Persa',
+    'poen': 'Poenulus',
+    'pseud': 'Pseudolus',
+    'ps': 'Pseudolus',
+    'rud': 'Rudens',
+    'stich': 'Stichus',
+    'trin': 'Trinummus',
+    'truc': 'Truculentus',
+  },
+  'amm': {
+    'gest': 'Rerum Gestarum',
+  },
+  'ammianus': {
+    'gest': 'Rerum Gestarum',
+  },
+  'sall': {
+    'cat': 'Bellum Catilinae',
+    'catil': 'Bellum Catilinae',
+    'jug': 'Bellum Iugurthinum',
+    'iug': 'Bellum Iugurthinum',
+  },
+  'sallust': {
+    'cat': 'Bellum Catilinae',
+    'catil': 'Bellum Catilinae',
+    'jug': 'Bellum Iugurthinum',
+    'iug': 'Bellum Iugurthinum',
+  },
+  'aus': {
+    'mos': 'Mosella',
+    'biss': 'Bissula',
+    'caes': 'Caesares',
+    'cent': 'Cento Nuptialis',
+    'cup': 'Cupido Cruciatus',
+    'ecl': 'Eclogae',
+    'ep': 'Epistulae',
+    'ephem': 'Ephemeris',
+    'epigr': 'Epigrammata',
+    'epit': 'Epitaphia',
+    'fast': 'Fasti',
+    'grat': 'Gratiarum Actio',
+    'griph': 'Griphus Ternarii Numeri',
+    'idyll': 'Idyllia',
+    'orat': 'Oratio',
+    'par': 'Parentalia',
+    'praef': 'Praefationes',
+    'prof': 'Professores',
+    'sap': 'Ludus Septem Sapientum',
+    'tech': 'Technopaegnion',
+    'urb': 'Ordo Urbium Nobilium',
+  },
+  'ausonius': {
+    'mos': 'Mosella',
+    'biss': 'Bissula',
+    'caes': 'Caesares',
+    'cent': 'Cento Nuptialis',
+    'cup': 'Cupido Cruciatus',
+    'ecl': 'Eclogae',
+    'ep': 'Epistulae',
+    'ephem': 'Ephemeris',
+    'epigr': 'Epigrammata',
+    'epit': 'Epitaphia',
+    'fast': 'Fasti',
+    'grat': 'Gratiarum Actio',
+    'griph': 'Griphus Ternarii Numeri',
+    'idyll': 'Idyllia',
+    'orat': 'Oratio',
+    'par': 'Parentalia',
+    'praef': 'Praefationes',
+    'prof': 'Professores',
+    'sap': 'Ludus Septem Sapientum',
+    'tech': 'Technopaegnion',
+    'urb': 'Ordo Urbium Nobilium',
+  },
+  'prud': {
+    'apo': 'Apotheosis',
+    'ditto': 'Dittochaeon',
+    'epil': 'Epilogus',
+    'ham': 'Hamartigenia',
+    'peristeph': 'Peristephanon',
+    'psych': 'Psychomachia',
+    'sym': 'Contra Symmachum',
+  },
+  'prudentius': {
+    'apo': 'Apotheosis',
+    'ditto': 'Dittochaeon',
+    'epil': 'Epilogus',
+    'ham': 'Hamartigenia',
+    'peristeph': 'Peristephanon',
+    'psych': 'Psychomachia',
+    'sym': 'Contra Symmachum',
+  },
+  'claud': {
+    'cm': 'Carmina Minora',
+    'cons': 'Panegyricus de Consulatu',
+    'eutr': 'In Eutropium',
+    'gild': 'De Bello Gildonico',
+    'goth': 'De Bello Gothico',
+    'mall': 'Panegyricus de Consulatu Mallii',
+    'nupt': 'Epithalamium de Nuptiis Honori et Mariae',
+    'rapt': 'De Raptu Proserpinae',
+    'ruf': 'In Rufinum',
+  },
+  'claudian': {
+    'cm': 'Carmina Minora',
+    'cons': 'Panegyricus de Consulatu',
+    'eutr': 'In Eutropium',
+    'gild': 'De Bello Gildonico',
+    'goth': 'De Bello Gothico',
+    'mall': 'Panegyricus de Consulatu Mallii',
+    'nupt': 'Epithalamium de Nuptiis Honori et Mariae',
+    'rapt': 'De Raptu Proserpinae',
+    'ruf': 'In Rufinum',
+  },
+  'jerome': {
+    'in_hier': 'In Hieremiam Prophetam',
+    'ep': 'Epistulae',
+  }
 };
 
 const formatLocation = (loc) => {
@@ -402,7 +692,7 @@ export const formatReference = (ref, language = null) => {
     }
   }
   
-  if (language === 'la' || language === 'grc' || /^[a-z]+[\.\s]/i.test(cleanRef)) {
+  if (language === 'la' || language === 'grc' || /^[a-z_0-9]+[\.\s]/i.test(cleanRef)) {
     const parts = cleanRef.split(/[\.\s]+/);
     
     if (parts.length >= 2) {
@@ -437,6 +727,16 @@ export const formatReference = (ref, language = null) => {
           return `${firstMeta.author}, ${workTitle} ${location}`;
         }
 
+        // Smart fallback: If second part has underscores (e.g., "de_civitate_dei"),
+        // automatically format it as a title ("De Civitate Dei").
+        if (secondPart && secondPart.includes('_')) {
+          const formattedTitle = secondPart.split('_')
+            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+            .join(' ');
+          const location = formatLocation(parts.slice(2).join('.'));
+          return `${firstMeta.author}, ${formattedTitle} ${location}`;
+        }
+
         if (firstMeta.work) {
           const location = formatLocation(parts.slice(1).join('.'));
           return `${firstMeta.author}, ${firstMeta.work} ${location}`;
@@ -452,6 +752,15 @@ export const formatReference = (ref, language = null) => {
         const authorCase = firstKey.charAt(0).toUpperCase() + firstKey.slice(1);
         const location = formatLocation(parts.slice(2).join('.'));
         return `${authorCase}, ${workTitle} ${location}`;
+      }
+
+      // Smart fallback for anonymous/unknown work tags with underscores (e.g., "carm_biblioth")
+      if (firstKey.includes('_')) {
+        const formattedTitle = firstKey.split('_')
+          .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+          .join(' ');
+        const location = formatLocation(parts.slice(1).join('.'));
+        return `${formattedTitle} ${location}`;
       }
     }
   }
