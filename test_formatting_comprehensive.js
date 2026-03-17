@@ -114,6 +114,11 @@ const testCases = [
     name: 'Anonymous (Double Underscore)',
     input: 'carm__biblioth.5',
     expected: 'Carm Biblioth 5'
+  },
+  {
+    name: 'Jerome Epistulae',
+    input: 'jerome.ep.1',
+    expected: 'Jerome, Epistulae 1'
   }
 ];
 

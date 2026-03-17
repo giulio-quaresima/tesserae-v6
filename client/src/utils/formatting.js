@@ -480,19 +480,26 @@ const sallustOverrides = {
   'iug': 'Bellum Iugurthinum',
 };
 
+const alcuinOverrides = {
+  'carm': 'Carmina',
+  'carmina': 'Carmina',
+};
+
+const horaceOverrides = {
+  'carm': 'Odes',
+};
+
+const jeromeOverrides = {
+  'in_hier': 'In Hieremiam Prophetam',
+  'ep': 'Epistulae',
+};
+
 const authorWorkOverrides = {
   'sen': senecaOverrides,
   'seneca': senecaOverrides,
-  'alcuin': {
-    'carm': 'Carmina',
-    'carmina': 'Carmina',
-  },
-  'hor': {
-    'carm': 'Odes',
-  },
-  'horace': {
-    'carm': 'Odes',
-  },
+  'alcuin': alcuinOverrides,
+  'hor': horaceOverrides,
+  'horace': horaceOverrides,
   'hildeb': hildebertOverrides,
   'hildebert': hildebertOverrides,
   'hildebert_of_lavardin': hildebertOverrides,
@@ -513,10 +520,7 @@ const authorWorkOverrides = {
   'prudentius': prudentiusOverrides,
   'claud': claudianOverrides,
   'claudian': claudianOverrides,
-  'jerome': {
-    'in_hier': 'In Hieremiam Prophetam',
-    'ep': 'Epistulae',
-  }
+  'jerome': jeromeOverrides
 };
 
 const formatLocation = (loc) => {
