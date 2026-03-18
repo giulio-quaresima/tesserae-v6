@@ -318,6 +318,27 @@ export default function HelpPage() {
                 without penalizing <em>pectore</em> (a content word that happens to be common).
               </p>
 
+              <h4 className="text-lg font-medium text-gray-900 mt-6 mb-3">Frequency Baseline</h4>
+              <p className="text-gray-700 mb-3">
+                By default, word rarity is measured against the <strong>full Latin corpus</strong> (1,605 texts).
+                This means a word like <em>arma</em> that appears in 57% of all Latin texts gets a low rarity score.
+                But among hexameter poetry specifically, <em>arma</em> appears in 89% of texts — it is
+                metrically convenient filler, not a distinctive vocabulary choice.
+              </p>
+              <p className="text-gray-700 mb-3">
+                The <strong>Same meter</strong> frequency baseline (available under Advanced Settings for Latin fusion searches)
+                computes rarity against only texts in the same metrical tradition — hexameter, elegiac, lyric, dramatic, or prose.
+                This deflates vocabulary that is conventional within a meter while preserving the rarity of genuinely distinctive words.
+                For example, when comparing two hexameter poems, <em>Neptunia proles</em> ("Neptune's offspring") — a standard
+                epic epithet — receives less of a rarity boost under hexameter IDF, while a word rare even in hexameter
+                retains its premium.
+              </p>
+              <p className="text-gray-700 mb-3 text-sm">
+                The system automatically rescales meter-specific IDF values so that the scoring thresholds
+                remain consistent regardless of which baseline you choose. Switching baselines does not affect recall — the
+                same pairs are found — but it changes how they are ranked.
+              </p>
+
               <h4 className="text-lg font-medium text-gray-900 mt-6 mb-3">Sliding Windows</h4>
               <p className="text-gray-700 mb-3">
                 Poets don't always confine allusions to a single line. To catch vocabulary split across line breaks (enjambment),
@@ -999,6 +1020,15 @@ export default function HelpPage() {
                     Try searching smaller sections (e.g., individual books) for faster results. Large text pairs
                     like the full Aeneid vs. Metamorphoses can take up to 15 minutes on first run but are cached
                     for subsequent searches. A progress timer is shown during the search.
+                  </p>
+                </div>
+                <div>
+                  <h4 className="font-medium text-gray-900">What does "Refresh results" do?</h4>
+                  <p className="text-gray-600 text-sm mt-1">
+                    Search results are cached so that repeating the same search is instant. The "Refresh results"
+                    button (shown at the top of your results) clears the cached results for that search and runs it
+                    again from scratch. Use this if the search engine has been updated since your last search and you
+                    want to see improved results.
                   </p>
                 </div>
                 <div>
