@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { LANG_NAMES } from '../adminConstants';
 
 export default function RequestsTab({ authHeaders, textRequests, onRefresh }) {
@@ -6,6 +6,48 @@ export default function RequestsTab({ authHeaders, textRequests, onRefresh }) {
   const [editingRequest, setEditingRequest] = useState(null);
   const [savingRequest, setSavingRequest] = useState(false);
   const [tessPreview, setTessPreview] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+
+  const normalizedStatus = (status) => (status || 'pending').toLowerCase();
+
+  const filteredAndSortedRequests = useMemo(() => {
+    const filtered = textRequests.filter((request) => {
+      if (statusFilter === 'all') return true;
+      return normalizedStatus(request.status) === statusFilter;
+    });
+
+    const statusWeight = (status) => {
+      const s = normalizedStatus(status);
+      if (s === 'pending') return 0;
+      if (s === 'approved') return 2;
+      return 1;
+    };
+
+    return [...filtered].sort((a, b) => {
+      const byStatus = statusWeight(a.status) - statusWeight(b.status);
+      if (byStatus !== 0) return byStatus;
+
+      const aTime = new Date(a.created_at || 0).getTime();
+      const bTime = new Date(b.created_at || 0).getTime();
+      return bTime - aTime;
+    });
+  }, [textRequests, statusFilter]);
+
+  const parseApiResponse = async (response, fallbackMessage) => {
+    let data = null;
+    try {
+      data = await response.json();
+    } catch (_ignored) {
+      data = null;
+    }
+    if (!response.ok || data?.error) {
+      const reason = data?.error || data?.message || response.statusText || fallbackMessage;
+      const error = new Error(reason);
+      error.status = response.status;
+      throw error;
+    }
+    return data;
+  };
 
   const approveRequest = async (requestId) => {
     try {
@@ -24,13 +66,15 @@ export default function RequestsTab({ authHeaders, textRequests, onRefresh }) {
       return;
     }
     try {
-      await fetch(`/api/admin/requests/${requestId}`, {
+      const res = await fetch(`/api/admin/requests/${requestId}`, {
         method: 'DELETE',
         headers: authHeaders
       });
+      await parseApiResponse(res, 'Failed to delete text request');
       onRefresh();
       setSelectedRequest(null);
     } catch (err) {
+      window.alert(err.message || 'Failed to delete request');
       console.error('Failed to delete request:', err);
     }
   };
@@ -75,14 +119,37 @@ export default function RequestsTab({ authHeaders, textRequests, onRefresh }) {
     if (!selectedRequest || !editingRequest) return;
     setSavingRequest(true);
     try {
-      await fetch(`/api/admin/requests/${selectedRequest.id}`, {
+      const normalize = (v) => (v === null || v === undefined ? '' : String(v));
+      const hasChanges = [
+        'official_author',
+        'official_work',
+        'approved_filename',
+        'text_date',
+        'admin_notes',
+        'content',
+        'author_era',
+        'author_year',
+        'e_source',
+        'e_source_url',
+        'print_source',
+        'added_by'
+      ].some((field) => normalize(editingRequest[field]) !== normalize(selectedRequest[field]));
+
+      if (!hasChanges) {
+        setSelectedRequest(null);
+        return;
+      }
+
+      const res = await fetch(`/api/admin/requests/${selectedRequest.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', ...authHeaders },
         body: JSON.stringify(editingRequest)
       });
+      await parseApiResponse(res, 'Failed to save request changes');
       onRefresh();
       setSelectedRequest(null);
     } catch (err) {
+      window.alert(err.message || 'Failed to save request changes');
       console.error('Failed to save request changes:', err);
     }
     setSavingRequest(false);
@@ -91,26 +158,71 @@ export default function RequestsTab({ authHeaders, textRequests, onRefresh }) {
   const approveWithEdits = async () => {
     if (!selectedRequest || !editingRequest) return;
     setSavingRequest(true);
+    let saveCompleted = false;
     try {
-      await fetch(`/api/admin/requests/${selectedRequest.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', ...authHeaders },
-        body: JSON.stringify({
-          ...editingRequest,
-          status: 'approved'
-        })
-      });
-      await fetch(`/api/admin/requests/${selectedRequest.id}/approve`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...authHeaders },
-        body: JSON.stringify({ content: editingRequest.content })
-      });
+      const normalize = (v) => (v === null || v === undefined ? '' : String(v));
+      const hasChanges = [
+        'official_author',
+        'official_work',
+        'approved_filename',
+        'text_date',
+        'admin_notes',
+        'content',
+        'author_era',
+        'author_year',
+        'e_source',
+        'e_source_url',
+        'print_source',
+        'added_by'
+      ].some((field) => normalize(editingRequest[field]) !== normalize(selectedRequest[field]));
+
+      if (hasChanges) {
+        const saveRes = await fetch(`/api/admin/requests/${selectedRequest.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', ...authHeaders },
+          body: JSON.stringify(editingRequest)
+        });
+        await parseApiResponse(saveRes, 'Failed to save request before approval');
+        saveCompleted = true;
+      }
+
+      const approveRequestInternal = async (overwrite = false) => {
+        const approveRes = await fetch(`/api/admin/requests/${selectedRequest.id}/approve`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...authHeaders },
+          body: JSON.stringify({ content: editingRequest.content, overwrite })
+        });
+        return parseApiResponse(approveRes, 'Failed to approve and add text to corpus');
+      };
+
+      try {
+        await approveRequestInternal(false);
+      } catch (err) {
+        if (err?.status === 409) {
+          const shouldOverwrite = window.confirm(
+            `${err.message}\n\nA matching text already exists. Do you want to overwrite it?`
+          );
+          if (!shouldOverwrite) {
+            window.alert('Approval cancelled. Existing corpus text was not overwritten.');
+            return;
+          }
+          await approveRequestInternal(true);
+        } else {
+          throw err;
+        }
+      }
+
       onRefresh();
       setSelectedRequest(null);
     } catch (err) {
+      const message = saveCompleted
+        ? `Approval failed after saving edits: ${err.message || 'Unknown error'}`
+        : (err.message || 'Failed to approve request');
+      window.alert(message);
       console.error('Failed to approve request:', err);
+    } finally {
+      setSavingRequest(false);
     }
-    setSavingRequest(false);
   };
 
   const generateFilename = () => {
@@ -127,8 +239,24 @@ export default function RequestsTab({ authHeaders, textRequests, onRefresh }) {
       <div className="space-y-4">
         <div className="flex justify-between items-center">
           <h3 className="font-medium text-gray-900">Text Requests</h3>
-          <div className="text-sm text-gray-500">
-            {textRequests.filter(r => r.status === 'pending').length} pending
+          <div className="flex items-center gap-3">
+            <div className="text-sm text-gray-500">
+              {textRequests.filter(r => normalizedStatus(r.status) === 'pending').length} pending
+            </div>
+            <div className="flex items-center gap-2">
+              <label htmlFor="request-status-filter" className="text-xs text-gray-500 uppercase">Filter</label>
+              <select
+                id="request-status-filter"
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="border rounded px-2 py-1 text-sm"
+              >
+                <option value="all">All</option>
+                <option value="pending">Pending</option>
+                <option value="approved">Approved</option>
+                <option value="rejected">Rejected</option>
+              </select>
+            </div>
           </div>
         </div>
 
@@ -146,13 +274,13 @@ export default function RequestsTab({ authHeaders, textRequests, onRefresh }) {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {textRequests.length === 0 ? (
+              {filteredAndSortedRequests.length === 0 ? (
                 <tr>
                   <td colSpan="7" className="px-3 py-8 text-center text-sm text-gray-500">
-                    No text requests
+                    No text requests for this filter
                   </td>
                 </tr>
-              ) : textRequests.map(request => (
+              ) : filteredAndSortedRequests.map(request => (
                 <tr key={request.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => openRequestDetails(request)}>
                   <td className="px-3 py-2 whitespace-nowrap">
                     <span className={`px-2 py-0.5 text-xs rounded ${

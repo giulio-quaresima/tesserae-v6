@@ -7,8 +7,11 @@ export default function HelpPage() {
   const [requestEmail, setRequestEmail] = useState('');
   const [requestAuthor, setRequestAuthor] = useState('');
   const [requestWork, setRequestWork] = useState('');
-  const [requestLanguage, setRequestLanguage] = useState('latin');
+  const [requestLanguage, setRequestLanguage] = useState('');
   const [requestNotes, setRequestNotes] = useState('');
+  const [requestESource, setRequestESource] = useState('');
+  const [requestESourceUrl, setRequestESourceUrl] = useState('');
+  const [requestPrintSource, setRequestPrintSource] = useState('');
   const [requestFile, setRequestFile] = useState(null);
   const [requestSubmitting, setRequestSubmitting] = useState(false);
   const [requestMessage, setRequestMessage] = useState(null);
@@ -140,6 +143,9 @@ export default function HelpPage() {
       formData.append('work', requestWork);
       formData.append('language', requestLanguage);
       formData.append('notes', requestNotes);
+      formData.append('e_source', requestESource);
+      formData.append('e_source_url', requestESourceUrl);
+      formData.append('print_source', requestPrintSource);
       if (requestFile) {
         formData.append('file', requestFile);
       }
@@ -153,6 +159,9 @@ export default function HelpPage() {
         setRequestAuthor('');
         setRequestWork('');
         setRequestNotes('');
+        setRequestESource('');
+        setRequestESourceUrl('');
+        setRequestPrintSource('');
         setRequestFile(null);
       } else {
         setRequestMessage({ type: 'error', text: data.error || 'Failed to submit text' });
@@ -1265,7 +1274,8 @@ export default function HelpPage() {
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Language *</label>
                     <select value={requestLanguage} onChange={e => setRequestLanguage(e.target.value)}
-                      className="w-full border rounded px-3 py-2 text-sm">
+                      required className="w-full border rounded px-3 py-2 text-sm">
+                      <option value="">Select language...</option>
                       <option value="latin">Latin</option>
                       <option value="greek">Greek</option>
                       <option value="english">English</option>
@@ -1288,6 +1298,36 @@ export default function HelpPage() {
                   <p className="text-xs text-gray-500 mt-1">
                     Accepts .txt or .tess files. Pre-formatted files are processed faster.
                   </p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">e-Source</label>
+                  <input
+                    type="text"
+                    value={requestESource}
+                    onChange={e => setRequestESource(e.target.value)}
+                    placeholder="e.g., Perseus"
+                    className="w-full border rounded px-3 py-2 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">e-Source URL</label>
+                  <input
+                    type="url"
+                    value={requestESourceUrl}
+                    onChange={e => setRequestESourceUrl(e.target.value)}
+                    placeholder="https://..."
+                    className="w-full border rounded px-3 py-2 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Print Source (citation)</label>
+                  <textarea
+                    value={requestPrintSource}
+                    onChange={e => setRequestPrintSource(e.target.value)}
+                    placeholder="Edition/citation details"
+                    rows={2}
+                    className="w-full border rounded px-3 py-2 text-sm"
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Notes (optional)</label>
