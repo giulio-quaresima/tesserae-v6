@@ -83,6 +83,10 @@ function App() {
     if (lang && ['la', 'grc', 'en', 'cross'].includes(lang)) {
       return lang;
     }
+    const sessionLang = getSessionValue('activeTab', '');
+    if (sessionLang && ['la', 'grc', 'en', 'cross'].includes(sessionLang)) {
+      return sessionLang;
+    }
     return 'la';
   });
   const [searchMode, setSearchMode] = useState(() => {
@@ -248,8 +252,13 @@ function App() {
       corpusLoadedForTabRef.current = activeTab;
     }
     
-    // Set defaults when corpus loads for current tab OR when selections are empty
-    const shouldSetDefaults = corpusReady && (corpusJustLoaded || !sourceText || !targetText);
+    // Preserve transferred selections from Browse if they exist in this corpus.
+    const sourceExists = Boolean(sourceText) && corpus.some(t => t.id === sourceText);
+    const targetExists = Boolean(targetText) && corpus.some(t => t.id === targetText);
+    const hasValidSelection = sourceExists && targetExists;
+
+    // Set defaults only when we do not already have valid selections.
+    const shouldSetDefaults = corpusReady && !hasValidSelection && (corpusJustLoaded || !sourceText || !targetText);
     
     if (shouldSetDefaults) {
       let defaultSourceId, defaultTargetId;
