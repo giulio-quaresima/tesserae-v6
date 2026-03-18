@@ -195,10 +195,12 @@ export default function CorpusBrowser() {
 
   const goToCompare = () => {
     if (selectedSource && selectedTarget) {
+      const sourceAuthorKey = selectedSource.author.author_key || selectedSource.author.author?.toLowerCase().replace(/\s+/g, '_') || '';
+      const targetAuthorKey = selectedTarget.author.author_key || selectedTarget.author.author?.toLowerCase().replace(/\s+/g, '_') || '';
       sessionStorage.setItem('tesserae_activeTab', language);
-      sessionStorage.setItem('tesserae_sourceAuthor', selectedSource.author.author_key || '');
+      sessionStorage.setItem('tesserae_sourceAuthor', sourceAuthorKey);
       sessionStorage.setItem('tesserae_sourceText', selectedSource.text.id);
-      sessionStorage.setItem('tesserae_targetAuthor', selectedTarget.author.author_key || '');
+      sessionStorage.setItem('tesserae_targetAuthor', targetAuthorKey);
       sessionStorage.setItem('tesserae_targetText', selectedTarget.text.id);
       window.location.href = '/';
     }
