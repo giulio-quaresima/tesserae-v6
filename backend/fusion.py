@@ -1737,6 +1737,14 @@ def fuse_results(channel_results, weights=None, convergence_bonus=None,
     # Pre-compute constants used in the inner loop to avoid repeated
     # arithmetic on every iteration.
     _log_total = math.log(total_texts)        # log(N) for IDF = log(N) - log(df)
+    # IDF rescaling factor: normalizes the dynamic range so that the rarity
+    # curve (calibrated for corpus-sized N) produces consistent multipliers
+    # regardless of baseline size.  When freq_basis='corpus', scale=1.0
+    # (identity). When hexameter (N=218), scale≈1.35, stretching meter IDF
+    # values back into the range the piecewise curve was tuned for.
+    _N_reference = _get_total_texts(language)  # full corpus N (the calibration target)
+    _idf_scale = math.log(_N_reference) / _log_total if _log_total > 0 else 1.0
+    _idf_scale = min(_idf_scale, 2.0)  # cap to prevent over-inflation for tiny baselines
     _cutoff = RARITY_NEAR_STOPWORD_CUTOFF     # geom_idf below this → flat at floor
     _ramp_offset = RARITY_RAMP_OFFSET         # offset above floor at ramp start
     _ramp_start = _idf_floor + _ramp_offset   # multiplier at geom_idf = cutoff
@@ -1765,7 +1773,7 @@ def fuse_results(channel_results, weights=None, convergence_bonus=None,
             df = doc_freq_map.get(lemma, 0)
             if df <= 0:
                 continue  # not in inverted index
-            cidf = _log_total - math.log(df)
+            cidf = (_log_total - math.log(df)) * _idf_scale
             sw = mw.get('source_word', '')
             tw = mw.get('target_word', '')
             word_key = (sw, tw) if (sw or tw) else (lemma,)
@@ -1847,11 +1855,8 @@ def fuse_results(channel_results, weights=None, convergence_bonus=None,
             # pattern match counts as additional evidence beyond lexical,
             # so even 1 dictionary synonym is meaningful confirmation.
             min_idf_gate_fired = False
-            # Meter IDF compresses score ranges, so single-word pairs
-            # need a tighter penalty to maintain separation from multi-word.
-            _single_penalty = SINGLE_WORD_PENALTY * 0.3 if _effective_freq_basis == 'meter' else SINGLE_WORD_PENALTY
             if n_unique_words <= 1 and not has_structural:
-                multiplier *= _single_penalty
+                multiplier *= SINGLE_WORD_PENALTY
             elif n_content_words == 0:
                 # All-function-words penalty: every matched lemma is on the
                 # curated stoplist (e.g., "tum + inde", "nec + sic", "ubi").
@@ -1870,7 +1875,7 @@ def fuse_results(channel_results, weights=None, convergence_bonus=None,
                 # and zero convergence.  A match on "tum + vires" should
                 # rank like a match on just "vires", not like a genuine
                 # 2-content-word allusion.
-                multiplier *= _single_penalty
+                multiplier *= SINGLE_WORD_PENALTY
                 min_idf_gate_fired = True
         else:
             # No corpus IDF data: either all matched words are sub-lexical
