@@ -102,6 +102,22 @@ export default function ResearchPage({ setPageType }) {
           </ul>
         </section>
 
+        {/* Evaluation Data */}
+        <section className="bg-amber-50 border border-amber-200 rounded-lg p-5">
+          <h3 className="text-lg font-semibold text-amber-900 mb-3">Evaluation Data</h3>
+          <p className="text-gray-700 text-sm mb-4">
+            Tesserae V6's feature fusion system was evaluated against gold-standard benchmark datasets
+            comprising 862 parallel passages drawn from published scholarly commentaries. 
+            Detailed results and benchmark datasets are available on the downloads page.
+          </p>
+          <button
+            onClick={() => setPageType('downloads')}
+            className="text-amber-700 hover:underline font-medium text-sm transition-colors"
+          >
+            Access Evaluation Benchmarks and Downloads →
+          </button>
+        </section>
+
 
         {/* Presentations */}
         <section>
