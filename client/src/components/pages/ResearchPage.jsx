@@ -2,7 +2,7 @@ export default function ResearchPage({ setPageType }) {
   return (
     <div className="bg-white rounded-lg shadow p-4 sm:p-8">
       <h2 className="text-2xl font-semibold text-gray-900 mb-2">Research</h2>
-      <p className="text-gray-600 text-sm mb-6">
+      <p className="text-gray-600 text-sm mb-4">
         As part of its ongoing work, the project team endeavors to produce publications and presentations
         that report on methods developed, theoretical consequences of digital intertextual search, and
         applied literary studies. The Tesserae project is by nature collaborative and interdisciplinary,
@@ -106,60 +106,18 @@ export default function ResearchPage({ setPageType }) {
         <section className="bg-amber-50 border border-amber-200 rounded-lg p-5">
           <h3 className="text-lg font-semibold text-amber-900 mb-3">Evaluation Data</h3>
           <p className="text-gray-700 text-sm mb-4">
-            Tesserae V6's feature fusion system was evaluated against five gold-standard benchmark datasets
-            comprising 862 parallel passages drawn from published scholarly commentaries. The system achieves
-            90.7% recall across all benchmarks.
+            Tesserae V6's feature fusion system was evaluated against gold-standard benchmark datasets
+            comprising 862 parallel passages drawn from published scholarly commentaries. 
+            Detailed results and benchmark datasets are available on the downloads page.
           </p>
-          <p className="text-gray-700 text-sm mb-4">
-            Benchmark result sets with gold-standard matches highlighted are available for download:
-          </p>
-          <ul className="space-y-2 text-sm">
-            <li>
-              <a href="/data/benchmark_results/lucan_vergil_results.csv"
-                 className="text-amber-700 hover:underline font-medium"
-                 download>
-                Lucan, <em>Bellum Civile</em> 1 vs. Vergil, <em>Aeneid</em>
-              </a>
-              <span className="text-gray-500 ml-2">— 213 gold pairs, 91.5% recall</span>
-            </li>
-            <li>
-              <a href="/data/benchmark_results/vf_vergil_results.csv"
-                 className="text-amber-700 hover:underline font-medium"
-                 download>
-                Valerius Flaccus, <em>Argonautica</em> 1 vs. Vergil, <em>Aeneid</em>
-              </a>
-              <span className="text-gray-500 ml-2">— 521 gold pairs, 89.4% recall</span>
-            </li>
-            <li>
-              <a href="/data/benchmark_results/achilleid_vergil_results.csv"
-                 className="text-amber-700 hover:underline font-medium"
-                 download>
-                Statius, <em>Achilleid</em> 1 vs. Vergil, <em>Aeneid</em>
-              </a>
-              <span className="text-gray-500 ml-2">— 53 gold pairs, 94.3% recall</span>
-            </li>
-            <li>
-              <a href="/data/benchmark_results/achilleid_ovid_results.csv"
-                 className="text-amber-700 hover:underline font-medium"
-                 download>
-                Statius, <em>Achilleid</em> 1 vs. Ovid, <em>Metamorphoses</em>
-              </a>
-              <span className="text-gray-500 ml-2">— 23 gold pairs, 91.3% recall</span>
-            </li>
-            <li>
-              <a href="/data/benchmark_results/achilleid_thebaid_results.csv"
-                 className="text-amber-700 hover:underline font-medium"
-                 download>
-                Statius, <em>Achilleid</em> 1 vs. Statius, <em>Thebaid</em>
-              </a>
-              <span className="text-gray-500 ml-2">— 52 gold pairs, 96.2% recall</span>
-            </li>
-          </ul>
-          <p className="text-gray-600 text-xs mt-4">
-            Each CSV contains rank, fused score, source and target passages, matched words,
-            contributing channels, and a GOLD flag for commentary-attested parallels.
-          </p>
+          <button
+            onClick={() => setPageType('downloads')}
+            className="text-amber-700 hover:underline font-medium text-sm transition-colors"
+          >
+            Access Evaluation Benchmarks and Downloads →
+          </button>
         </section>
+
 
         {/* Presentations */}
         <section>
