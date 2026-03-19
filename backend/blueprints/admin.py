@@ -7,6 +7,9 @@ from datetime import datetime
 import uuid
 import os
 import json
+import time
+import threading
+from collections import defaultdict
 
 from backend.db_utils import get_db_cursor
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -35,6 +38,14 @@ _author_dates_path = None
 _text_processor = None
 _texts_dir = None
 _processed_cache = None
+
+# Admin login brute-force protection (process-local).
+_login_attempt_timestamps = defaultdict(list)
+_login_lockouts = {}
+_login_rate_lock = threading.Lock()
+_LOGIN_MAX_ATTEMPTS = int(os.environ.get('ADMIN_LOGIN_MAX_ATTEMPTS', '5'))
+_LOGIN_WINDOW_SECONDS = int(os.environ.get('ADMIN_LOGIN_WINDOW_SECONDS', '900'))
+_LOGIN_LOCKOUT_SECONDS = int(os.environ.get('ADMIN_LOGIN_LOCKOUT_SECONDS', '900'))
 
 
 def _normalize_role_name(value):
@@ -156,6 +167,72 @@ def _count_super_admins():
         return row[0] if row else 0
 
 
+def _get_client_ip():
+    """Best-effort client IP extraction behind proxies."""
+    forwarded_for = (request.headers.get('X-Forwarded-For') or '').split(',')[0].strip()
+    if forwarded_for:
+        return forwarded_for
+    return request.remote_addr or 'unknown'
+
+
+def _admin_login_keys(email):
+    ip = _get_client_ip()
+    normalized_email = (email or '').strip().lower() or 'unknown'
+    return [
+        f"ip:{ip}",
+        f"email:{normalized_email}",
+        f"combo:{ip}|{normalized_email}",
+    ]
+
+
+def _prune_login_state(now):
+    cutoff = now - _LOGIN_WINDOW_SECONDS
+    for key, attempts in list(_login_attempt_timestamps.items()):
+        recent = [ts for ts in attempts if ts >= cutoff]
+        if recent:
+            _login_attempt_timestamps[key] = recent
+        else:
+            _login_attempt_timestamps.pop(key, None)
+
+    for key, lockout_until in list(_login_lockouts.items()):
+        if lockout_until <= now:
+            _login_lockouts.pop(key, None)
+
+
+def _check_admin_login_rate_limit(email):
+    """Return (limited: bool, retry_after_seconds: int)."""
+    now = time.time()
+    keys = _admin_login_keys(email)
+    with _login_rate_lock:
+        _prune_login_state(now)
+
+        remaining_lockouts = [max(0, int(_login_lockouts[k] - now)) for k in keys if k in _login_lockouts]
+        if remaining_lockouts:
+            return True, max(remaining_lockouts)
+
+    return False, 0
+
+
+def _record_failed_admin_login(email):
+    now = time.time()
+    keys = _admin_login_keys(email)
+    with _login_rate_lock:
+        _prune_login_state(now)
+        for key in keys:
+            attempts = _login_attempt_timestamps[key]
+            attempts.append(now)
+            if len(attempts) >= _LOGIN_MAX_ATTEMPTS:
+                _login_lockouts[key] = now + _LOGIN_LOCKOUT_SECONDS
+
+
+def _clear_admin_login_failures(email):
+    keys = _admin_login_keys(email)
+    with _login_rate_lock:
+        for key in keys:
+            _login_attempt_timestamps.pop(key, None)
+            _login_lockouts.pop(key, None)
+
+
 @admin_bp.route('/login', methods=['POST'])
 def admin_login():
     """Verify admin password"""
@@ -163,19 +240,31 @@ def admin_login():
     password = data.get('password', '')
     email = (data.get('email') or data.get('username') or '').strip().lower()
 
+    limited, retry_after = _check_admin_login_rate_limit(email)
+    if limited:
+        return (
+            jsonify({'error': 'Too many login attempts. Please try again later.'}),
+            429,
+            {'Retry-After': str(retry_after)}
+        )
+
     if not email or not password:
         return jsonify({'error': 'Email and password are required'}), 400
 
     user = User.query.filter(User.email.ilike(email)).first()
     if not user or not user.password_hash:
+        _record_failed_admin_login(email)
         return jsonify({'error': 'Invalid credentials'}), 401
     if not check_password_hash(user.password_hash, password):
+        _record_failed_admin_login(email)
         return jsonify({'error': 'Invalid credentials'}), 401
 
     roles = _load_admin_roles(user.id)
     if not any(role in ('ADMIN', 'SUPER_ADMIN') for role in roles):
+        _record_failed_admin_login(email)
         return jsonify({'error': 'Admin access required'}), 403
 
+    _clear_admin_login_failures(email)
     session['admin_user_id'] = user.id
     session['admin_email'] = user.email
     session['admin_roles'] = roles

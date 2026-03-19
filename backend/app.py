@@ -36,6 +36,9 @@ import os
 import json
 import re
 import math
+import time
+import threading
+from collections import defaultdict
 from datetime import datetime
 
 # Application modules
@@ -2266,15 +2269,70 @@ def submit_feedback():
 @api_route('/admin/login', methods=['POST'])
 def admin_login():
     """Verify admin password"""
+    # Legacy admin login brute-force protection (process-local).
+    if not hasattr(admin_login, '_attempts'):
+        admin_login._attempts = defaultdict(list)      # key -> [timestamps]
+        admin_login._lockouts = {}                     # key -> lockout_until_epoch
+        admin_login._lock = threading.Lock()
+
+    max_attempts = int(os.environ.get('ADMIN_LOGIN_MAX_ATTEMPTS', '5'))
+    window_seconds = int(os.environ.get('ADMIN_LOGIN_WINDOW_SECONDS', '900'))
+    lockout_seconds = int(os.environ.get('ADMIN_LOGIN_LOCKOUT_SECONDS', '900'))
+
+    def _client_ip():
+        forwarded_for = (request.headers.get('X-Forwarded-For') or '').split(',')[0].strip()
+        return forwarded_for or request.remote_addr or 'unknown'
+
+    def _keys(email):
+        normalized_email = (email or '').strip().lower() or 'unknown'
+        ip = _client_ip()
+        return [f"ip:{ip}", f"email:{normalized_email}", f"combo:{ip}|{normalized_email}"]
+
+    def _prune(now):
+        cutoff = now - window_seconds
+        for k, ts_list in list(admin_login._attempts.items()):
+            recent = [ts for ts in ts_list if ts >= cutoff]
+            if recent:
+                admin_login._attempts[k] = recent
+            else:
+                admin_login._attempts.pop(k, None)
+        for k, until in list(admin_login._lockouts.items()):
+            if until <= now:
+                admin_login._lockouts.pop(k, None)
+
     data = request.get_json() or {}
     password = data.get('password', '')
+    email = (data.get('email') or data.get('username') or '').strip().lower()
+
+    with admin_login._lock:
+        now = time.time()
+        _prune(now)
+        retry_after = [max(0, int(admin_login._lockouts[k] - now)) for k in _keys(email) if k in admin_login._lockouts]
+        if retry_after:
+            return (
+                jsonify({'error': 'Too many login attempts. Please try again later.'}),
+                429,
+                {'Retry-After': str(max(retry_after))}
+            )
     
     if not ADMIN_PASSWORD:
         return jsonify({'error': 'Admin password not configured'}), 500
     
     if password == ADMIN_PASSWORD:
+        with admin_login._lock:
+            for k in _keys(email):
+                admin_login._attempts.pop(k, None)
+                admin_login._lockouts.pop(k, None)
         return jsonify({'success': True})
     else:
+        with admin_login._lock:
+            now = time.time()
+            _prune(now)
+            for k in _keys(email):
+                attempts = admin_login._attempts[k]
+                attempts.append(now)
+                if len(attempts) >= max_attempts:
+                    admin_login._lockouts[k] = now + lockout_seconds
         return jsonify({'error': 'Invalid password'}), 401
 
 @api_route('/admin/author-dates', methods=['GET'])
