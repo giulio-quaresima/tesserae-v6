@@ -191,6 +191,25 @@ const greekLatinWorkMetadata = {
   'augustine': { author: 'Augustine' },
   'amm': { author: 'Ammianus' },
   'ammianus': { author: 'Ammianus' },
+  'alcuin': { author: 'Alcuin' },
+  'hildeb': { author: 'Hildebert of Lavardin' },
+  'hildebert': { author: 'Hildebert of Lavardin' },
+  'hildebert_of_lavardin': { author: 'Hildebert of Lavardin' },
+  'hildeg': { author: 'Hildegard of Bingen' },
+  'hildegard': { author: 'Hildegard of Bingen' },
+  'hildegard_of_bingen': { author: 'Hildegard of Bingen' },
+  'vulgate': { author: 'Vulgate' },
+  'petronius': { author: 'Petronius' },
+  'petr': { author: 'Petronius' },
+  'aus': { author: 'Ausonius' },
+  'ausonius': { author: 'Ausonius' },
+  'prud': { author: 'Prudentius' },
+  'prudentius': { author: 'Prudentius' },
+  'gel': { author: 'Aulus Gellius' },
+  'gellius': { author: 'Aulus Gellius' },
+  'ambrose': { author: 'Ambrose' },
+  'tertullian': { author: 'Tertullian' },
+  'jerome': { author: 'Jerome' },
 };
 
 const workTitles = {
@@ -305,55 +324,219 @@ const workTitles = {
   'drn': 'De Rerum Natura',
   'rnr': 'De Rerum Natura',
   'nat': 'De Rerum Natura',
+  'genesis': 'Genesis',
+  'exodus': 'Exodus',
+  'leviticus': 'Leviticus',
+  'numbers': 'Numbers',
+  'deuteronomy': 'Deuteronomy',
 };
 
 // Author-specific work abbreviation overrides.
 // These take precedence over the global workTitles map when the author is known.
 // Handles multi-part abbreviations (e.g., "her.o" = Hercules Oetaeus for Seneca).
+// Canonical override objects to avoid duplication across aliases
+const senecaOverrides = {
+  'her.o': 'Hercules Oetaeus',
+  'her.f': 'Hercules Furens',
+  'herc.f': 'Hercules Furens',
+  'herc.o': 'Hercules Oetaeus',
+  'med': 'Medea',
+  'phoen': 'Phoenissae',
+  'ag': 'Agamemnon',
+  'oed': 'Oedipus',
+  'phaedr': 'Phaedra',
+  'thy': 'Thyestes',
+  'tro': 'Troades',
+};
+
+const hildebertOverrides = {
+  'carm_lib_reg': 'Carmen in libros regum',
+  'carm': 'Carmina',
+  'carmina': 'Carmina',
+  'de_ordine_mundi': 'De ordine mundi',
+  'de_operibus_sex_dierum': 'De operibus sex dierum',
+  'de_mysterio_missae': 'De mysterio missae',
+  'de_machabaeis': 'De Machabaeis',
+  'vita_mariae_aegyptiacae': 'Vita Mariae Aegyptiacae',
+};
+
+const hildegardOverrides = {
+  'scivias': 'Scivias',
+  'physica': 'Physica',
+  'cause_et_cure': 'Causae et Curae',
+  'symphonia': 'Symphonia',
+};
+
+const ciceroOverrides = {
+  'att': 'Epistulae ad Atticum',
+  'fam': 'Epistulae ad Familiares',
+  'ver': 'In Verrem',
+  'phil': 'Philippicae',
+  'tusc': 'Tusculanae Disputationes',
+  'fin': 'De Finibus',
+  'nat': 'De Natura Deorum',
+  'off': 'De Officiis',
+  'catil': 'In Catilinam',
+  'arch': 'Pro Archia',
+  'brut': 'Brutus',
+  'amicit': 'De Amicitia',
+  'senect': 'De Senectute',
+  'div': 'De Divinatione',
+  'rep': 'De Republica',
+  'inv': 'De Inventione',
+  'orat': 'De Oratore',
+  'orator': 'Orator',
+  'clu': 'Pro Cluentio',
+  'mil': 'Pro Milone',
+  'mur': 'Pro Murena',
+  'sest': 'Pro Sestio',
+  'caec': 'Pro Caecina',
+  'planc': 'Pro Plancio',
+  'quinct': 'Pro Quinctio',
+  'ros': 'Pro Roscio Amerino',
+};
+
+const plautusOverrides = {
+  'amph': 'Amphitruo',
+  'am': 'Amphitruo',
+  'asin': 'Asinaria',
+  'as': 'Asinaria',
+  'aul': 'Aulularia',
+  'bacch': 'Bacchides',
+  'capt': 'Captivi',
+  'cas': 'Casina',
+  'cist': 'Cistellaria',
+  'curc': 'Curculio',
+  'epid': 'Epidicus',
+  'ep': 'Epidicus',
+  'men': 'Menaechmi',
+  'merc': 'Mercator',
+  'mil': 'Miles Gloriosus',
+  'most': 'Mostellaria',
+  'pers': 'Persa',
+  'poen': 'Poenulus',
+  'pseud': 'Pseudolus',
+  'ps': 'Pseudolus',
+  'rud': 'Rudens',
+  'stich': 'Stichus',
+  'trin': 'Trinummus',
+  'truc': 'Truculentus',
+};
+
+const ausoniusOverrides = {
+  'mos': 'Mosella',
+  'biss': 'Bissula',
+  'caes': 'Caesares',
+  'cent': 'Cento Nuptialis',
+  'cup': 'Cupido Cruciatus',
+  'ecl': 'Eclogae',
+  'ep': 'Epistulae',
+  'ephem': 'Ephemeris',
+  'epigr': 'Epigrammata',
+  'epit': 'Epitaphia',
+  'fast': 'Fasti',
+  'grat': 'Gratiarum Actio',
+  'griph': 'Griphus Ternarii Numeri',
+  'idyll': 'Idyllia',
+  'orat': 'Oratio',
+  'par': 'Parentalia',
+  'praef': 'Praefationes',
+  'prof': 'Professores',
+  'sap': 'Ludus Septem Sapientum',
+  'tech': 'Technopaegnion',
+  'urb': 'Ordo Urbium Nobilium',
+};
+
+const prudentiusOverrides = {
+  'apo': 'Apotheosis',
+  'ditto': 'Dittochaeon',
+  'epil': 'Epilogus',
+  'ham': 'Hamartigenia',
+  'peristeph': 'Peristephanon',
+  'psych': 'Psychomachia',
+  'sym': 'Contra Symmachum',
+};
+
+const claudianOverrides = {
+  'cm': 'Carmina Minora',
+  'cons': 'Panegyricus de Consulatu',
+  'eutr': 'In Eutropium',
+  'gild': 'De Bello Gildonico',
+  'goth': 'De Bello Gothico',
+  'mall': 'Panegyricus de Consulatu Mallii',
+  'nupt': 'Epithalamium de Nuptiis Honori et Mariae',
+  'rapt': 'De Raptu Proserpinae',
+  'ruf': 'In Rufinum',
+};
+
+const ammianusOverrides = {
+  'gest': 'Rerum Gestarum',
+};
+
+const sallustOverrides = {
+  'cat': 'Bellum Catilinae',
+  'catil': 'Bellum Catilinae',
+  'jug': 'Bellum Iugurthinum',
+  'iug': 'Bellum Iugurthinum',
+};
+
+const alcuinOverrides = {
+  'carm': 'Carmina',
+  'carmina': 'Carmina',
+};
+
+const horaceOverrides = {
+  'carm': 'Odes',
+};
+
+const jeromeOverrides = {
+  'in_hier': 'In Hieremiam Prophetam',
+  'ep': 'Epistulae',
+};
+
 const authorWorkOverrides = {
-  'sen': {
-    'her.o': 'Hercules Oetaeus',
-    'her.f': 'Hercules Furens',
-    'herc.f': 'Hercules Furens',
-    'herc.o': 'Hercules Oetaeus',
-    'med': 'Medea',
-    'phoen': 'Phoenissae',
-    'ag': 'Agamemnon',
-    'oed': 'Oedipus',
-    'phaedr': 'Phaedra',
-    'thy': 'Thyestes',
-    'tro': 'Troades',
-  },
-  'seneca': {
-    'her.o': 'Hercules Oetaeus',
-    'her.f': 'Hercules Furens',
-    'herc.f': 'Hercules Furens',
-    'herc.o': 'Hercules Oetaeus',
-    'med': 'Medea',
-    'phoen': 'Phoenissae',
-    'ag': 'Agamemnon',
-    'oed': 'Oedipus',
-    'phaedr': 'Phaedra',
-    'thy': 'Thyestes',
-    'tro': 'Troades',
-  },
-  'alcuin': {
-    'carm': 'Carmina',
-  },
-  'hor': {
-    'carm': 'Odes',
-  },
-  'horace': {
-    'carm': 'Odes',
-  },
-  'hildebert': {
-    'carm': 'Carmina',
-  },
+  'sen': senecaOverrides,
+  'seneca': senecaOverrides,
+  'alcuin': alcuinOverrides,
+  'hor': horaceOverrides,
+  'horace': horaceOverrides,
+  'hildeb': hildebertOverrides,
+  'hildebert': hildebertOverrides,
+  'hildebert_of_lavardin': hildebertOverrides,
+  'hildeg': hildegardOverrides,
+  'hildegard': hildegardOverrides,
+  'hildegard_of_bingen': hildegardOverrides,
+  'cic': ciceroOverrides,
+  'cicero': ciceroOverrides,
+  'plaut': plautusOverrides,
+  'plautus': plautusOverrides,
+  'amm': ammianusOverrides,
+  'ammianus': ammianusOverrides,
+  'sall': sallustOverrides,
+  'sallust': sallustOverrides,
+  'aus': ausoniusOverrides,
+  'ausonius': ausoniusOverrides,
+  'prud': prudentiusOverrides,
+  'prudentius': prudentiusOverrides,
+  'claud': claudianOverrides,
+  'claudian': claudianOverrides,
+  'jerome': jeromeOverrides
 };
 
 const formatLocation = (loc) => {
   if (!loc) return '';
   return loc.trim().replace(/\s+/g, '.');
+};
+
+const appendLocation = (base, location) => (location ? `${base} ${location}` : base);
+
+const formatUnderscoreTitle = (tag) => {
+  if (!tag) return '';
+  return tag
+    .split('_')
+    .filter(Boolean)
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
 };
 
 export const formatReference = (ref, language = null) => {
@@ -395,14 +578,14 @@ export const formatReference = (ref, language = null) => {
       
       const meta = englishWorkMetadata[workKey];
       if (meta) {
-        return `${meta.author}, ${meta.title} ${location}`;
+        return appendLocation(`${meta.author}, ${meta.title}`, location);
       }
       const titleCase = workKey.charAt(0).toUpperCase() + workKey.slice(1);
-      return `${titleCase} ${location}`;
+      return appendLocation(titleCase, location);
     }
   }
   
-  if (language === 'la' || language === 'grc' || /^[a-z]+[\.\s]/i.test(cleanRef)) {
+  if (language === 'la' || language === 'grc' || /^[a-z][a-z_0-9]*[\.\s]/i.test(cleanRef)) {
     const parts = cleanRef.split(/[\.\s]+/);
     
     if (parts.length >= 2) {
@@ -420,12 +603,12 @@ export const formatReference = (ref, language = null) => {
           const twoPartKey = secondPart && thirdPart ? `${secondPart}.${thirdPart}` : null;
           if (twoPartKey && overrides[twoPartKey]) {
             const location = formatLocation(parts.slice(3).join('.'));
-            return `${firstMeta.author}, ${overrides[twoPartKey]} ${location}`;
+            return appendLocation(`${firstMeta.author}, ${overrides[twoPartKey]}`, location);
           }
           // Try single-part abbreviation (e.g., "med" for Seneca)
           if (secondPart && overrides[secondPart]) {
             const location = formatLocation(parts.slice(2).join('.'));
-            return `${firstMeta.author}, ${overrides[secondPart]} ${location}`;
+            return appendLocation(`${firstMeta.author}, ${overrides[secondPart]}`, location);
           }
         }
 
@@ -434,16 +617,26 @@ export const formatReference = (ref, language = null) => {
 
         if (workTitle) {
           const location = formatLocation(parts.slice(2).join('.'));
-          return `${firstMeta.author}, ${workTitle} ${location}`;
+          return appendLocation(`${firstMeta.author}, ${workTitle}`, location);
+        }
+
+        // Smart fallback: If second part has underscores (e.g., "de_civitate_dei"),
+        // automatically format it as a title ("De Civitate Dei").
+        if (secondPart && secondPart.includes('_')) {
+          const formattedTitle = formatUnderscoreTitle(secondPart);
+          if (formattedTitle) {
+            const location = formatLocation(parts.slice(2).join('.'));
+            return appendLocation(`${firstMeta.author}, ${formattedTitle}`, location);
+          }
         }
 
         if (firstMeta.work) {
           const location = formatLocation(parts.slice(1).join('.'));
-          return `${firstMeta.author}, ${firstMeta.work} ${location}`;
+          return appendLocation(`${firstMeta.author}, ${firstMeta.work}`, location);
         }
 
         const location = formatLocation(parts.slice(1).join('.'));
-        return `${firstMeta.author} ${location}`;
+        return appendLocation(firstMeta.author, location);
       }
       
       const secondPart = parts[1]?.toLowerCase().trim();
@@ -451,7 +644,16 @@ export const formatReference = (ref, language = null) => {
       if (workTitle) {
         const authorCase = firstKey.charAt(0).toUpperCase() + firstKey.slice(1);
         const location = formatLocation(parts.slice(2).join('.'));
-        return `${authorCase}, ${workTitle} ${location}`;
+        return appendLocation(`${authorCase}, ${workTitle}`, location);
+      }
+
+      // Smart fallback for anonymous/unknown work tags with underscores (e.g., "carm_biblioth")
+      if (firstKey.includes('_')) {
+        const formattedTitle = formatUnderscoreTitle(firstKey);
+        if (formattedTitle) {
+          const location = formatLocation(parts.slice(1).join('.'));
+          return appendLocation(formattedTitle, location);
+        }
       }
     }
   }
